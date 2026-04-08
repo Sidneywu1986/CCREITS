@@ -7,6 +7,49 @@ const express = require('express');
 const router = express.Router();
 const { db } = require('../database/db');
 
+/**
+ * 计算溢价率
+ * @param {number} price - 当前市价
+ * @param {number} nav - 单位净值
+ * @returns {number|null} 溢价率（%）
+ */
+function calculatePremium(price, nav) {
+    if (!price || !nav || nav <= 0) return null;
+    return parseFloat(((price - nav) / nav * 100).toFixed(2));
+}
+
+/**
+ * 计算流通市值
+ * @param {number} price - 当前市价
+ * @param {number} shares - 流通份额（万份）
+ * @returns {number|null} 流通市值（亿元）
+ */
+function calculateMarketCap(price, shares) {
+    if (!price || !shares) return null;
+    return parseFloat((price * shares / 10000).toFixed(2));
+}
+
+/**
+ * 计算派息率（年化）
+ * @param {number} price - 当前市价
+ * @param {Array} dividends - 分红历史
+ * @returns {number|null} 派息率（%）
+ */
+function calculateYield(price, dividends) {
+    if (!price || !dividends || dividends.length === 0) return null;
+    
+    const oneYearAgo = new Date();
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+    
+    const annualDividend = dividends
+        .filter(d => new Date(d.date) >= oneYearAgo)
+        .reduce((sum, d) => sum + (d.amount || 0), 0);
+    
+    if (annualDividend <= 0) return null;
+    
+    return parseFloat((annualDividend / price * 100).toFixed(2));
+}
+
 // REITs 板块映射表（代码段 -> 板块信息）- 基于Excel导入的真实数据
 // 注意：数据库中的 sector 字段是主要数据来源，此为后备映射
 const SECTOR_MAP = {
@@ -139,14 +182,16 @@ router.get('/', (req, res) => {
             f.scale,
             f.property_type,
             f.remaining_years,
+            f.circulating_shares,
+            f.nav,
+            f.debt_ratio,
+            f.institution_hold,
             q.price,
             q.change_percent,
             q.yield,
             q.premium,
             q.volume,
             q.market_cap,
-            f.nav,
-            f.debt_ratio,
             q.updated_at as quote_time
         FROM funds f
         LEFT JOIN quotes q ON f.code = q.fund_code
@@ -166,12 +211,18 @@ router.get('/', (req, res) => {
         }
         
         // 补充缺失的 sector 信息，并统一字段命名（驼峰式）
+        // 同时计算溢价率和流通市值
         const enrichedFunds = funds.map(fund => {
             if (!fund.sector) {
                 const sectorInfo = getSectorByCode(fund.code);
                 fund.sector = sectorInfo.sector;
                 fund.sector_name = sectorInfo.sector_name;
             }
+            
+            // 实时计算溢价率和流通市值
+            const premium = calculatePremium(fund.price, fund.nav);
+            const marketCap = calculateMarketCap(fund.price, fund.circulating_shares);
+            
             // 统一转换为驼峰命名，兼容前端
             return {
                 code: fund.code,
@@ -187,11 +238,12 @@ router.get('/', (req, res) => {
                 change: fund.change_percent,
                 changePercent: fund.change_percent,
                 yield: fund.yield,
-                premium: fund.premium,
+                premium: premium !== null ? premium : fund.premium,
                 volume: fund.volume,
-                marketCap: fund.market_cap,
+                marketCap: marketCap !== null ? marketCap : fund.market_cap,
                 nav: fund.nav,
                 debt: fund.debt_ratio,
+                institutionHold: fund.institution_hold,
                 quoteTime: fund.quote_time
             };
         });
@@ -282,10 +334,16 @@ router.get('/:code', (req, res) => {
                 fund.sector_name = SECTOR_CONFIG[fund.sector]?.name || '其他';
             }
             
+            // 实时计算溢价率和流通市值
+            const premium = calculatePremium(fund.price, fund.nav);
+            const marketCap = calculateMarketCap(fund.price, fund.circulating_shares);
+            
             res.json({
                 success: true,
                 data: {
                     ...fund,
+                    premium: premium !== null ? premium : fund.premium,
+                    marketCap: marketCap !== null ? marketCap : fund.market_cap,
                     history: history.reverse() // 按时间正序
                 }
             });

@@ -38,33 +38,20 @@ function initDatabase() {
                 indexSchema = fs.readFileSync(indexSchemaPath, 'utf8');
             }
             
-            // 合并schema并按分号分割
-            const combinedSchema = schema + ';' + aiSchema + ';' + indexSchema;
-            const statements = combinedSchema.split(';').filter(s => s.trim());
+            // 合并schema并执行
+            const combinedSchema = schema + ';\n' + aiSchema + ';\n' + indexSchema;
             
-            let index = 0;
-            function runNext() {
-                if (index >= statements.length) {
-                    console.log('✅ 数据库初始化成功');
-                    // 初始化数据源追踪表
-                    initDataSources().then(resolve).catch(reject);
+            // 使用exec批量执行（更安全）
+            db.exec(combinedSchema, (err) => {
+                if (err) {
+                    console.error('❌ Schema执行错误:', err);
+                    reject(err);
                     return;
                 }
-                
-                const statement = statements[index++];
-                if (statement.trim()) {
-                    db.run(statement, (err) => {
-                        if (err) {
-                            console.error('SQL执行错误:', err);
-                        }
-                        runNext();
-                    });
-                } else {
-                    runNext();
-                }
-            }
-            
-            runNext();
+                console.log('✅ 数据库表结构初始化成功');
+                // 初始化数据源追踪表
+                initDataSources().then(resolve).catch(reject);
+            });
         } catch (error) {
             console.error('❌ 数据库初始化失败:', error);
             reject(error);

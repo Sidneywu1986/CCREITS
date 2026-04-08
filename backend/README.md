@@ -7,19 +7,43 @@
 ```bash
 cd backend
 npm install
+
+# 安装Python依赖（AKShare数据服务）
+pip install -r requirements.txt
 ```
 
-### 2. 启动服务
+### 2. 启动AKShare数据服务（必需）
 
 ```bash
-# 开发模式（热更新）
+# 终端1: 启动AKShare Python服务（提供REITs专用接口）
+python akshare_reits_server.py
+
+# 或使用npm脚本
+npm run akshare:start
+```
+
+### 3. 启动Node.js后端服务
+
+```bash
+# 终端2: 开发模式（热更新）
 npm run dev
 
 # 生产模式
 npm start
 ```
 
-服务启动后访问 http://localhost:3001
+服务启动后访问 http://localhost:3000
+
+### 4. 验证服务状态
+
+```bash
+# 检查AKShare服务
+npm run akshare:test
+
+# 检查数据库
+cd backend
+npm run db:check
+```
 
 ### 3. 手动更新数据
 

@@ -178,28 +178,28 @@ app.use((err, req, res, next) => {
 
 // ==================== 定时任务 ====================
 
-// 行情数据：每5分钟更新一次（交易时间）
-cron.schedule('*/5 9-15 * * 1-5', async () => {
-    console.log('⏰ 定时任务：快速更新行情');
-    try {
-        await crawlerManager.runQuick();
-    } catch (error) {
-        console.error('定时任务失败:', error);
-    }
-});
+// 行情数据：每1分钟更新一次（交易时间）- REITs数量少，频率可以提高
+ cron.schedule('* 9-15 * * 1-5', async () => {
+     console.log('⏰ 定时任务：快速更新行情');
+     try {
+         await crawlerManager.runQuick();
+     } catch (error) {
+         console.error('定时任务失败:', error);
+     }
+ });
+ 
+ // 全量数据：每10分钟更新一次（数据量小，可以更频繁）
+ cron.schedule('*/10 * * * *', async () => {
+     console.log('⏰ 定时任务：全量数据采集');
+     try {
+         await crawlerManager.runAll();
+     } catch (error) {
+         console.error('定时任务失败:', error);
+     }
+ });
 
-// 全量数据：每小时更新一次
-cron.schedule('0 * * * *', async () => {
-    console.log('⏰ 定时任务：全量数据采集');
-    try {
-        await crawlerManager.runAll();
-    } catch (error) {
-        console.error('定时任务失败:', error);
-    }
-});
-
-// 公告数据：每小时更新一次
-cron.schedule('30 * * * *', async () => {
+// 公告数据：每30分钟更新一次（REITs公告频率不高）
+cron.schedule('*/30 * * * *', async () => {
     console.log('⏰ 定时任务：更新公告数据');
     try {
         await crawlAnnouncements();
@@ -208,8 +208,8 @@ cron.schedule('30 * * * *', async () => {
     }
 });
 
-// 大盘指数：每5分钟更新一次（交易时间）
-cron.schedule('*/5 9-15 * * 1-5', async () => {
+// 大盘指数：每1分钟更新一次（交易时间）
+cron.schedule('* 9-15 * * 1-5', async () => {
     console.log('⏰ 定时任务：更新大盘指数');
     try {
         const crawler = new MarketIndexCrawler();
@@ -218,6 +218,19 @@ cron.schedule('*/5 9-15 * * 1-5', async () => {
         console.log(`✅ 大盘指数更新完成: ${data.length} 条`);
     } catch (error) {
         console.error('大盘指数更新失败:', error);
+    }
+});
+
+// 基金详情（净值、流通份额等）：每日凌晨2点更新
+cron.schedule('0 2 * * *', async () => {
+    console.log('⏰ 定时任务：更新基金详情数据');
+    try {
+        const FundDetailCrawler = require('./crawlers/fund-detail');
+        const crawler = new FundDetailCrawler();
+        await crawler.fetchData();
+        console.log('✅ 基金详情更新完成');
+    } catch (error) {
+        console.error('基金详情更新失败:', error);
     }
 });
 

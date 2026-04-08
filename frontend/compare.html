@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>基金对比 - REITs数据平台</title>
-    <link rel="stylesheet" href="./css/tailwind.css">
+    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -43,24 +43,25 @@
         <div class="flex items-center gap-4">
             <div class="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-lg flex items-center justify-center text-white font-bold text-sm">R</div>
             <span class="font-bold text-gray-900 text-lg tracking-tight">REITs数据平台</span>
-            <nav class="hidden md:flex items-center gap-1 ml-6">
+            <nav class="hidden md:flex items-center gap-0.5 ml-4">
                 <a href="./market.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">市场</a>
                 <a href="./fund-detail.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">详情</a>
                 <a href="./ai-chat.html" class="px-3 py-1.5 text-sm font-medium text-purple-600 bg-purple-50 rounded-lg transition-all flex items-center gap-1">
                     <span class="w-1.5 h-1.5 bg-purple-500 rounded-full animate-pulse"></span>
-                    AI聊REIT
+                    AI聊REITs
                 </a>
                 <a href="./announcements.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">公告</a>
                 <a href="./portfolio.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">自选</a>
                 <a href="./compare.html" class="px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg">对比</a>
                 <a href="./tools.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">工具</a>
                 <a href="./dividend-calendar.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">分红</a>
+                <a href="./fund-archive.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">AI投研</a>
             </nav>
         </div>
 
-        <div class="flex-1 max-w-xl mx-4 md:mx-8">
+        <div class="w-48 mx-2">
             <div class="relative">
-                <input type="text" id="global-search" placeholder="搜索并添加对比基金..."
+                <input type="text" id="compare-search" placeholder="搜索并添加对比基金..."
                     class="w-full pl-10 pr-4 py-2 bg-gray-100 border border-transparent rounded-lg text-sm focus:outline-none focus:bg-white focus:border-blue-500 transition-all">
                 <svg class="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
@@ -81,7 +82,9 @@
                 <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
                 自选
             </button>
-            <button onclick="showAbout()" class="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-full flex items-center justify-center text-xs hover:shadow-lg transition-all" title="关于平台">?</button>
+            <button class="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900">
+                <div class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-xs">登录</div>
+            </button>
         </div>
     </header>
 
@@ -269,7 +272,7 @@
                     });
                     saveCompareList();
                     localStorage.removeItem('ai_selected_funds'); // 清除临时数据
-                    showToast(`已从AI投研中心导入 ${compareList.length} 只基金`, 'success');
+                    showToast(`已从AI投研导入 ${compareList.length} 只基金`, 'success');
                     renderPage();
                 } else {
                     loadCompareList();
@@ -315,7 +318,7 @@
                     });
                     saveCompareList();
                     localStorage.removeItem('ai_selected_funds');
-                    showToast(`已从AI投研中心导入 ${compareList.length} 只基金`, 'success');
+                    showToast(`已从AI投研导入 ${compareList.length} 只基金`, 'success');
                     renderPage();
                     return;
                 }
@@ -753,13 +756,13 @@
         }
 
         function focusSearch() {
-            const input = document.getElementById('global-search');
+            const input = document.getElementById('compare-search');
             input.focus();
             showToast('请在上方搜索框输入基金代码或名称', 'info');
         }
 
         function clearSearch() {
-            const input = document.getElementById('global-search');
+            const input = document.getElementById('compare-search');
             const results = document.getElementById('search-results');
             input.value = '';
             results.classList.add('hidden');
@@ -841,7 +844,7 @@
 
         // 事件绑定
         function bindEvents() {
-            const searchInput = document.getElementById('global-search');
+            const searchInput = document.getElementById('compare-search');
             const resultsContainer = document.getElementById('search-results');
 
             searchInput.addEventListener('input', debounce((e) => {
@@ -856,7 +859,7 @@
 
             // 点击外部隐藏搜索结果
             document.addEventListener('click', (e) => {
-                if (!e.target.closest('#global-search') && !e.target.closest('#search-results')) {
+                if (!e.target.closest('#compare-search') && !e.target.closest('#search-results')) {
                     resultsContainer.classList.add('hidden');
                 }
             });
@@ -877,41 +880,5 @@
         // 启动
         window.addEventListener('DOMContentLoaded', init);
     </script>
-<!-- 关于平台弹窗 -->
-<div id="about-modal" class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center opacity-0 invisible transition-all" onclick="if(event.target===this)closeAbout()">
-    <div class="bg-white rounded-2xl shadow-2xl w-[90%] max-w-md transform scale-95 transition-transform p-6" id="about-content">
-        <div class="flex justify-between items-center mb-4">
-            <h3 class="text-xl font-bold text-gray-900">关于 REITs 数据平台</h3>
-            <button onclick="closeAbout()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-all">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-            </button>
-        </div>
-        <div class="space-y-4 text-gray-600">
-            <p>REITs 数据平台是一个<strong>开放式金融数据平台</strong>，无需登录即可使用全部功能。</p>
-            <div class="bg-blue-50 rounded-xl p-4">
-                <h4 class="font-semibold text-blue-900 mb-2">🚀 平台特色</h4>
-                <ul class="text-sm space-y-1 text-blue-800">
-                    <li>• 实时行情数据 - 跟踪所有 REITs 基金</li>
-                    <li>• 板块热力图 - 直观展示涨跌分布</li>
-                    <li>• 智能对比 - 多维度基金对比分析</li>
-                    <li>• 公告追踪 - 重要信息及时掌握</li>
-                </ul>
-            </div>
-            <p class="text-xs text-gray-400">数据来源：新浪财经、东方财富、AKShare</p>
-        </div>
-    </div>
-</div>
-<style>
-    #about-modal.show { opacity: 1; visibility: visible; }
-    #about-modal.show #about-content { transform: scale(1); }
-</style>
-<script>
-    function showAbout() {
-        document.getElementById('about-modal').classList.add('show');
-    }
-    function closeAbout() {
-        document.getElementById('about-modal').classList.remove('show');
-    }
-</script>
 </body>
 </html>

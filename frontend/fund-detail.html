@@ -196,7 +196,7 @@
                 <a href="./fund-detail.html" class="px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg">详情</a>
                 <a href="./ai-chat.html" class="px-3 py-1.5 text-sm font-medium text-purple-600 bg-purple-50 rounded-lg transition-all flex items-center gap-1">
                     <span class="w-1.5 h-1.5 bg-purple-500 rounded-full animate-pulse"></span>
-                    AI聊REIT
+                    AI聊REITs
                 </a>
                 <a href="./announcements.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">公告</a>
                 <a href="./portfolio.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">自选</a>
@@ -206,7 +206,7 @@
             </nav>
         </div>
         
-        <div class="flex-1 max-w-xl mx-4 md:mx-8">
+        <div class="w-40 mx-2">
             <div class="relative">
                 <input type="text" id="global-search" placeholder="搜索基金代码或名称..." 
                     class="w-full pl-10 pr-4 py-2 bg-gray-100 border border-transparent rounded-lg text-sm focus:outline-none focus:bg-white focus:border-blue-500 transition-all">
@@ -333,7 +333,7 @@
                         </div>
                         <div class="text-center md:border-l border-gray-100">
                             <div class="text-xs text-gray-500 mb-1.5">机构持仓</div>
-                            <div class="text-base md:text-lg font-semibold mono">97.3%</div>
+                            <div class="text-base md:text-lg font-semibold mono" id="institution-hold">--</div>
                         </div>
                         <div class="text-center md:border-l border-gray-100">
                             <div class="text-xs text-gray-500 mb-1.5">流通市值</div>
@@ -608,6 +608,7 @@
     </div>
 
     <script src="./js/common.js"></script>
+    <script src="./js/fund-calculator.js"></script>
     <script src="./js/api.js"></script>
     <script>
         let currentCode = '';
@@ -821,6 +822,10 @@
             // 债务率
             const debtValue = currentFund.debt_ratio || currentFund.debt;
             document.getElementById('debt-ratio').textContent = debtValue ? debtValue.toFixed(1) + '%' : '--';
+            
+            // 机构持仓
+            const instHold = currentFund.institution_hold || currentFund.institutionHold;
+            document.getElementById('institution-hold').textContent = instHold ? instHold.toFixed(1) + '%' : '--';
             
             // 市值
             const marketCap = currentFund.market_cap;
@@ -1639,7 +1644,9 @@
             await init(); // 原有init逻辑
         }
         
-        window.onload = initPage;
+        window.onload = function() {
+            initPage();
+        };
         
         // ==================== 浮窗估值计算器 ====================
         let floatingWindow = null;

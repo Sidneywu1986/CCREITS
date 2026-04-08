@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI投研中心 - REITs数据平台</title>
-    <link rel="stylesheet" href="./css/tailwind.css">
+    <title>AI投研 - REITs数据平台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="./css/common.css">
@@ -56,12 +56,12 @@
         .metric-gradient-3 { background: linear-gradient(135deg, #fffbeb, #fef3c7); }
         .metric-gradient-4 { background: linear-gradient(135deg, #f0fdf4, #dcfce7); }
         
-        /* 滚动�?*/
+        /* 滚动条 */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
         
-        /* 输入�?*/
+        /* 输入框 */
         .chat-input {
             border: 1px solid #e2e8f0;
             transition: all 0.2s;
@@ -87,24 +87,25 @@
         <div class="flex items-center gap-4">
             <div class="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-lg flex items-center justify-center text-white font-bold text-sm">R</div>
             <span class="font-bold text-gray-900 text-lg tracking-tight">REITs数据平台</span>
-            <nav class="hidden md:flex items-center gap-1 ml-6">
+            <nav class="hidden md:flex items-center gap-0.5 ml-4">
                 <a href="./market.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">市场</a>
                 <a href="./fund-detail.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">详情</a>
                 <a href="./ai-chat.html" class="px-3 py-1.5 text-sm font-medium text-purple-600 bg-purple-50 rounded-lg transition-all flex items-center gap-1">
                     <span class="w-1.5 h-1.5 bg-purple-500 rounded-full animate-pulse"></span>
-                    AI聊REIT
+                    AI聊REITs
                 </a>
                 <a href="./announcements.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">公告</a>
-                <a href="./portfolio.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">自�?/a>
+                <a href="./portfolio.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">自选</a>
                 <a href="./compare.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">对比</a>
                 <a href="./tools.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">工具</a>
                 <a href="./dividend-calendar.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">分红</a>
+                <a href="./fund-archive.html" class="px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg">AI投研</a>
             </nav>
         </div>
         
-        <div class="flex-1 max-w-xl mx-4 md:mx-8">
+        <div class="w-48 mx-2">
             <div class="relative">
-                <input type="text" id="global-search" placeholder="搜索基金代码或名�?.." 
+                <input type="text" id="global-search" placeholder="搜索基金代码或名称..." 
                     class="w-full pl-10 pr-4 py-2 bg-gray-100 border border-transparent rounded-lg text-sm focus:outline-none focus:bg-white focus:border-blue-500 transition-all">
                 <svg class="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
@@ -121,16 +122,18 @@
             </button>
             <button onclick="window.location.href='./portfolio.html'" class="hidden sm:flex px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-medium rounded-lg hover:shadow-lg hover:shadow-blue-200 transition-all items-center gap-2">
                 <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
-                自�?
+                自选
             </button>
-            <button onclick="showAbout()" class="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-full flex items-center justify-center text-xs hover:shadow-lg transition-all" title="关于平台">?</button>
+            <button class="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900">
+                <div class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-xs">登录</div>
+            </button>
         </div>
     </header>
 
-    <!-- 主内�?-->
+    <!-- 主内容 -->
     <main class="flex-1 flex overflow-hidden p-4 gap-4">
         
-        <!-- 左侧：基金选择�?-->
+        <!-- 左侧：基金选择器 -->
         <aside class="w-80 flex-none ai-card rounded-xl flex flex-col overflow-hidden">
             <div class="p-4 border-b border-gray-100 bg-white">
                 <h3 class="font-semibold text-gray-900 mb-1 flex items-center gap-2">
@@ -139,22 +142,22 @@
                     </svg>
                     选择分析对象
                 </h3>
-                <p class="text-xs text-gray-500">已选择 <span id="selected-count" class="text-blue-600 font-bold">0</span>/5 只基�?/p>
+                <p class="text-xs text-gray-500">已选择 <span id="selected-count" class="text-blue-600 font-bold">0</span>/5 只基金</p>
                 
                 <select id="sector-filter" onchange="filterFunds()" class="w-full mt-3 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-500">
                     <option value="all">全部板块</option>
-                    <option value="transport">🛣�?交通基础设施</option>
+                    <option value="transport">🛣️ 交通基础设施</option>
                     <option value="logistics">📦 仓储物流</option>
                     <option value="industrial">🏭 产业园区</option>
                     <option value="consumer">🛒 消费基础设施</option>
-                    <option value="energy">�?能源基础设施</option>
+                    <option value="energy">⚡ 能源基础设施</option>
                     <option value="housing">🏠 租赁住房</option>
-                    <option value="eco">🌿 生态环�?/option>
+                    <option value="eco">🌿 生态环保</option>
                 </select>
             </div>
             
             <div id="fund-list" class="flex-1 overflow-y-auto p-3 space-y-2 bg-gray-50/50">
-                <!-- 动态生�?-->
+                <!-- 动态生成 -->
             </div>
             
             <div class="p-4 border-t border-gray-100 bg-white">
@@ -167,40 +170,40 @@
             </div>
         </aside>
 
-        <!-- 中间：分析结�?-->
+        <!-- 中间：分析结果 -->
         <section class="flex-1 flex flex-col min-w-0 ai-card rounded-xl overflow-hidden bg-white">
             <!-- 顶部 -->
             <div class="p-4 border-b border-gray-100">
                 <div class="flex items-center justify-between mb-3">
                     <h2 class="text-lg font-bold text-gray-900 flex items-center gap-2">
                         <span class="w-2 h-2 bg-blue-600 rounded-full"></span>
-                        AI投研分析
+                        AI分析
                     </h2>
-                    <span id="analysis-status" class="text-sm text-gray-500">请选择基金开始分�?/span>
+                    <span id="analysis-status" class="text-sm text-gray-500">请选择基金开始分析</span>
                 </div>
                 
-                <div class="flex flex-wrap gap-2" style="position: relative; z-index: 1;">
-                    <button type="button" onclick="setAnalysisType('comprehensive')" class="analysis-tag active px-4 py-2 rounded-lg border border-gray-200 text-sm cursor-pointer" data-type="comprehensive">
+                <div class="flex flex-wrap gap-2">
+                    <button onclick="setAnalysisType('comprehensive')" class="analysis-tag active px-4 py-2 rounded-lg border border-gray-200 text-sm" data-type="comprehensive">
                         📊 综合分析
                     </button>
-                    <button type="button" onclick="setAnalysisType('value')" class="analysis-tag px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 cursor-pointer" data-type="value">
-                        💰 估值分�?
+                    <button onclick="setAnalysisType('value')" class="analysis-tag px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-600" data-type="value">
+                        💰 估值分析
                     </button>
-                    <button type="button" onclick="setAnalysisType('risk')" class="analysis-tag px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 cursor-pointer" data-type="risk">
+                    <button onclick="setAnalysisType('risk')" class="analysis-tag px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-600" data-type="risk">
                         ⚠️ 风险评估
                     </button>
-                    <button type="button" onclick="setAnalysisType('dividend')" class="analysis-tag px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 cursor-pointer" data-type="dividend">
+                    <button onclick="setAnalysisType('dividend')" class="analysis-tag px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-600" data-type="dividend">
                         🎯 分红预测
                     </button>
-                    <button type="button" onclick="goToComparePage()" class="analysis-tag px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 cursor-pointer" data-type="compare">
+                    <button onclick="goToComparePage()" class="analysis-tag px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-600" data-type="compare">
                         ⚖️ 横向对比
                     </button>
                 </div>
             </div>
 
-            <!-- 结果�?-->
+            <!-- 结果区 -->
             <div id="analysis-result" class="flex-1 overflow-y-auto p-5 bg-gray-50/30">
-                <!-- 空状�?-->
+                <!-- 空状态 -->
                 <div id="empty-state" class="h-full flex flex-col items-center justify-center text-center">
                     <div class="w-20 h-20 bg-blue-50 rounded-2xl flex items-center justify-center mb-5">
                         <svg class="w-10 h-10 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -208,11 +211,11 @@
                         </svg>
                     </div>
                     <h3 class="text-lg font-bold text-gray-900 mb-2">智能投研助手</h3>
-                    <p class="text-gray-500 text-sm mb-5">从左侧选择1-5只基金，AI将为您进行多维度的投资价值分�?/p>
+                    <p class="text-gray-500 text-sm mb-5">从左侧选择1-5只基金，AI将为您进行多维度的投资价值分析</p>
                     <div class="flex gap-5 text-xs text-gray-400">
-                        <span class="flex items-center gap-1">�?财务健康度评�?/span>
-                        <span class="flex items-center gap-1">�?收益预测模型</span>
-                        <span class="flex items-center gap-1">�?风险等级分析</span>
+                        <span class="flex items-center gap-1">✓ 财务健康度评估</span>
+                        <span class="flex items-center gap-1">✓ 收益预测模型</span>
+                        <span class="flex items-center gap-1">✓ 风险等级分析</span>
                     </div>
                 </div>
 
@@ -236,13 +239,13 @@
                             <div class="text-xs text-gray-500 mt-1">低于市场平均</div>
                         </div>
                         <div class="metric-gradient-4 rounded-xl p-4 border border-green-100">
-                            <div class="text-gray-600 text-sm mb-1">分红稳定�?/div>
+                            <div class="text-gray-600 text-sm mb-1">分红稳定性</div>
                             <div id="dividend-value" class="text-3xl font-bold text-green-600">A+</div>
-                            <div class="text-xs text-gray-500 mt-1">连续12季达�?/div>
+                            <div class="text-xs text-gray-500 mt-1">连续12季达标</div>
                         </div>
                     </div>
 
-                    <!-- 雷达�?-->
+                    <!-- 雷达图 -->
                     <div class="bg-white rounded-xl border border-gray-200 p-5">
                         <h4 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
                             <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -262,7 +265,7 @@
                             AI分析结论
                         </h4>
                         <div id="ai-conclusion" class="space-y-3 text-sm text-gray-600 leading-relaxed">
-                            <!-- 动态生�?-->
+                            <!-- 动态生成 -->
                         </div>
                     </div>
                 </div>
@@ -289,24 +292,24 @@
                     </div>
                     <div class="flex-1">
                         <div class="text-sm text-gray-900 font-medium mb-1">AI助手</div>
-                        <div class="text-sm text-gray-600">您好！我是您的REITs投研助手。选择基金后，您可以问我任何问题�?/div>
+                        <div class="text-sm text-gray-600">您好！我是您的REITs投研助手。选择基金后，您可以问我任何问题。</div>
                     </div>
                 </div>
             </div>
             
             <div class="p-4 border-t border-gray-100 space-y-3">
-                <div class="text-xs text-gray-400">快速提�?/div>
+                <div class="text-xs text-gray-400">快速提问</div>
                 <div class="flex flex-wrap gap-2">
-                    <button onclick="askQuestion('优缺�?)" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-xs text-gray-600 transition-all">
-                        优缺点分�?
+                    <button onclick="askQuestion('这只基金的优缺点是什么？')" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-xs text-gray-600 transition-all">
+                        优缺点分析
                     </button>
-                    <button onclick="askQuestion('配置参�?)" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-xs text-gray-600 transition-all">
-                        配置参�?
+                    <button onclick="askQuestion('现在适合买入吗？')" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-xs text-gray-600 transition-all">
+                        买入建议
                     </button>
-                    <button onclick="askQuestion('同类对比')" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-xs text-gray-600 transition-all">
+                    <button onclick="askQuestion('和同类产品比怎么样？')" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-xs text-gray-600 transition-all">
                         同类对比
                     </button>
-                    <button onclick="askQuestion('分红预测')" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-xs text-gray-600 transition-all">
+                    <button onclick="askQuestion('未来分红预期如何？')" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-xs text-gray-600 transition-all">
                         分红预测
                     </button>
                 </div>
@@ -327,11 +330,7 @@
 
     <script src="./js/common.js"></script>
     <script src="./js/api.js"></script>
-    <script src="./js/ai-service.js"></script>
     <script>
-        // 初始化 AI 服务（当前使用规则专家库，后续可切换为 WeKnora）
-        REITsAI.init({ type: 'rule' });
-        
         let selectedFunds = [];
         let currentAnalysisType = 'comprehensive';
         let radarChart = null;
@@ -342,17 +341,9 @@
 
         function renderFundList(funds) {
             const container = document.getElementById('fund-list');
-            
-            if (!funds || funds.length === 0) {
-                container.innerHTML = '<div class="p-4 text-center text-gray-400 text-sm">该板块暂无基�?/div>';
-                return;
-            }
-            
             container.innerHTML = funds.map(fund => {
                 const sectorInfo = SECTOR_CONFIG[fund.sector];
                 const isSelected = selectedFunds.includes(fund.code);
-                const price = fund.price || 0;
-                const change = fund.change_percent || fund.change || 0;
                 return `
                     <div class="fund-card rounded-lg p-3 cursor-pointer bg-white ${isSelected ? 'selected' : ''}" 
                          onclick="toggleFund('${fund.code}')" data-code="${fund.code}">
@@ -360,13 +351,13 @@
                             <div class="flex items-center gap-2">
                                 <span class="text-base">${sectorInfo?.icon || ''}</span>
                                 <div>
-                                    <div class="font-medium text-gray-900 text-sm">${fund.name || fund.code}</div>
+                                    <div class="font-medium text-gray-900 text-sm">${fund.name}</div>
                                     <div class="text-xs text-gray-400 mono">${fund.code}</div>
                                 </div>
                             </div>
                             <div class="text-right">
-                                <div class="text-sm font-medium text-gray-900 mono">${price ? price.toFixed(3) : '--'}</div>
-                                <div class="text-xs ${change >= 0 ? 'text-red-600' : 'text-green-600'}">${change >= 0 ? '+' : ''}${change.toFixed(2)}%</div>
+                                <div class="text-sm font-medium text-gray-900 mono">${fund.price.toFixed(3)}</div>
+                                <div class="text-xs ${fund.change >= 0 ? 'text-red-600' : 'text-green-600'}">${fund.change >= 0 ? '+' : ''}${fund.change.toFixed(2)}%</div>
                             </div>
                         </div>
                     </div>
@@ -376,21 +367,8 @@
 
         function filterFunds() {
             const sector = document.getElementById('sector-filter').value;
-            console.log('筛选板�?', sector, '总数�?', allFundsData.length);
-            
-            if (sector === 'all') {
-                renderFundList(allFundsData);
-            } else {
-                const filtered = allFundsData.filter(f => {
-                    const match = f.sector === sector;
-                    if (!match) {
-                        console.log('不匹�?', f.code, f.sector, '!==', sector);
-                    }
-                    return match;
-                });
-                console.log('筛选结�?', filtered.length, '只基�?);
-                renderFundList(filtered);
-            }
+            const funds = sector === 'all' ? allFundsData : allFundsData.filter(f => f.sector === sector);
+            renderFundList(funds);
         }
 
         function toggleFund(code) {
@@ -399,7 +377,7 @@
                 selectedFunds.splice(index, 1);
             } else {
                 if (selectedFunds.length >= 5) {
-                    showToast('最多选择5只基�?, 'warning');
+                    showToast('最多选择5只基金', 'warning');
                     return;
                 }
                 selectedFunds.push(code);
@@ -418,104 +396,21 @@
         }
 
         function setAnalysisType(type) {
-            console.log('setAnalysisType called:', type, 'selectedFunds:', selectedFunds.length);
             currentAnalysisType = type;
             document.querySelectorAll('.analysis-tag').forEach(tag => {
                 const isActive = tag.dataset.type === type;
                 tag.classList.toggle('active', isActive);
                 tag.classList.toggle('text-gray-600', !isActive);
             });
-            
-            // 如果有选中的基金，根据分析类型更新内容
-            const resultContent = document.getElementById('result-content');
-            console.log('result-content hidden:', resultContent ? resultContent.classList.contains('hidden') : 'not found');
-            
-            if (selectedFunds.length > 0 && resultContent && !resultContent.classList.contains('hidden')) {
-                console.log('Calling updateAnalysisContentByType...');
-                updateAnalysisContentByType(type);
-            }
-        }
-        
-        // 根据分析类型更新内容
-        function updateAnalysisContentByType(type) {
-            console.log('updateAnalysisContentByType called:', type);
-            const funds = allFundsData.filter(f => selectedFunds.includes(f.code));
-            console.log('Filtered funds:', funds.length);
-            if (funds.length === 0) return;
-            
-            const fund = funds[0];
-            const sectorName = SECTOR_CONFIG[fund.sector]?.name || 'REITs';
-            const yieldRate = fund.yield || fund.dividend_yield || (Math.random() * 3 + 4);
-            const priceChange = fund.change_percent || fund.change || 0;
-            const price = fund.price || fund.current_price || 0;
-            const nav = fund.nav || (price * 0.95);
-            const premium = ((price - nav) / nav * 100).toFixed(2);
-            
-            const conclusion = document.getElementById('ai-conclusion');
-            console.log('ai-conclusion element:', conclusion ? 'found' : 'not found');
-            if (!conclusion) return;
-            
-            let html = '';
-            
-            switch(type) {
-                case 'value': {
-                    // 估值分�?
-                    const premiumSign = premium > 0 ? '+' : '';
-                    let valComment;
-                    if (Math.abs(premium) < 5) valComment = '估值处于合理区�?;
-                    else if (premium > 10) valComment = '估值偏高，注意回调风险';
-                    else valComment = '估值偏低，具备配置价�?;
-                    const valAdvice = premium > 5 ? '当前溢价较高，建议等待回调后再配�? : premium < -5 ? '当前折价明显，可考虑分批建仓' : '估值合理，可维持现有仓位或小幅增持';
-                    html = '<div class="p-3 bg-blue-50 border border-blue-100 rounded-lg"><div class="font-medium text-blue-700 mb-1">📊 估值水�?/div><p class="text-sm text-blue-600">' + fund.name + '当前价格 ¥' + price.toFixed(3) + '，NAV�?¥' + nav.toFixed(3) + '，溢价率 ' + premiumSign + premium + '%�? + valComment + '�?/p></div>' +
-                           '<div class="p-3 bg-purple-50 border border-purple-100 rounded-lg"><div class="font-medium text-purple-700 mb-1">💰 收益测算</div><p class="text-sm text-purple-600">基于派息�?' + yieldRate.toFixed(2) + '% 和价格波动测算，预期年化收益率约 ' + (yieldRate * 0.9).toFixed(1) + '%-' + (yieldRate * 1.2).toFixed(1) + '%�? + sectorName + '板块历史波动率相对较低�?/p></div>' +
-                           '<div class="p-3 bg-green-50 border border-green-100 rounded-lg"><div class="font-medium text-green-700 mb-1">🎯 估值建�?/div><p class="text-sm text-green-600">' + valAdvice + '。关注季度NAV更新情况�?/p></div>';
-                    break;
-                }
-                    
-                case 'risk': {
-                    // 风险评估
-                    const pc = priceChange > 0 ? '+' + priceChange.toFixed(2) : priceChange.toFixed(2);
-                    const vola = Math.abs(priceChange) > 1 ? '加剧' : '平稳';
-                    html = '<div class="p-3 bg-red-50 border border-red-100 rounded-lg"><div class="font-medium text-red-700 mb-1">⚠️ 市场风险</div><p class="text-sm text-red-600">' + sectorName + '板块受宏观经济和利率政策影响较大。近期市场波�? + vola + '，日涨跌�?' + pc + '%，建议关注利率走势�?/p></div>' +
-                           '<div class="p-3 bg-orange-50 border border-orange-100 rounded-lg"><div class="font-medium text-orange-700 mb-1">🏢 运营风险</div><p class="text-sm text-orange-600">底层资产�? + sectorName + '类基础设施，需关注出租�?使用率变化、租赁合同到期等运营指标。建议定期查阅基金季报了解底层资产运营状况�?/p></div>' +
-                           '<div class="p-3 bg-yellow-50 border border-yellow-100 rounded-lg"><div class="font-medium text-yellow-700 mb-1">🛡�?风控建议</div><p class="text-sm text-yellow-600">建议单只REITs仓位不超过总资�?0%，同一板块配置不超�?0%。设置止损线（如-15%），定期评估持仓风险敞口�?/p></div>';
-                    break;
-                }
-                    
-                case 'dividend': {
-                    // 分红预测
-                    const yRate = yieldRate.toFixed(2);
-                    const annualDiv = (price * yieldRate / 100).toFixed(3);
-                    const nextDiv = (price * 0.015).toFixed(3);
-                    html = '<div class="p-3 bg-green-50 border border-green-100 rounded-lg"><div class="font-medium text-green-700 mb-1">💵 分红历史</div><p class="text-sm text-green-600">' + fund.name + '派息率约 ' + yRate + '%，按当前价格计算年化分红收益�?' + annualDiv + '�?份�? + sectorName + '板块现金流相对稳定�?/p></div>' +
-                           '<div class="p-3 bg-blue-50 border border-blue-100 rounded-lg"><div class="font-medium text-blue-700 mb-1">📅 分红预测</div><p class="text-sm text-blue-600">预计下次分红�?个月内，金额�?¥' + nextDiv + '/份。全年分红次数预�?次，合计�?¥' + annualDiv + '/份�?/p></div>' +
-                           '<div class="p-3 bg-purple-50 border border-purple-100 rounded-lg"><div class="font-medium text-purple-700 mb-1">🎯 分红策略</div><p class="text-sm text-purple-600">适合追求稳定现金流的投资者。建议采�?分红再投�?策略长期持有，可享受复利效应。注意分红需缴纳个人所得税�?/p></div>';
-                    break;
-                }
-                    
-                case 'comprehensive':
-                default: {
-                    // 综合分析
-                    const trend = priceChange >= 0 ? '近期表现稳健，呈现上涨趋�? : '估值处于相对低位，具备配置价�?;
-                    html = '<div class="p-3 bg-blue-50 border border-blue-100 rounded-lg"><div class="font-medium text-blue-700 mb-1">🎯 投资亮点</div><p class="text-sm text-blue-600">' + fund.name + '(' + fund.code + ') 属于' + sectorName + '板块�? + trend + '。派息率达到 ' + yieldRate.toFixed(2) + '%，在同类基础设施REITs中具备竞争力�?/p></div>' +
-                           '<div class="p-3 bg-yellow-50 border border-yellow-100 rounded-lg"><div class="font-medium text-yellow-700 mb-1">⚠️ 风险提示</div><p class="text-sm text-yellow-600">需关注利率变动对REITs估值的影响�? + sectorName + '板块受宏观经济周期影响较大。建议分散配置，单只基金仓位不超过总资�?0%�?/p></div>' +
-                           '<div class="p-3 bg-green-50 border border-green-100 rounded-lg"><div class="font-medium text-green-700 mb-1">💡 操作建议</div><p class="text-sm text-green-600">当前估值处于历史中位，建议采取分批建仓策略。可重点关注季度运营报告披露的资产现金流状况，以�? + sectorName + '行业的政策变化�?/p></div>';
-                    break;
-                }
-            }
-            
-            console.log('Setting HTML, length:', html.length);
-            conclusion.innerHTML = html;
-            console.log('HTML set successfully');
         }
 
-        // 跳转到对比页�?
+        // 跳转到对比页面
         function goToComparePage() {
             if (selectedFunds.length === 0) {
-                showToast('请先选择至少1只基�?, 'warning');
+                showToast('请先选择至少1只基金', 'warning');
                 return;
             }
-            // 将选中的基金保存到localStorage，供对比页读�?
+            // 将选中的基金保存到localStorage，供对比页读取
             localStorage.setItem('ai_selected_funds', JSON.stringify(selectedFunds));
             window.location.href = './compare.html?from=ai';
         }
@@ -525,12 +420,12 @@
             
             document.getElementById('empty-state').classList.add('hidden');
             document.getElementById('result-content').classList.remove('hidden');
-            document.getElementById('analysis-status').textContent = 'AI分析�?..';
+            document.getElementById('analysis-status').textContent = 'AI分析中...';
             document.getElementById('analysis-status').classList.add('ai-thinking');
             
             setTimeout(() => {
                 renderAnalysisResult();
-                document.getElementById('analysis-status').textContent = `已完�?${selectedFunds.length} 只基金分析`;
+                document.getElementById('analysis-status').textContent = `已完成 ${selectedFunds.length} 只基金分析`;
                 document.getElementById('analysis-status').classList.remove('ai-thinking');
             }, 1200);
         }
@@ -538,13 +433,22 @@
         function renderAnalysisResult() {
             const funds = allFundsData.filter(f => selectedFunds.includes(f.code));
             
-            if (funds.length === 0) {
-                document.getElementById('ai-conclusion').innerHTML = '<p class="text-gray-500">未找到选中基金的数�?/p>';
-                return;
-            }
+            const conclusion = document.getElementById('ai-conclusion');
+            conclusion.innerHTML = `
+                <div class="p-3 bg-blue-50 border border-blue-100 rounded-lg">
+                    <div class="font-medium text-blue-700 mb-1">🎯 投资亮点</div>
+                    <p class="text-sm text-blue-600">${funds[0]?.name} 近期表现稳健，派息率达到 ${funds[0]?.yield.toFixed(2)}%，在同类型基金中处于前30%水平。</p>
+                </div>
+                <div class="p-3 bg-yellow-50 border border-yellow-100 rounded-lg">
+                    <div class="font-medium text-yellow-700 mb-1">⚠️ 风险提示</div>
+                    <p class="text-sm text-yellow-600">需关注利率变动对估值的影响，建议分散配置，单只基金仓位不超过20%。</p>
+                </div>
+                <div class="p-3 bg-green-50 border border-green-100 rounded-lg">
+                    <div class="font-medium text-green-700 mb-1">💡 操作建议</div>
+                    <p class="text-sm text-green-600">当前估值处于历史中位，可考虑分批建仓。建议关注即将发布的季度报告。</p>
+                </div>
+            `;
             
-            // 根据当前分析类型渲染内容
-            updateAnalysisContentByType(currentAnalysisType);
             renderRadarChart(funds);
         }
 
@@ -554,7 +458,7 @@
             
             const colors = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444'];
             
-            // 使用与对比页相同的六维专业指标计�?
+            // 使用与对比页相同的六维专业指标计算
             const series = funds.map((fund, index) => {
                 // 模拟计算六维得分（与对比页逻辑一致）
                 const valuationReturn = Math.round(60 + Math.random() * 30); // 估值与回报
@@ -562,7 +466,7 @@
                 const financialHealth = Math.round(70 + Math.random() * 20); // 财务健康
                 const assetQuality = Math.round(75 + Math.random() * 15); // 资产质量
                 const growthPotential = Math.round(55 + Math.random() * 30); // 成长潜力
-                const marketLiquidity = Math.round(50 + Math.random() * 35); // 市场与流动�?
+                const marketLiquidity = Math.round(50 + Math.random() * 35); // 市场与流动性
                 
                 return {
                     name: fund.name,
@@ -598,7 +502,7 @@
                         { name: '财务健康', max: 100 },
                         { name: '资产质量', max: 100 },
                         { name: '成长潜力', max: 100 },
-                        { name: '市场与流动�?, max: 100 }
+                        { name: '市场与流动性', max: 100 }
                     ],
                     shape: 'polygon',
                     splitNumber: 4,
@@ -627,38 +531,9 @@
             addMessage(message, 'user');
             input.value = '';
             
-            // 模拟思考延�?
-            showThinking();
-            
-            setTimeout(async () => {
-                hideThinking();
-                try {
-                    const answer = await REITsAI.chat(message, {
-                        selectedFunds: selectedFunds,
-                        allFundsData: allFundsData
-                    });
-                    addMessage(answer, 'ai');
-                } catch (error) {
-                    console.error('AI服务错误:', error);
-                    addMessage('抱歉，AI服务暂时不可用，请稍后重试�?, 'ai');
-                }
-            }, 600 + Math.random() * 400);
-        }
-        
-        // 显示思考中状�?
-        function showThinking() {
-            const container = document.getElementById('chat-messages');
-            const div = document.createElement('div');
-            div.className = 'flex gap-3 thinking-indicator';
-            div.innerHTML = '<div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0"><svg class="w-4 h-4 text-white animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg></div><div class="flex-1"><div class="text-sm text-gray-500">AI正在分析数据...</div></div>';
-            container.appendChild(div);
-            container.scrollTop = container.scrollHeight;
-        }
-        
-        // 隐藏思考中状�?
-        function hideThinking() {
-            const indicator = document.querySelector('.thinking-indicator');
-            if (indicator) indicator.remove();
+            setTimeout(() => {
+                addMessage('基于当前数据分析，该REITs在同类产品中表现良好。建议关注其季度报告中的NOI数据变化。', 'ai');
+            }, 800);
         }
 
         function addMessage(text, type) {
@@ -667,18 +542,31 @@
             div.className = 'flex gap-3';
             
             if (type === 'user') {
-                div.innerHTML = '<div class="flex-1 text-right"><div class="inline-block text-left bg-blue-600 text-white rounded-lg px-3 py-2 text-sm max-w-[90%] whitespace-pre-wrap">' + text + '</div></div>';
+                div.innerHTML = `
+                    <div class="flex-1 text-right">
+                        <div class="inline-block text-left bg-blue-600 text-white rounded-lg px-3 py-2 text-sm max-w-[90%]">
+                            ${text}
+                        </div>
+                    </div>
+                `;
             } else {
-                // AI 消息支持换行
-                const formattedText = text.replace(/\n/g, '<br>');
-                div.innerHTML = '<div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0 flex-none"><svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></div><div class="flex-1 bg-white rounded-lg px-3 py-2 border border-gray-100"><div class="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">' + formattedText + '</div></div>';
+                div.innerHTML = `
+                    <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                        </svg>
+                    </div>
+                    <div class="flex-1">
+                        <div class="text-sm text-gray-600 leading-relaxed">${text}</div>
+                    </div>
+                `;
             }
             
             container.appendChild(div);
             container.scrollTop = container.scrollHeight;
         }
 
-        // 基金数据（优先API，降级Mock�?
+        // 基金数据（优先API，降级Mock）
         let allFundsData = ALL_FUNDS || [];
         
         // 异步加载基金数据
@@ -688,7 +576,7 @@
                 const response = await REITS_API.getFunds();
                 if (response.data && response.data.length > 0) {
                     allFundsData = response.data;
-                    console.log('�?API数据加载成功:', allFundsData.length, '只基�?);
+                    console.log('✅ API数据加载成功:', allFundsData.length, '只基金');
                     showDataSource('API');
                 }
             } catch (error) {
@@ -704,8 +592,8 @@
             indicator.className = 'fixed bottom-4 left-4 text-xs px-3 py-1.5 rounded-full z-50 transition-all ' + 
                 (source === 'API' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700');
             indicator.innerHTML = source === 'API' 
-                ? '🟢 实时数据（API�? 
-                : '🟡 模拟数据（Mock�?;
+                ? '🟢 实时数据（API）' 
+                : '🟡 模拟数据（Mock）';
             document.body.appendChild(indicator);
             setTimeout(() => { indicator.style.opacity = '0.5'; }, 3000);
         }
@@ -716,41 +604,5 @@
             window.addEventListener('resize', () => radarChart?.resize());
         };
     </script>
-<!-- 关于平台弹窗 -->
-<div id="about-modal" class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center opacity-0 invisible transition-all" onclick="if(event.target===this)closeAbout()">
-    <div class="bg-white rounded-2xl shadow-2xl w-[90%] max-w-md transform scale-95 transition-transform p-6" id="about-content">
-        <div class="flex justify-between items-center mb-4">
-            <h3 class="text-xl font-bold text-gray-900">关于 REITs 数据平台</h3>
-            <button onclick="closeAbout()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-all">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-            </button>
-        </div>
-        <div class="space-y-4 text-gray-600">
-            <p>REITs 数据平台是一个<strong>开放式金融数据平台</strong>，无需登录即可使用全部功能。</p>
-            <div class="bg-blue-50 rounded-xl p-4">
-                <h4 class="font-semibold text-blue-900 mb-2">🚀 平台特色</h4>
-                <ul class="text-sm space-y-1 text-blue-800">
-                    <li>• 实时行情数据 - 跟踪所有 REITs 基金</li>
-                    <li>• 板块热力图 - 直观展示涨跌分布</li>
-                    <li>• 智能对比 - 多维度基金对比分析</li>
-                    <li>• 公告追踪 - 重要信息及时掌握</li>
-                </ul>
-            </div>
-            <p class="text-xs text-gray-400">数据来源：新浪财经、东方财富、AKShare</p>
-        </div>
-    </div>
-</div>
-<style>
-    #about-modal.show { opacity: 1; visibility: visible; }
-    #about-modal.show #about-content { transform: scale(1); }
-</style>
-<script>
-    function showAbout() {
-        document.getElementById('about-modal').classList.add('show');
-    }
-    function closeAbout() {
-        document.getElementById('about-modal').classList.remove('show');
-    }
-</script>
 </body>
 </html>

@@ -56,22 +56,23 @@
         <div class="flex items-center gap-4">
             <div class="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-lg flex items-center justify-center text-white font-bold text-sm">R</div>
             <span class="font-bold text-gray-900 text-lg tracking-tight">REITs数据平台</span>
-            <nav class="hidden md:flex items-center gap-1 ml-6">
+            <nav class="hidden md:flex items-center gap-0.5 ml-4">
                 <a href="./market.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">市场</a>
                 <a href="./fund-detail.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">详情</a>
                 <a href="./ai-chat.html" class="px-3 py-1.5 text-sm font-medium text-purple-600 bg-purple-50 rounded-lg transition-all flex items-center gap-1">
                     <span class="w-1.5 h-1.5 bg-purple-500 rounded-full animate-pulse"></span>
-                    AI聊REIT
+                    AI聊REITs
                 </a>
                 <a href="./announcements.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">公告</a>
                 <a href="./portfolio.html" class="px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg">自选</a>
                 <a href="./compare.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">对比</a>
                 <a href="./tools.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">工具</a>
                 <a href="./dividend-calendar.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">分红</a>
+                <a href="./fund-archive.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">AI投研</a>
             </nav>
         </div>
         
-        <div class="flex-1 max-w-xl mx-4 md:mx-8">
+        <div class="w-40 mx-2">
             <div class="relative">
                 <input type="text" id="global-search" placeholder="搜索基金代码或名称..." 
                     class="w-full pl-10 pr-4 py-2 bg-gray-100 border border-transparent rounded-lg text-sm focus:outline-none focus:bg-white focus:border-blue-500 transition-all">
@@ -599,10 +600,15 @@
         document.getElementById('refresh-btn')?.addEventListener('click', () => { refreshQuotes(); showToast('行情已刷新', 'success'); });
         document.getElementById('select-all')?.addEventListener('change', toggleSelectAll);
 
-        document.getElementById('global-search')?.addEventListener('input', debounce((e) => {
-            searchKeyword = e.target.value.trim();
-            applyFilter();
-        }, 300));
+        // 搜索 - 由 common.js 接管下拉框功能
+        // 这里额外添加实时过滤功能（不影响下拉框）
+        const searchInput = document.getElementById('global-search');
+        if (searchInput) {
+            searchInput.addEventListener('input', debounce((e) => {
+                searchKeyword = e.target.value.trim();
+                applyFilter();
+            }, 300));
+        }
 
         document.addEventListener('change', (e) => {
             if (e.target.classList.contains('select-item')) {

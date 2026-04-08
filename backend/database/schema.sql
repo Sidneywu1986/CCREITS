@@ -14,6 +14,8 @@ CREATE TABLE IF NOT EXISTS funds (
     debt_ratio REAL,                 -- 债务率（%）
     property_type TEXT,              -- 资产类型
     remaining_years TEXT,            -- 剩余期限
+    circulating_shares REAL,         -- 流通份额（万份）
+    institution_hold REAL,           -- 机构持仓比例（%）
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
