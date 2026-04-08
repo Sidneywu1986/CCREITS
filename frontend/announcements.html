@@ -242,7 +242,7 @@
         let allAnnouncements = [];
         let filteredAnnouncements = [];
         let currentCategory = 'all';
-        let currentTimeDays = 30;
+        let currentTimeDays = 0;  // 默认显示全部
         let searchKeyword = '';
         let displayCount = 20;
         let currentExchange = 'all';
@@ -478,12 +478,12 @@
         // 重置筛选
         function resetFilters() {
             currentCategory = 'all';
-            currentTimeDays = 30;
+            currentTimeDays = 0;  // 默认显示全部
             currentExchange = 'all';
             
             // 重置UI
             document.getElementById('exchange-filter').value = 'all';
-            document.getElementById('time-filter-select').value = '30';
+            document.getElementById('time-filter-select').value = '0';  // 全部
             document.getElementById('announcement-search').value = '';
             document.getElementById('only-favorite').checked = false;
             
