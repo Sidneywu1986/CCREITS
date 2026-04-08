@@ -1,0 +1,23 @@
+# Dependencies
+backend/node_modules/
+
+# Database
+backend/database/*.db
+backend/database/*.sqlite
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+.claude/
+
+# Temp files
+*.tmp
+*.temp

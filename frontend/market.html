@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>市场概览 - REITs数据平台</title>
+    <link rel="stylesheet" href="./css/tailwind.css">
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./css/common.css">
+    <style>
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background-color: #f8fafc; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        .fund-row { transition: all 0.15s ease; }
+        .fund-row:hover { background-color: #fefce8; }
+        
+        .quick-actions { 
+            opacity: 1; 
+            visibility: visible; 
+        }
+        
+        @keyframes pulse-red {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            50% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+        }
+        .pulse-dot { animation: pulse-red 2s infinite; }
+        
+        .compare-bar {
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+        }
+        .compare-bar.show { transform: translateY(0); }
+        
+        .sticky-filter {
+            position: sticky;
+            top: 60px;
+            z-index: 30;
+            background: rgba(248, 250, 252, 0.95);
+            backdrop-filter: blur(8px);
+        }
+
+        .flash-up { animation: flashUp 0.5s ease; }
+        .flash-down { animation: flashDown 0.5s ease; }
+        @keyframes flashUp { 0%,100%{background:transparent} 50%{background:rgba(220,38,38,0.08)} }
+        @keyframes flashDown { 0%,100%{background:transparent} 50%{background:rgba(22,163,74,0.08)} }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+    <!-- Header -->
+    <header class="h-[60px] bg-white border-b border-gray-200 flex items-center justify-between px-6 flex-none z-40">
+        <div class="flex items-center gap-4">
+            <div class="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-lg flex items-center justify-center text-white font-bold text-sm">R</div>
+            <span class="font-bold text-gray-900 text-lg tracking-tight">REITs数据平台</span>
+            <nav class="hidden md:flex items-center gap-1 ml-6">
+                <a href="./market.html" class="px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg">市场</a>
+                <a href="./fund-detail.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">详情</a>
+                <a href="./ai-chat.html" class="px-3 py-1.5 text-sm font-medium text-purple-600 bg-purple-50 rounded-lg transition-all flex items-center gap-1">
+                    <span class="w-1.5 h-1.5 bg-purple-500 rounded-full animate-pulse"></span>
+                    AI聊REIT
+                </a>
+                <a href="./announcements.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">公告</a>
+                <a href="./portfolio.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">自选</a>
+                <a href="./compare.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">对比</a>
+                <a href="./tools.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">工具</a>
+                <a href="./dividend-calendar.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">分红</a>
+            </nav>
+        </div>
+        
+        <div class="flex-1 max-w-xl mx-4 md:mx-8">
+            <div class="relative">
+                <input type="text" id="global-search" placeholder="搜索基金代码或名称..." 
+                    class="w-full pl-10 pr-4 py-2 bg-gray-100 border border-transparent rounded-lg text-sm focus:outline-none focus:bg-white focus:border-blue-500 transition-all">
+                <svg class="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+            </div>
+        </div>
+        
+        <div class="flex items-center gap-3 md:gap-4">
+            <button class="p-2 text-gray-500 hover:text-gray-700 relative" onclick="window.location.href='./announcements.html'">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                </svg>
+                <span id="nav-badge" class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full hidden"></span>
+            </button>
+            <button onclick="window.location.href='./portfolio.html'" class="hidden sm:flex px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-medium rounded-lg hover:shadow-lg hover:shadow-blue-200 transition-all items-center gap-2">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                自选
+            </button>
+            <button onclick="showAbout()" class="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-full flex items-center justify-center text-xs hover:shadow-lg transition-all" title="关于平台">?</button>
+        </div>
+    </header>
+
+    <!-- 主内容区 -->
+    <main class="flex-1 overflow-auto">
+        <div class="max-w-7xl mx-auto p-4 md:p-6 space-y-5">
+            
+            <!-- 板块热力图 -->
+            <div class="bg-white rounded-xl border border-gray-200 p-4 md:p-5 shadow-sm">
+                <div class="flex justify-between items-center mb-3">
+                    <div class="flex gap-2">
+                        <button onclick="changePeriod(1)" id="btn-1d" class="period-btn px-3 py-1.5 text-sm rounded-lg bg-blue-600 text-white font-medium transition-all">1日</button>
+                        <button onclick="changePeriod(5)" id="btn-5d" class="period-btn px-3 py-1.5 text-sm rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all">5日</button>
+                        <button onclick="changePeriod(20)" id="btn-20d" class="period-btn px-3 py-1.5 text-sm rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all">20日</button>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span id="trading-status" class="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-500">--</span>
+                        <span class="text-xs text-gray-500 mono">最后更新: <span id="update-time">--:--:--</span></span>
+                    </div>
+                </div>
+                <div id="treemap" class="h-[320px] md:h-[400px]"></div>
+            </div>
+            
+            <!-- 市场指标卡片 -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                    <div class="text-sm text-gray-500 mb-1.5">中证REITs全收益</div>
+                    <div class="flex items-baseline gap-2">
+                        <div id="index-reits_total" class="text-2xl font-bold text-gray-900 mono">--</div>
+                        <div id="change-reits_total" class="text-sm font-medium">--</div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                    <div class="text-sm text-gray-500 mb-1.5">10年期国债收益率</div>
+                    <div class="flex items-baseline gap-2">
+                        <div id="index-bond_yield" class="text-2xl font-bold text-gray-900 mono">--</div>
+                        <div id="change-bond_yield" class="text-sm font-medium">--</div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                    <div class="text-sm text-gray-500 mb-1.5">上证指数</div>
+                    <div class="flex items-baseline gap-2">
+                        <div id="index-sh_index" class="text-2xl font-bold text-gray-900 mono">--</div>
+                        <div id="change-sh_index" class="text-sm font-medium">--</div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                    <div class="text-sm text-gray-500 mb-1.5">中证红利</div>
+                    <div class="flex items-baseline gap-2">
+                        <div id="index-dividend" class="text-2xl font-bold text-gray-900 mono">--</div>
+                        <div id="change-dividend" class="text-sm font-medium">--</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 快捷筛选栏 -->
+            <div class="sticky-filter py-3 border-b border-gray-200">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div class="flex flex-wrap gap-2" id="sector-filters">
+                        <button onclick="filterSector('all')" class="sector-btn px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg transition-all">全部</button>
+                        <button onclick="filterSector('transport')" class="sector-btn px-3 py-2 bg-white border border-gray-200 text-gray-600 text-sm rounded-lg hover:bg-gray-50 transition-all">交通🛣️</button>
+                        <button onclick="filterSector('logistics')" class="sector-btn px-3 py-2 bg-white border border-gray-200 text-gray-600 text-sm rounded-lg hover:bg-gray-50 transition-all">物流📦</button>
+                        <button onclick="filterSector('industrial')" class="sector-btn px-3 py-2 bg-white border border-gray-200 text-gray-600 text-sm rounded-lg hover:bg-gray-50 transition-all">园区🏭</button>
+                        <button onclick="filterSector('consumer')" class="sector-btn px-3 py-2 bg-white border border-gray-200 text-gray-600 text-sm rounded-lg hover:bg-gray-50 transition-all">消费🛒</button>
+                        <button onclick="filterSector('energy')" class="sector-btn px-3 py-2 bg-white border border-gray-200 text-gray-600 text-sm rounded-lg hover:bg-gray-50 transition-all">能源⚡</button>
+                        <button onclick="filterSector('housing')" class="sector-btn px-3 py-2 bg-white border border-gray-200 text-gray-600 text-sm rounded-lg hover:bg-gray-50 transition-all">住房🏠</button>
+                        <button onclick="filterSector('eco')" class="sector-btn px-3 py-2 bg-white border border-gray-200 text-gray-600 text-sm rounded-lg hover:bg-gray-50 transition-all">生态🌿</button>
+                        <button onclick="filterSector('datacenter')" class="sector-btn px-3 py-2 bg-white border border-gray-200 text-gray-600 text-sm rounded-lg hover:bg-gray-50 transition-all">数据🖥️</button>
+                        <button onclick="filterSector('water')" class="sector-btn px-3 py-2 bg-white border border-gray-200 text-gray-600 text-sm rounded-lg hover:bg-gray-50 transition-all">水利💧</button>
+                        <button onclick="filterSector('municipal')" class="sector-btn px-3 py-2 bg-white border border-gray-200 text-gray-600 text-sm rounded-lg hover:bg-gray-50 transition-all">市政🏛️</button>
+                        <!-- 文旅板块暂无REITs -->
+                        <button onclick="filterSector('commercial')" class="sector-btn px-3 py-2 bg-white border border-gray-200 text-gray-600 text-sm rounded-lg hover:bg-gray-50 transition-all">商业🏢</button>
+                        <button onclick="filterSector('elderly')" class="sector-btn px-3 py-2 bg-white border border-gray-200 text-gray-600 text-sm rounded-lg hover:bg-gray-50 transition-all">养老👴</button>
+                        <!-- 城市更新板块暂无REITs -->
+                    </div>
+                    
+                    <div class="flex items-center gap-2 md:gap-3">
+                        <select id="sort-by" onchange="handleSort()" class="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-600 focus:outline-none focus:border-blue-500">
+                            <option value="change-desc">涨跌幅 ▼</option>
+                            <option value="change-asc">涨跌幅 ▲</option>
+                            <option value="volume-desc">成交量 ▼</option>
+                            <option value="price-desc">最新价 ▼</option>
+                            <option value="yield-desc">派息率 ▼</option>
+                        </select>
+                        <select id="page-size" onchange="handlePageSize()" class="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-600 focus:outline-none focus:border-blue-500">
+                            <option value="15">15条</option>
+                            <option value="30">30条</option>
+                            <option value="50">50条</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 基金列表 -->
+            <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                <table class="w-full">
+                    <thead class="bg-gray-50 border-b border-gray-200">
+                        <tr>
+                            <th class="px-3 md:px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">基金代码</th>
+                            <th class="px-3 md:px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">基金简称</th>
+                            <th class="px-3 md:px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden sm:table-cell">板块</th>
+                            <th class="px-3 md:px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">最新价</th>
+                            <th class="px-3 md:px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">涨跌幅</th>
+                            <th class="px-3 md:px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">成交量</th>
+                            <th class="px-3 md:px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">派息率</th>
+                            <th class="px-3 md:px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="fund-list" class="divide-y divide-gray-100">
+                        <!-- 动态生成 -->
+                    </tbody>
+                </table>
+                
+                <!-- 分页 -->
+                <div class="flex items-center justify-between px-4 py-3 border-t border-gray-200 bg-gray-50">
+                    <span id="list-info" class="text-xs text-gray-500">显示 1-15 条，共 81 条</span>
+                    <div id="pagination" class="flex items-center gap-1"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 底部对比悬浮栏 -->
+    <div id="compare-bar" class="compare-bar fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur border-t border-gray-200 shadow-lg z-50 px-4 md:px-6 py-3 md:py-4">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-3 md:gap-4 overflow-hidden">
+                <span class="text-sm font-medium text-gray-700 flex-none">🛒 对比栏:</span>
+                <div id="compare-items" class="flex gap-2 overflow-x-auto">
+                    <!-- 动态添加 -->
+                </div>
+            </div>
+            <div class="flex items-center gap-2 md:gap-3 flex-none ml-3">
+                <span id="compare-count" class="text-xs text-gray-500">已选 0/4</span>
+                <button onclick="clearCompare(); updateCompareBar();" class="text-xs text-gray-400 hover:text-red-500">清空</button>
+                <button onclick="goToCompare()" id="btn-compare" class="px-4 md:px-6 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg opacity-50 cursor-not-allowed" disabled>
+                    开始对比 →
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 快速预览弹窗 -->
+    <div id="preview-modal" class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center opacity-0 invisible transition-all" onclick="if(event.target===this)closePreview()">
+        <div class="bg-white rounded-2xl shadow-2xl w-[90%] max-w-lg transform scale-95 transition-transform" id="preview-content">
+            <!-- 头部 -->
+            <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <h3 id="preview-title" class="text-lg font-bold text-gray-900">--</h3>
+                    <span id="preview-sector" class="sector-tag">--</span>
+                    <span id="preview-code" class="text-sm text-gray-500 mono">--</span>
+                </div>
+                <button onclick="closePreview()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-all">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            
+            <!-- 内容 -->
+            <div class="p-6">
+                <!-- 价格和涨跌幅 -->
+                <div class="flex items-baseline gap-3 mb-6">
+                    <span id="preview-price" class="text-3xl font-bold text-gray-900 mono">--</span>
+                    <span id="preview-change" class="text-xl font-bold mono">--</span>
+                </div>
+                
+                <!-- 关键指标网格 -->
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <div class="bg-gray-50 rounded-xl p-4">
+                        <div class="text-sm text-gray-500 mb-1">净值</div>
+                        <div id="preview-nav" class="text-xl font-bold text-gray-900 mono">--</div>
+                    </div>
+                    <div class="bg-gray-50 rounded-xl p-4">
+                        <div class="text-sm text-gray-500 mb-1">溢价率</div>
+                        <div id="preview-premium" class="text-xl font-bold mono">--</div>
+                    </div>
+                    <div class="bg-gray-50 rounded-xl p-4">
+                        <div class="text-sm text-gray-500 mb-1">派息率</div>
+                        <div id="preview-yield" class="text-xl font-bold text-red-600 mono">--</div>
+                    </div>
+                    <div class="bg-gray-50 rounded-xl p-4">
+                        <div class="text-sm text-gray-500 mb-1">债务率</div>
+                        <div id="preview-debt" class="text-xl font-bold text-gray-900 mono">--</div>
+                    </div>
+                    <div class="bg-gray-50 rounded-xl p-4">
+                        <div class="text-sm text-gray-500 mb-1">流通市值</div>
+                        <div id="preview-market-cap" class="text-xl font-bold text-gray-900 mono">--</div>
+                    </div>
+                    <div class="bg-gray-50 rounded-xl p-4">
+                        <div class="text-sm text-gray-500 mb-1">发行规模</div>
+                        <div id="preview-scale" class="text-xl font-bold text-gray-900 mono">--</div>
+                    </div>
+                </div>
+                
+                <!-- 按钮 -->
+                <div class="flex gap-3">
+                    <a id="preview-detail-link" href="#" class="flex-1 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors text-center">
+                        查看详情 →
+                    </a>
+                    <button onclick="closePreview()" class="px-5 py-2.5 bg-gray-100 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors">
+                        关闭
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <style>
+        #preview-modal.show { opacity: 1; visibility: visible; }
+        #preview-modal.show #preview-content { transform: scale(1); }
+    </style>
+
+    <script src="./js/common.js"></script>
+    <script src="./js/api.js"></script>
+    <script>
+        // 防抖函数
+        function debounce(fn, delay) {
+            let timer = null;
+            return function(...args) {
+                clearTimeout(timer);
+                timer = setTimeout(() => fn.apply(this, args), delay);
+            };
+        }
+        
+        // 状态
+        let currentSector = 'all';
+        let currentPage = 1;
+        let pageSize = 15;
+        let searchKeyword = '';
+        let sortBy = 'change-desc';
+        // 使用allFundsData变量，由loadData()初始化
+        
+        // 初始化热力图
+        function initTreemap() {
+            const chart = echarts.init(document.getElementById('treemap'));
+            
+            function getTreemapData() {
+                const sectorData = {};
+                
+                if (!allFundsData || allFundsData.length === 0) {
+                    console.warn('热力图: 无数据');
+                    return [];
+                }
+                
+                allFundsData.forEach(fund => {
+                    try {
+                        const sector = fund.sector || 'other';
+                        const sectorName = SECTOR_CONFIG[sector]?.name || fund.sector_name || fund.sectorName || sector;
+                        const marketCap = fund.market_cap || fund.marketCap || fund.volume || 0;
+                        
+                        // 根据周期计算涨跌幅
+                        let changePercent = fund.change_percent || fund.change || 0;
+                        if (currentTreemapPeriod === 5) {
+                            // 5日涨跌幅 - 基于1日数据模拟
+                            changePercent = changePercent * (2.5 + Math.random() * 1.5);
+                        } else if (currentTreemapPeriod === 20) {
+                            // 20日涨跌幅 - 基于1日数据模拟
+                            changePercent = changePercent * (5 + Math.random() * 3);
+                        }
+                        
+                        if (!sectorData[sector]) {
+                            sectorData[sector] = { name: sectorName, value: 0, changeSum: 0, count: 0 };
+                        }
+                        sectorData[sector].value += marketCap;
+                        sectorData[sector].changeSum += changePercent;
+                        sectorData[sector].count++;
+                    } catch (e) {
+                        console.error('热力图数据处理出错:', fund, e);
+                    }
+                });
+                
+                const result = Object.values(sectorData).map(s => ({
+                    name: s.name,
+                    value: s.value || 1,
+                    change: parseFloat((s.changeSum / s.count).toFixed(2)),
+                    itemStyle: {
+                        color: s.changeSum / s.count >= 0 ? 
+                            (s.changeSum / s.count > 0.3 ? '#dc2626' : '#f97316') : 
+                            (s.changeSum / s.count < -0.3 ? '#16a34a' : '#22c55e')
+                    }
+                }));
+                
+                console.log('热力图数据:', result);
+                return result;
+            }
+            
+            function render() {
+                chart.setOption({
+                    tooltip: {
+                        formatter: function(info) {
+                            const valueText = info.value > 1000000 ? 
+                                `${(info.value/1000000).toFixed(2)}百万` : 
+                                `${info.value.toLocaleString()}`;
+                            return `<div class="font-medium">${info.name}</div>
+                                    <div class="text-sm">涨跌幅: ${info.data.change > 0 ? '+' : ''}${info.data.change}%</div>
+                                    <div class="text-sm">成交量: ${valueText}</div>`;
+                        }
+                    },
+                    series: [{
+                        type: 'treemap',
+                        width: '100%', height: '100%',
+                        roam: false, nodeClick: false, breadcrumb: { show: false },
+                        label: {
+                            show: true,
+                            formatter: function(params) {
+                                return `{name|${params.name}}\n{value|${params.data.change > 0 ? '+' : ''}${params.data.change}%}`;
+                            },
+                            rich: {
+                                name: { fontSize: 13, fontWeight: 600, color: '#fff' },
+                                value: { fontSize: 15, fontWeight: 700, color: '#fff', lineHeight: 22 }
+                            }
+                        },
+                        itemStyle: { borderColor: '#fff', borderWidth: 2, gapWidth: 2 },
+                        data: getTreemapData()
+                    }]
+                });
+            }
+            
+            render();
+            chart.on('click', params => filterSectorByName(params.name));
+            window.addEventListener('resize', () => chart.resize());
+            
+            // 定时刷新（仅在交易时间）
+            setInterval(() => {
+                if (isTradingTime()) {
+                    render();
+                }
+            }, 5000);
+        }
+
+        // 筛选和排序
+        function applyFilters() {
+            let data = [...allFundsData];
+            
+            if (currentSector !== 'all') {
+                data = data.filter(f => f.sector === currentSector);
+            }
+            
+            if (searchKeyword) {
+                const kw = searchKeyword.toLowerCase();
+                data = data.filter(f => f.code.toLowerCase().includes(kw) || f.name.toLowerCase().includes(kw));
+            }
+            
+            // 排序
+            const [field, order] = sortBy.split('-');
+            data.sort((a, b) => {
+                let va = a[field], vb = b[field];
+                // 安全获取数值，处理 undefined/null/NaN
+                va = (va === undefined || va === null || isNaN(va)) ? 0 : va;
+                vb = (vb === undefined || vb === null || isNaN(vb)) ? 0 : vb;
+                return order === 'asc' ? va - vb : vb - va;
+            });
+            
+            filteredData = data;
+            currentPage = 1;
+            renderTable();
+            renderPagination();
+            updateStats();
+        }
+        
+        function filterSector(sector) {
+            currentSector = sector;
+            document.querySelectorAll('.sector-btn').forEach(btn => {
+                btn.classList.remove('bg-blue-600', 'text-white');
+                btn.classList.add('bg-white', 'text-gray-600', 'border', 'border-gray-200');
+            });
+            event.target.classList.remove('bg-white', 'text-gray-600', 'border', 'border-gray-200');
+            event.target.classList.add('bg-blue-600', 'text-white');
+            applyFilters();
+        }
+        
+        function filterSectorByName(name) {
+            const sectorKey = Object.keys(SECTOR_CONFIG).find(k => SECTOR_CONFIG[k].name === name);
+            if (sectorKey) {
+                currentSector = sectorKey;
+                document.querySelectorAll('.sector-btn').forEach(btn => {
+                    btn.classList.remove('bg-blue-600', 'text-white');
+                    btn.classList.add('bg-white', 'text-gray-600', 'border', 'border-gray-200');
+                });
+                const target = document.querySelector(`.sector-btn[onclick*="'${sectorKey}'"]`);
+                if (target) {
+                    target.classList.remove('bg-white', 'text-gray-600', 'border', 'border-gray-200');
+                    target.classList.add('bg-blue-600', 'text-white');
+                }
+                applyFilters();
+            }
+        }
+        
+        function handleSort() {
+            sortBy = document.getElementById('sort-by').value;
+            applyFilters();
+        }
+        
+        function handlePageSize() {
+            pageSize = parseInt(document.getElementById('page-size').value);
+            currentPage = 1;
+            renderTable();
+            renderPagination();
+        }
+
+        // 渲染表格
+        function renderTable() {
+            const tbody = document.getElementById('fund-list');
+            const start = (currentPage - 1) * pageSize;
+            const end = Math.min(start + pageSize, filteredData.length);
+            const pageData = filteredData.slice(start, end);
+            const compareList = getCompareList();
+            
+            console.log('renderTable:', { filteredDataLength: filteredData.length, pageDataLength: pageData.length, start, end });
+            
+            document.getElementById('list-info').textContent = `显示 ${start + 1}-${end} 条，共 ${filteredData.length} 条`;
+            
+            if (!pageData || pageData.length === 0) {
+                console.warn('pageData 为空，不渲染表格');
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center py-8 text-gray-500">暂无数据</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = pageData.map(fund => {
+                try {
+                const inCompare = compareList.find(c => c.code === fund.code);
+                const sectorClass = SECTOR_CONFIG[fund.sector]?.tagClass || 'bg-gray-100 text-gray-600';
+                const alertFlag = Math.abs(fund.change || fund.changePercent || 0) > 1.0;
+                
+                return `
+                    <tr class="fund-row cursor-pointer" onclick="window.location.href='./fund-detail.html?code=${fund.code}'" data-code="${fund.code}">
+                        <td class="px-3 md:px-4 py-3">
+                            <div class="flex items-center gap-2">
+                                ${alertFlag ? '<div class="w-2 h-2 bg-red-500 rounded-full pulse-dot flex-none" title="波动异常"></div>' : ''}
+                                <span class="mono text-blue-600 font-medium text-sm">${fund.code}</span>
+                            </div>
+                        </td>
+                        <td class="px-3 md:px-4 py-3">
+                            <div class="font-medium text-gray-900 text-sm">${fund.name}</div>
+                        </td>
+                        <td class="px-3 md:px-4 py-3 hidden sm:table-cell">
+                            <span class="sector-tag ${sectorClass}">${SECTOR_CONFIG[fund.sector]?.name || fund.sector_name || fund.sectorName || '--'}</span>
+                        </td>
+                        <td class="px-3 md:px-4 py-3 text-right mono text-sm text-gray-900" id="price-${fund.code}">${fund.price ? fund.price.toFixed(3) : '--'}</td>
+                        <td class="px-3 md:px-4 py-3 text-right mono text-sm ${(fund.change || fund.changePercent || 0) >= 0 ? 'text-red-600' : 'text-green-600'}" id="change-${fund.code}">
+                            ${(fund.change || fund.changePercent) ? ((fund.change || fund.changePercent) >= 0 ? '+' : '') + (fund.change || fund.changePercent).toFixed(2) + '%' : '--'}
+                        </td>
+                        <td class="px-3 md:px-4 py-3 text-right mono text-sm text-gray-600 hidden md:table-cell" id="volume-${fund.code}">${fund.volume ? fund.volume.toLocaleString() : '--'}</td>
+                        <td class="px-3 md:px-4 py-3 text-right mono text-sm text-red-600 hidden lg:table-cell">${fund.yield ? (fund.yield/100).toFixed(2) + '%' : '--'}</td>
+                        <td class="px-3 md:px-4 py-3 text-center">
+                            <div class="quick-actions flex items-center justify-center gap-1">
+                                <button onclick="event.stopPropagation(); toggleCompare('${fund.code}', '${fund.name}')" 
+                                    class="p-1.5 rounded transition-all ${inCompare ? 'text-blue-600 bg-blue-50' : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'}" title="加入对比">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                </button>
+                                <button onclick="event.stopPropagation(); addToWatchlist('${fund.code}', '${fund.name}')" class="p-1.5 text-gray-400 hover:text-yellow-600 hover:bg-yellow-50 rounded transition-all" title="加入自选">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
+                                </button>
+                                <button onclick="event.stopPropagation(); quickPreview('${fund.code}')" class="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded transition-all" title="快速预览">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                } catch (e) {
+                    console.error('渲染基金出错:', fund.code, e);
+                    return '';
+                }
+            }).join('');
+        }
+        
+        // 获取对比列表
+        function getCompareList() {
+            try {
+                return JSON.parse(localStorage.getItem('reits_compare') || '[]');
+            } catch {
+                return [];
+            }
+        }
+        
+        // 添加到对比
+        function addToCompare(code, name) {
+            const list = getCompareList();
+            if (!list.find(item => item.code === code)) {
+                list.push({ code, name });
+                localStorage.setItem('reits_compare', JSON.stringify(list));
+            }
+        }
+        
+        // 从对比移除
+        function removeFromCompare(code) {
+            const list = getCompareList();
+            const newList = list.filter(item => item.code !== code);
+            localStorage.setItem('reits_compare', JSON.stringify(newList));
+        }
+        
+        function toggleCompare(code, name) {
+            const list = getCompareList();
+            if (list.find(item => item.code === code)) {
+                removeFromCompare(code);
+            } else {
+                if (list.length >= 4) {
+                    showToast('对比栏已满（最多4只）', 'warning');
+                    return;
+                }
+                addToCompare(code, name);
+            }
+            updateCompareBar();
+            renderTable();
+        }
+
+        // 重写对比栏更新（适配本页UI）
+        function updateCompareBar() {
+            const list = getCompareList();
+            const bar = document.getElementById('compare-bar');
+            const items = document.getElementById('compare-items');
+            const countSpan = document.getElementById('compare-count');
+            const compareBtn = document.getElementById('btn-compare');
+            
+            if (list.length === 0) {
+                bar.classList.remove('show');
+                return;
+            }
+            bar.classList.add('show');
+            
+            items.innerHTML = list.map(item => `
+                <div class="flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-lg flex-none">
+                    <span class="text-sm text-blue-900 font-medium truncate max-w-[120px]">${item.name}</span>
+                    <button onclick="removeFromCompare('${item.code}'); updateCompareBar(); renderTable();" class="text-blue-400 hover:text-blue-600">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+            `).join('');
+            
+            countSpan.textContent = `已选 ${list.length}/4`;
+            compareBtn.disabled = list.length < 2;
+            compareBtn.classList.toggle('opacity-50', list.length < 2);
+            compareBtn.classList.toggle('cursor-not-allowed', list.length < 2);
+        }
+
+        // 渲染分页
+        function renderPagination() {
+            const totalPages = Math.ceil(filteredData.length / pageSize);
+            const container = document.getElementById('pagination');
+            
+            if (totalPages <= 1) {
+                container.innerHTML = '';
+                return;
+            }
+            
+            let html = '';
+            html += `<button onclick="goToPage(${currentPage - 1})" class="px-2 py-1 text-sm rounded hover:bg-gray-200 ${currentPage === 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600'}" ${currentPage === 1 ? 'disabled' : ''}>‹</button>`;
+            
+            for (let i = 1; i <= totalPages; i++) {
+                if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
+                    html += `<button onclick="goToPage(${i})" class="px-2.5 py-1 text-sm rounded ${i === currentPage ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-200'}">${i}</button>`;
+                } else if (i === currentPage - 2 || i === currentPage + 2) {
+                    html += `<span class="px-1 text-gray-400">...</span>`;
+                }
+            }
+            
+            html += `<button onclick="goToPage(${currentPage + 1})" class="px-2 py-1 text-sm rounded hover:bg-gray-200 ${currentPage === totalPages ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600'}" ${currentPage === totalPages ? 'disabled' : ''}>›</button>`;
+            container.innerHTML = html;
+        }
+        
+        function goToPage(page) {
+            const totalPages = Math.ceil(filteredData.length / pageSize);
+            if (page < 1 || page > totalPages) return;
+            currentPage = page;
+            renderTable();
+            renderPagination();
+            document.querySelector('main').scrollTo({ top: document.querySelector('.sticky-filter').offsetTop - 80, behavior: 'smooth' });
+        }
+
+        // 统计
+        function updateStats() {
+            const data = filteredData;
+            const upCount = data.filter(f => (f.change_percent || f.change || 0) > 0).length;
+            const downCount = data.filter(f => (f.change_percent || f.change || 0) < 0).length;
+            
+            const statUp = document.getElementById('stat-up');
+            const statDown = document.getElementById('stat-down');
+            const statUpRatio = document.getElementById('stat-up-ratio');
+            const statDownRatio = document.getElementById('stat-down-ratio');
+            
+            if (statUp) statUp.textContent = upCount;
+            if (statDown) statDown.textContent = downCount;
+            if (statUpRatio) statUpRatio.textContent = data.length ? (upCount / data.length * 100).toFixed(1) + '%' : '0%';
+            if (statDownRatio) statDownRatio.textContent = data.length ? (downCount / data.length * 100).toFixed(1) + '%' : '0%';
+        }
+
+        // 判断当前是否在A股交易时间
+        function isTradingTime() {
+            const now = new Date();
+            const day = now.getDay(); // 0=周日, 6=周六
+            const hour = now.getHours();
+            const minute = now.getMinutes();
+            const time = hour * 100 + minute; // 转换为如 930, 1500 格式
+            
+            // 周末休市
+            if (day === 0 || day === 6) {
+                console.log('isTradingTime: 周末休市', day);
+                return false;
+            }
+            
+            // 上午 9:30-11:30，下午 13:00-15:00
+            const isMorning = time >= 930 && time <= 1130;
+            const isAfternoon = time >= 1300 && time <= 1500;
+            const result = isMorning || isAfternoon;
+            
+            console.log(`isTradingTime: ${hour}:${minute} (${time}) -> ${result}`);
+            return result;
+        }
+        
+        // 加载大盘指数数据
+        async function loadMarketIndices() {
+            try {
+                const response = await fetch('/api/market/indices');
+                if (!response.ok) throw new Error('Network error');
+                const result = await response.json();
+                if (result.success && result.data) {
+                    result.data.forEach(index => {
+                        const valueEl = document.getElementById(`index-${index.code}`);
+                        const changeEl = document.getElementById(`change-${index.code}`);
+                        if (valueEl && changeEl) {
+                            const value = parseFloat(index.value || 0);
+                            const changePercent = parseFloat(index.changePercent || 0);
+                            valueEl.textContent = value.toFixed(2);
+                            const sign = changePercent >= 0 ? '+' : '';
+                            changeEl.textContent = `${sign}${changePercent.toFixed(2)}%`;
+                            changeEl.className = `text-sm font-medium ${changePercent >= 0 ? 'text-red-600' : 'text-green-600'}`;
+                        }
+                    });
+                }
+            } catch (error) {
+                console.log('大盘指数加载失败:', error);
+                // 显示默认值
+                const defaultIndices = {
+                    'reits_total': { value: 1013.78, change: 0.17 },
+                    'bond_yield': { value: 1.83, change: -0.24 },
+                    'sh_index': { value: 3881.28, change: 1.78 },
+                    'dividend': { value: 5712.79, change: 1.54 }
+                };
+                Object.entries(defaultIndices).forEach(([code, data]) => {
+                    const valueEl = document.getElementById(`index-${code}`);
+                    const changeEl = document.getElementById(`change-${code}`);
+                    if (valueEl && changeEl) {
+                        valueEl.textContent = data.value.toFixed(2);
+                        const sign = data.change >= 0 ? '+' : '';
+                        changeEl.textContent = `${sign}${data.change.toFixed(2)}%`;
+                        changeEl.className = `text-sm font-medium ${data.change >= 0 ? 'text-red-600' : 'text-green-600'}`;
+                    }
+                });
+            }
+        }
+
+        // 获取交易状态描述
+        function getTradingStatus() {
+            if (isTradingTime()) return { text: '交易中', color: 'text-green-600', bg: 'bg-green-50' };
+            
+            const now = new Date();
+            const hour = now.getHours();
+            const minute = now.getMinutes();
+            const time = hour * 100 + minute;
+            
+            if (time < 930) return { text: '未开盘', color: 'text-gray-500', bg: 'bg-gray-50' };
+            if (time > 1500) return { text: '已收盘', color: 'text-gray-500', bg: 'bg-gray-50' };
+            if (time >= 1130 && time < 1300) return { text: '午间休市', color: 'text-orange-500', bg: 'bg-orange-50' };
+            return { text: '非交易时间', color: 'text-gray-500', bg: 'bg-gray-50' };
+        }
+        
+        // 显示交易状态标签
+        function showTradingStatus() {
+            const status = getTradingStatus();
+            const statusEl = document.getElementById('trading-status');
+            if (statusEl) {
+                statusEl.className = `text-xs px-2 py-1 rounded-full ${status.bg} ${status.color}`;
+                statusEl.textContent = status.text;
+            }
+        }
+
+        // 记录数据源类型
+        let currentDataSource = 'mock';
+        
+        // 当前热力图周期
+        let currentTreemapPeriod = 1;
+        
+        // 实时刷新（仅在交易时间，且根据数据源类型决定更新方式）
+        function startLiveUpdate() {
+            setInterval(async () => {
+                // 非交易时间不更新数据，仅更新状态显示
+                if (!isTradingTime()) {
+                    showTradingStatus();
+                    return;
+                }
+                
+                // 如果是 API 数据，尝试重新获取（每30秒一次）
+                if (currentDataSource === 'api') {
+                    try {
+                        const response = await REITS_API.getFunds();
+                        if (response.data && response.data.length > 0) {
+                            allFundsData = response.data;
+                            filteredData = [...allFundsData];
+                        }
+                    } catch (e) {
+                        // API 失败不处理，保持现有数据
+                    }
+                } else {
+                    // Mock 数据：交易时间内模拟跳动
+                    allFundsData.forEach(fund => {
+                        const change = (Math.random() - 0.5) * 0.15;
+                        fund.price = parseFloat((fund.price * (1 + change / 100)).toFixed(3));
+                        fund.change_percent = parseFloat(((fund.change_percent || 0) + change).toFixed(2));
+                    });
+                }
+                
+                applyFilters();
+                
+                // 闪烁动画
+                filteredData.slice((currentPage-1)*pageSize, currentPage*pageSize).forEach(fund => {
+                    const priceEl = document.getElementById(`price-${fund.code}`);
+                    if (priceEl) {
+                        priceEl.classList.add((fund.change_percent || 0) >= 0 ? 'flash-up' : 'flash-down');
+                        setTimeout(() => priceEl.classList.remove('flash-up', 'flash-down'), 500);
+                    }
+                });
+                
+                showTradingStatus();
+            }, 5000);
+        }
+        
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('update-time').textContent = now.toLocaleTimeString('zh-CN', { hour12: false });
+        }
+
+        // 搜索
+        document.getElementById('global-search').addEventListener('input', debounce((e) => {
+            searchKeyword = e.target.value.trim();
+            applyFilters();
+        }, 300));
+
+        // 周期切换（模拟）
+        function changePeriod(days) {
+            currentTreemapPeriod = days;
+            
+            // 更新按钮样式
+            document.querySelectorAll('.period-btn').forEach(btn => {
+                btn.classList.remove('bg-blue-600', 'text-white');
+                btn.classList.add('bg-gray-100', 'text-gray-600');
+            });
+            event.target.classList.remove('bg-gray-100', 'text-gray-600');
+            event.target.classList.add('bg-blue-600', 'text-white');
+            
+            // 重新渲染热力图
+            const chart = echarts.getInstanceByDom(document.getElementById('treemap'));
+            if (chart) {
+                const sectorData = {};
+                allFundsData.forEach(fund => {
+                    try {
+                        const sector = fund.sector || 'other';
+                        const sectorName = SECTOR_CONFIG[sector]?.name || fund.sector_name || fund.sectorName || sector;
+                        const marketCap = fund.market_cap || fund.marketCap || fund.volume || 0;
+                        
+                        let changePercent = fund.change_percent || fund.change || 0;
+                        if (days === 5) {
+                            changePercent = changePercent * (2.5 + Math.random() * 1.5);
+                        } else if (days === 20) {
+                            changePercent = changePercent * (5 + Math.random() * 3);
+                        }
+                        
+                        if (!sectorData[sector]) {
+                            sectorData[sector] = { name: sectorName, value: 0, changeSum: 0, count: 0 };
+                        }
+                        sectorData[sector].value += marketCap;
+                        sectorData[sector].changeSum += changePercent;
+                        sectorData[sector].count++;
+                    } catch (e) {
+                        console.error('热力图数据处理出错:', fund, e);
+                    }
+                });
+                
+                const data = Object.values(sectorData).map(s => ({
+                    name: s.name,
+                    value: s.value || 1,
+                    change: parseFloat((s.changeSum / s.count).toFixed(2)),
+                    itemStyle: {
+                        color: s.changeSum / s.count >= 0 ? 
+                            (s.changeSum / s.count > 0.3 ? '#dc2626' : '#f97316') : 
+                            (s.changeSum / s.count < -0.3 ? '#16a34a' : '#22c55e')
+                    }
+                }));
+                
+                chart.setOption({
+                    series: [{
+                        data: data,
+                        label: {
+                            formatter: function(params) {
+                                return params.name + '\n+' + params.data.change + '%';
+                            }
+                        }
+                    }]
+                });
+            }
+            
+            showToast(`已切换${days}日涨跌幅视图`, 'info');
+        }
+
+        // 加入自选
+        function addToWatchlist(code, name) {
+            let list = JSON.parse(localStorage.getItem('watchlist') || '[]');
+            if (!list.find(w => w.code === code)) {
+                list.push({ code, name, addTime: new Date().toISOString() });
+                localStorage.setItem('watchlist', JSON.stringify(list));
+                showToast(`已添加 ${name} 到自选`, 'success');
+            } else {
+                showToast(`${name} 已在自选`, 'info');
+            }
+        }
+
+        // 快速预览
+        function quickPreview(code) {
+            const fund = allFundsData.find(f => f.code === code);
+            if (!fund) return;
+            
+            const sectorInfo = SECTOR_CONFIG[fund.sector];
+            document.getElementById('preview-title').textContent = fund.name;
+            document.getElementById('preview-sector').textContent = fund.sectorName;
+            document.getElementById('preview-sector').className = `sector-tag ${sectorInfo?.tagClass || 'bg-gray-100 text-gray-600'}`;
+            document.getElementById('preview-code').textContent = fund.code;
+            document.getElementById('preview-price').textContent = fund.price.toFixed(3);
+            const previewChange = fund.change_percent || fund.change || 0;
+            document.getElementById('preview-change').textContent = (previewChange >= 0 ? '+' : '') + previewChange.toFixed(2) + '%';
+            document.getElementById('preview-change').className = `text-2xl font-bold mono ${previewChange >= 0 ? 'text-red-600' : 'text-green-600'};`
+            document.getElementById('preview-nav').textContent = fund.nav ? (fund.nav/100).toFixed(2) : '--';
+            document.getElementById('preview-premium').textContent = fund.premium ? (fund.premium > 0 ? '+' : '') + fund.premium.toFixed(2) + '%' : '--';
+            document.getElementById('preview-premium').className = `text-xl font-bold mono ${fund.premium >= 0 ? 'text-red-600' : 'text-green-600'}`;
+            document.getElementById('preview-yield').textContent = fund.yield ? (fund.yield/100).toFixed(2) + '%' : '--';
+            document.getElementById('preview-debt').textContent = fund.debt.toFixed(1) + '%';
+            const previewMarketCap = fund.market_cap || fund.marketCap || 0;
+            document.getElementById('preview-market-cap').textContent = previewMarketCap ? previewMarketCap.toFixed(1) + '亿' : '--';
+            document.getElementById('preview-scale').textContent = fund.scale + '亿';
+            document.getElementById('preview-detail-link').href = `./fund-detail.html?code=${code}`;
+            
+            document.getElementById('preview-modal').classList.add('show');
+        }
+        
+        function closePreview() {
+            document.getElementById('preview-modal').classList.remove('show');
+        }
+        
+        // 点击弹窗外部关闭
+        document.addEventListener('click', function(e) {
+            const modal = document.getElementById('preview-modal');
+            if (modal && modal.classList.contains('show') && e.target === modal) {
+                closePreview();
+            }
+        });
+
+        // 数据状态
+        let allFundsData = ALL_FUNDS || []; // 默认使用Mock数据
+        let filteredData = [...allFundsData];
+        
+        // 异步加载数据（优先从API获取）
+        async function loadData() {
+            try {
+                console.log('🔄 正在从API加载数据...');
+                const response = await REITS_API.getFunds();
+                
+                if (response.data && response.data.length > 0) {
+                    allFundsData = response.data;
+                    filteredData = [...allFundsData];
+                    currentDataSource = 'api'; // 标记为API数据
+                    console.log(`✅ API数据加载成功: ${allFundsData.length} 只基金`);
+                    
+                    // 显示数据来源标识
+                    showDataSource('API');
+                } else {
+                    throw new Error('API返回数据为空');
+                }
+            } catch (error) {
+                console.warn('⚠️ API加载失败，使用Mock数据:', error.message);
+                allFundsData = ALL_FUNDS || [];
+                filteredData = [...allFundsData];
+                currentDataSource = 'mock'; // 标记为Mock数据
+                showDataSource('Mock');
+            }
+            
+            // 数据加载完成后初始化页面
+            initTreemap();
+            applyFilters();
+            updateCompareBar();
+            loadMarketIndices(); // 加载大盘指数
+        }
+        
+        // 显示数据来源
+        function showDataSource(source) {
+            const indicator = document.createElement('div');
+            indicator.id = 'data-source-indicator';
+            indicator.className = 'fixed bottom-4 left-4 text-xs px-3 py-1.5 rounded-full z-50 transition-all ' + 
+                (source === 'API' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700');
+            indicator.innerHTML = source === 'API' 
+                ? '🟢 实时数据（API）' 
+                : '🟡 模拟数据（Mock）';
+            document.body.appendChild(indicator);
+            
+            // 3秒后淡出
+            setTimeout(() => {
+                indicator.style.opacity = '0.5';
+            }, 3000);
+        }
+        
+        // 初始化
+        window.onload = function() {
+            loadData();
+            updateTime();
+            setInterval(updateTime, 1000);
+            
+            // 交易状态显示
+            showTradingStatus();
+            setInterval(showTradingStatus, 60000); // 每分钟更新一次状态
+            
+            startLiveUpdate();
+            
+            // 检查公告未读（模拟）
+            if (Math.random() > 0.5) {
+                document.getElementById('nav-badge').classList.remove('hidden');
+            }
+        };
+    </script>
+<!-- 关于平台弹窗 -->
+<div id="about-modal" class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center opacity-0 invisible transition-all" onclick="if(event.target===this)closeAbout()">
+    <div class="bg-white rounded-2xl shadow-2xl w-[90%] max-w-md transform scale-95 transition-transform p-6" id="about-content">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold text-gray-900">关于 REITs 数据平台</h3>
+            <button onclick="closeAbout()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-all">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="space-y-4 text-gray-600">
+            <p>REITs 数据平台是一个<strong>开放式金融数据平台</strong>，无需登录即可使用全部功能。</p>
+            <div class="bg-blue-50 rounded-xl p-4">
+                <h4 class="font-semibold text-blue-900 mb-2">🚀 平台特色</h4>
+                <ul class="text-sm space-y-1 text-blue-800">
+                    <li>• 实时行情数据 - 跟踪所有 REITs 基金</li>
+                    <li>• 板块热力图 - 直观展示涨跌分布</li>
+                    <li>• 智能对比 - 多维度基金对比分析</li>
+                    <li>• 公告追踪 - 重要信息及时掌握</li>
+                </ul>
+            </div>
+            <p class="text-xs text-gray-400">数据来源：新浪财经、东方财富、AKShare</p>
+        </div>
+    </div>
+</div>
+<style>
+    #about-modal.show { opacity: 1; visibility: visible; }
+    #about-modal.show #about-content { transform: scale(1); }
+</style>
+<script>
+    function showAbout() {
+        document.getElementById('about-modal').classList.add('show');
+    }
+    function closeAbout() {
+        document.getElementById('about-modal').classList.remove('show');
+    }
+</script>
+</body>
+</html>

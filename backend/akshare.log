@@ -1,0 +1,49 @@
+ * Tip: There are .env files present. Install python-dotenv to use them.
+============================================================
+AKShare REITs API ·þÎñÆô¶¯
+============================================================
+½Ó¿ÚÁÐ±í:
+  GET /health           - ½¡¿µ¼ì²é
+  GET /reit_realtime    - REITs ÊµÊ±ÐÐÇé (?symbol=508056)
+  GET /reit_hist        - REITs ÀúÊ·KÏß (?symbol=508056&period=daily)
+  GET /reit_dividend    - REITs ·ÖºìÊý¾Ý (?symbol=508056)
+  GET /reit_list        - REITs ÁÐ±í
+============================================================
+·þÎñµØÖ·: http://127.0.0.1:5000
+============================================================
+ * Serving Flask app 'akshare_server'
+ * Debug mode: off
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.31.203:5000
+Press CTRL+C to quit
+127.0.0.1 - - [08/Apr/2026 08:09:25] "GET /health HTTP/1.1" 200 -
+127.0.0.1 - - [08/Apr/2026 10:00:01] "GET /health HTTP/1.1" 200 -
+  0%|          | 0/14 [00:00<?, ?it/s]  7%|¨ƒ         | 1/14 [00:02<00:37,  2.86s/it] 14%|¨€¨…        | 2/14 [00:05<00:30,  2.53s/it] 21%|¨€¨€¨‡       | 3/14 [00:07<00:25,  2.28s/it]
+  0%|          | 0/14 [00:00<?, ?it/s][A                                              127.0.0.1 - - [08/Apr/2026 10:00:18] "GET /reit_realtime?symbol=180101 HTTP/1.1" 500 -
+
+  7%|¨ƒ         | 1/14 [00:06<01:20,  6.22s/it][A[AKShare] »ñÈ¡Êý¾ÝÊ§°Ü: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
+  0%|          | 0/14 [00:00<?, ?it/s]
+ 14%|¨€¨…        | 2/14 [00:08<00:48,  4.07s/it][A                                      127.0.0.1 - - [08/Apr/2026 10:00:31] "GET /reit_realtime?symbol=180103 HTTP/1.1" 500 -
+
+                                              [A127.0.0.1 - - [08/Apr/2026 10:00:33] "GET /reit_realtime?symbol=180102 HTTP/1.1" 500 -
+127.0.0.1 - - [08/Apr/2026 10:00:38] "GET /reit_realtime?symbol=180105 HTTP/1.1" 500 -
+127.0.0.1 - - [08/Apr/2026 10:00:46] "GET /reit_realtime?symbol=180106 HTTP/1.1" 500 -
+127.0.0.1 - - [08/Apr/2026 10:00:55] "GET /reit_realtime?symbol=180203 HTTP/1.1" 500 -
+127.0.0.1 - - [08/Apr/2026 10:01:03] "GET /reit_realtime?symbol=180302 HTTP/1.1" 500 -
+[AKShare] »ñÈ¡Êý¾ÝÊ§°Ü: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
+[AKShare] »ñÈ¡Êý¾ÝÊ§°Ü: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
+[AKShare] »ñÈ¡Êý¾ÝÊ§°Ü: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
+[AKShare] »ñÈ¡Êý¾ÝÊ§°Ü: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
+[AKShare] »ñÈ¡Êý¾ÝÊ§°Ü: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
+[AKShare] »ñÈ¡Êý¾ÝÊ§°Ü: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
+  0%|          | 0/14 [00:00<?, ?it/s]                                      127.0.0.1 - - [08/Apr/2026 10:01:13] "GET /reit_realtime?symbol=180303 HTTP/1.1" 500 -
+127.0.0.1 - - [08/Apr/2026 10:01:22] "GET /reit_realtime?symbol=180305 HTTP/1.1" 500 -
+127.0.0.1 - - [08/Apr/2026 10:01:29] "GET /reit_realtime?symbol=180306 HTTP/1.1" 500 -
+127.0.0.1 - - [08/Apr/2026 10:01:37] "GET /reit_realtime?symbol=180402 HTTP/1.1" 500 -
+127.0.0.1 - - [08/Apr/2026 10:01:46] "GET /reit_realtime?symbol=180502 HTTP/1.1" 500 -
+127.0.0.1 - - [08/Apr/2026 10:01:54] "GET /reit_realtime?symbol=180602 HTTP/1.1" 500 -
+127.0.0.1 - - [08/Apr/2026 10:02:02] "GET /reit_realtime?symbol=180603 HTTP/1.1" 500 -
+127.0.0.1 - - [08/Apr/2026 10:02:10] "GET /reit_realtime?symbol=180605 HTTP/1.1" 500 -
+127.0.0.1 - - [08/Apr/2026 10:02:16] "GET /reit_realtime?symbol=180606 HTTP/1.1" 500 -

@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python:*)",
+      "Bash(node -e \"const db = require\\(''./database/db''\\); db.initDatabase\\(\\).then\\(\\(\\) => console.log\\(''数据库初始化完成''\\)\\).catch\\(console.error\\)\")",
+      "Bash(curl -s http://localhost:8080/api/health)",
+      "Bash(curl:*)",
+      "Bash(node -c server.js)",
+      "Bash(node server.js)",
+      "Bash(node crawlers/price.js)",
+      "Bash(node crawlers/announcement_v2.js)",
+      "Bash(npm run:*)",
+      "Bash(node -e \"require\\(''cors''\\); console.log\\(''cors模块已安装''\\)\")",
+      "Bash(node -e \"const app = require\\(''express''\\)\\(\\); app.listen\\(8080, \\(\\) => console.log\\(''测试服务启动''\\)\\)\")",
+      "Bash(netstat -ano)",
+      "Bash(findstr :8080)"
+    ]
+  }
+}
