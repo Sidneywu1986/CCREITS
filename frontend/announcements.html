@@ -244,9 +244,22 @@
         let currentCategory = 'all';
         let currentTimeDays = 0;  // 默认显示全部
         let searchKeyword = '';
-        let displayCount = 20;
+        let displayCount = 100;
         let currentExchange = 'all';
         let isLoading = false;
+
+        // 防抖函数
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
 
         // 显示数据来源
         function showDataSource(source, count = 0) {
@@ -272,8 +285,8 @@
             try {
                 console.log('🔄 正在从API加载公告...');
                 const response = await REITS_API.getAnnouncements({ 
-                    limit: 200,
-                    days: 365
+                    limit: 100,
+                    days: 30
                 });
                 
                 if (response.success && response.data && response.data.length > 0) {
@@ -292,6 +305,7 @@
                         exchange: item.exchange || '',
                         sourceUrl: item.source_url || '',
                         pdfUrl: item.pdf_url || '',
+                        cninfoUrl: item.cninfo_url || '',
                         confidence: item.confidence || 85,
                         isRead: false
                     }));
@@ -311,22 +325,28 @@
             applyFilters();
         }
 
-        // 手动触发爬取
+        // 手动触发爬取 - 使用巨潮资讯网爬虫
         async function crawlAnnouncements() {
             const btn = document.getElementById('crawl-btn');
             btn.disabled = true;
             btn.innerHTML = '<svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> 爬取中...';
             
             try {
-                const response = await fetch('/api/announcements/crawl', {
+                // 调用巨潮资讯网批量爬虫
+                const response = await fetch('/api/cninfo/crawl-all', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ maxWorkers: 3, maxCount: 30 })
                 });
                 const result = await response.json();
                 
                 if (result.success) {
-                    showToast(`成功爬取 ${result.count} 条公告`, 'success');
-                    await loadAnnouncements();
+                    showToast('巨潮资讯网爬虫已启动，正在后台爬取全部79只REIT公告...', 'success');
+                    // 5秒后刷新数据
+                    setTimeout(async () => {
+                        await loadAnnouncements();
+                        showToast('公告数据已更新！', 'success');
+                    }, 5000);
                 } else {
                     showToast('爬取失败: ' + result.error, 'error');
                 }
@@ -604,20 +624,11 @@
                                                 阅读PDF
                                             </a>
                                         ` : ''}
-                                        ${hasSource && !hasPdf ? `
-                                            <a href="${item.sourceUrl}" target="_blank" onclick="event.stopPropagation(); markAsRead(${item.id});" 
+                                        <!-- 巨潮资讯网搜索链接 -->
+                                        ${item.code ? `
+                                            <a href="${item.cninfoUrl || 'http://www.cninfo.com.cn/new/information/topSearch/query?keyWord=' + item.code}" target="_blank" onclick="event.stopPropagation(); markAsRead(${item.id});" 
                                                 class="text-xs text-blue-600 font-medium hover:underline flex items-center gap-1">
                                                 查看原文 →
-                                            </a>
-                                        ` : ''}
-                                        <!-- 交易所公告链接 -->
-                                        ${item.code ? `
-                                            <a href="${getExchangeAnnouncementUrl(item.code, item.exchange)}" target="_blank" onclick="event.stopPropagation();" 
-                                                class="px-3 py-1.5 bg-gray-100 text-gray-600 text-xs font-medium rounded-lg hover:bg-gray-200 transition-all flex items-center gap-1">
-                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
-                                                </svg>
-                                                交易所公告
                                             </a>
                                         ` : ''}
                                     </div>
@@ -692,6 +703,18 @@
 
         // 初始化
         window.onload = async function() {
+            // 强制重置所有筛选器为默认值
+            document.getElementById('exchange-filter').value = 'all';
+            document.getElementById('time-filter-select').value = '0';
+            document.getElementById('announcement-search').value = '';
+            document.getElementById('only-favorite').checked = false;
+            
+            // 重置状态变量
+            currentCategory = 'all';
+            currentTimeDays = 0;
+            currentExchange = 'all';
+            searchKeyword = '';
+            
             await loadAnnouncements();
             updateCompareBar();
         };

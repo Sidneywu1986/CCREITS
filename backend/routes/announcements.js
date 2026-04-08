@@ -81,10 +81,21 @@ router.get('/', (req, res) => {
             });
         }
         
+        // 为每个公告添加巨潮资讯网链接
+        const enrichedAnnouncements = announcements.map(ann => ({
+            ...ann,
+            // 巨潮资讯网搜索链接（按基金代码）
+            cninfo_url: `http://www.cninfo.com.cn/new/information/topSearch/query?keyWord=${ann.fund_code}`,
+            // 如果有source_url，优先使用（存储的是公告详情页或PDF链接）
+            pdf_url: ann.source_url && ann.source_url.includes('static.cninfo.com.cn') 
+                ? ann.source_url 
+                : null
+        }));
+        
         res.json({
             success: true,
-            count: announcements.length,
-            data: announcements
+            count: enrichedAnnouncements.length,
+            data: enrichedAnnouncements
         });
     });
 });

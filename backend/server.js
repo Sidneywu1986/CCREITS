@@ -16,6 +16,7 @@ const crawlerManager = require('./crawlers');
 // 导入路由
 const fundsRouter = require('./routes/funds');
 const announcementsRouter = require('./routes/announcements');
+const cninfoRouter = require('./routes/cninfo');
 const systemRouter = require('./routes/system');
 const akshareRouter = require('./routes/akshare');
 const aiChatRouter = require('./routes/ai-chat');
@@ -70,6 +71,7 @@ app.use((req, res, next) => {
 // API路由
 app.use('/api/funds', fundsRouter);
 app.use('/api/announcements', announcementsRouter);
+app.use('/api/cninfo', cninfoRouter);
 app.use('/api/system', systemRouter);
 app.use('/api/akshare', akshareRouter);
 app.use('/api/ai-chat', aiChatRouter.router);
