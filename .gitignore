@@ -21,3 +21,26 @@ Thumbs.db
 # Temp files
 *.tmp
 *.temp
+
+# Test files
+backend/test*.py
+backend/test*.js
+check_db.py
+check_status.py
+update_pending.py
+backend/start_akshare_server.bat
+backend/akshare_reits_server.py
+backend/fund_detail_akshare.py
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Downloaded PDFs
+backend/reits_dividend_pdfs/
+backend/reits_announcements/
+
+# Database WAL files
+*.db-shm
+*.db-wal
