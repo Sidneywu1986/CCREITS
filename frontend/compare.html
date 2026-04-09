@@ -59,9 +59,9 @@
             </nav>
         </div>
 
-        <div class="w-48 mx-2">
+        <div class="w-64 mx-2">
             <div class="relative">
-                <input type="text" id="compare-search" placeholder="搜索并添加对比基金..."
+                <input type="text" id="compare-search" placeholder="搜索基金代码或名称..." data-v="2"
                     class="w-full pl-10 pr-4 py-2 bg-gray-100 border border-transparent rounded-lg text-sm focus:outline-none focus:bg-white focus:border-blue-500 transition-all">
                 <svg class="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
@@ -329,13 +329,21 @@
             if (stored) {
                 compareList = JSON.parse(stored);
             } else {
-                // 默认加载2只热门基金做示例
-                compareList = [
-                    { code: '508056', name: '中金普洛斯REIT' },
-                    { code: '508008', name: '华夏中国交建REIT' }
-                ];
-                saveCompareList();
-                showToast('已默认加载2只热门基金，您可以添加或替换', 'info');
+                // 检查是否从市场页面跳转过来（使用 reits_compare）
+                const marketCompare = localStorage.getItem('reits_compare');
+                if (marketCompare) {
+                    compareList = JSON.parse(marketCompare);
+                    saveCompareList();
+                    showToast(`已从市场导入 ${compareList.length} 只基金`, 'success');
+                } else {
+                    // 默认加载2只热门基金做示例
+                    compareList = [
+                        { code: '508056', name: '中金普洛斯REIT' },
+                        { code: '508008', name: '华夏中国交建REIT' }
+                    ];
+                    saveCompareList();
+                    showToast('已默认加载2只热门基金，您可以添加或替换', 'info');
+                }
             }
             renderPage();
         }
@@ -716,7 +724,7 @@
             container.innerHTML = results.map(f => {
                 const sectorClass = (typeof SECTOR_CONFIG !== 'undefined' && SECTOR_CONFIG[f.sector]?.tagClass) || 'bg-gray-100 text-gray-600';
                 return `
-                    <div onclick="addToCompare('${f.code}', '${f.name}')" class="px-4 py-2.5 hover:bg-gray-50 cursor-pointer flex justify-between items-center border-b border-gray-100 last:border-0 transition-colors">
+                    <div onclick="addToCompare('${f.code}', '${f.name?.replace(/'/g, '\\\'')}')" class="px-4 py-2.5 hover:bg-gray-50 cursor-pointer flex justify-between items-center border-b border-gray-100 last:border-0 transition-colors">
                         <div class="flex items-center gap-2">
                             <span class="mono text-blue-600 text-sm font-medium">${f.code}</span>
                             <span class="text-gray-700 text-sm">${f.name}</span>

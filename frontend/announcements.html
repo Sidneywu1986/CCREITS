@@ -626,8 +626,9 @@
                                         ` : ''}
                                         <!-- 巨潮资讯网搜索链接 -->
                                         ${item.code ? `
-                                            <a href="${item.cninfoUrl || 'http://www.cninfo.com.cn/new/information/topSearch/query?keyWord=' + item.code}" target="_blank" onclick="event.stopPropagation(); markAsRead(${item.id});" 
-                                                class="text-xs text-blue-600 font-medium hover:underline flex items-center gap-1">
+                                            <a href="${(item.cninfoUrl || 'https://www.cninfo.com.cn/new/disclosure/stock?stockCode=' + item.code).replace('http://', 'https://')}" target="_blank" onclick="event.stopPropagation(); markAsRead(${item.id});" 
+                                                class="text-xs text-blue-600 font-medium hover:underline flex items-center gap-1"
+                                                rel="noopener noreferrer">
                                                 查看原文 →
                                             </a>
                                         ` : ''}

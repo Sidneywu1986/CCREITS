@@ -362,7 +362,7 @@
                         <td class="px-3 md:px-4 py-3 text-right mono text-sm text-red-600 hidden lg:table-cell">${fund.yield.toFixed(2)}%</td>
                         <td class="px-3 md:px-4 py-3 text-center">
                             <div class="quick-actions flex items-center justify-center gap-1">
-                                <button onclick="toggleCompare('${fund.code}', '${fund.name}')" 
+                                <button onclick="toggleCompare('${fund.code}', '${fund.name?.replace(/'/g, '\\\'')}')" 
                                     class="p-1.5 rounded transition-all ${inCompare ? 'text-blue-600 bg-blue-50' : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'}" title="加入对比">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                 </button>

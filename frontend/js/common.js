@@ -99,3 +99,18 @@ const ALL_FUNDS = [
     { code: "508098", name: "京东仓储", sector: "logistics", sectorName: "仓储物流", price: 9.28, change: 0.91, premium: 4.6, yield: 6.6, debt: 41, volume: 41400, nav: 8.85, scale: 46.4, marketCap: 43.1, propertyType: "仓储物流", listingDate: "2021-06-21", remainingYears: "永久" },
     { code: "508099", name: "中关村", sector: "industrial", sectorName: "产业园区", price: 9.28, change: 0.91, premium: 4.6, yield: 6.6, debt: 41, volume: 41400, nav: 8.85, scale: 46.4, marketCap: 43.1, propertyType: "产业园", listingDate: "2021-06-21", remainingYears: "永久" },
 ];
+
+// Toast 提示函数
+function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    const colors = {
+        success: 'bg-green-500',
+        error: 'bg-red-500',
+        warning: 'bg-yellow-500',
+        info: 'bg-blue-500'
+    };
+    toast.className = `fixed top-4 right-4 ${colors[type]} text-white px-4 py-2 rounded-lg shadow-lg z-50 animate-fade-in`;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+}

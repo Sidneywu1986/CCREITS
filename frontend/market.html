@@ -49,6 +49,12 @@
         .flash-down { animation: flashDown 0.5s ease; }
         @keyframes flashUp { 0%,100%{background:transparent} 50%{background:rgba(220,38,38,0.08)} }
         @keyframes flashDown { 0%,100%{background:transparent} 50%{background:rgba(22,163,74,0.08)} }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in { animation: fadeIn 0.3s ease forwards; }
     </style>
 </head>
 <body class="h-screen flex flex-col overflow-hidden">
@@ -111,7 +117,10 @@
                         <button onclick="changePeriod(5)" id="btn-5d" class="period-btn px-3 py-1.5 text-sm rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all">5日</button>
                         <button onclick="changePeriod(20)" id="btn-20d" class="period-btn px-3 py-1.5 text-sm rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all">20日</button>
                     </div>
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-3">
+                        <button onclick="toggleSizeMode()" id="btn-size-mode" class="px-3 py-1.5 text-sm rounded-lg bg-purple-100 text-purple-700 hover:bg-purple-200 transition-all font-medium">
+                            💰 按成交额
+                        </button>
                         <span id="trading-status" class="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-500">--</span>
                         <span class="text-xs text-gray-500 mono">最后更新: <span id="update-time">--:--:--</span></span>
                     </div>
@@ -325,70 +334,98 @@
         let sortBy = 'change-desc';
         // 使用allFundsData变量，由loadData()初始化
         
+        // 格式化数值文本（全局函数）
+        function formatValueText(value) {
+            if (value > 100000000) {
+                return `${(value/100000000).toFixed(2)}亿`;
+            } else if (value > 10000) {
+                return `${(value/10000).toFixed(2)}万`;
+            }
+            return value.toLocaleString();
+        }
+        
+        // 格式化涨跌幅（修复正负号显示，全局函数）
+        function formatChange(change) {
+            if (change > 0) return `+${change}%`;
+            if (change < 0) return `${change}%`;
+            return `0%`;
+        }
+        
+        // 获取热力图数据（全局函数，供切换模式使用）
+        function getTreemapData() {
+            const sectorData = {};
+            
+            if (!allFundsData || allFundsData.length === 0) {
+                console.warn('热力图: 无数据');
+                return [];
+            }
+            
+            allFundsData.forEach(fund => {
+                try {
+                    const sector = fund.sector || 'other';
+                    const sectorName = SECTOR_CONFIG[sector]?.name || fund.sector_name || fund.sectorName || sector;
+                    
+                    // 根据模式选择板块大小计算方式
+                    let sizeValue = 0;
+                    if (treemapSizeMode === 'turnover') {
+                        // 按成交额：价格 × 成交量
+                        const price = fund.price || 0;
+                        const volume = fund.volume || 0;
+                        sizeValue = fund.turnover || (price * volume) || 0;
+                    } else {
+                        // 按市值
+                        sizeValue = fund.market_cap || fund.marketCap || 0;
+                    }
+                    
+                    // 根据周期计算涨跌幅
+                    let changePercent = fund.change_percent || fund.change || 0;
+                    
+                    // 使用真实的历史涨跌幅数据（如果有）
+                    if (currentTreemapPeriod === 5 && fund.change_5d !== undefined) {
+                        changePercent = fund.change_5d;
+                    } else if (currentTreemapPeriod === 20 && fund.change_20d !== undefined) {
+                        changePercent = fund.change_20d;
+                    }
+                    // 否则使用当日涨跌幅（暂时回退）
+                    
+                    if (!sectorData[sector]) {
+                        sectorData[sector] = { name: sectorName, value: 0, changeSum: 0, count: 0 };
+                    }
+                    sectorData[sector].value += sizeValue;
+                    sectorData[sector].changeSum += changePercent;
+                    sectorData[sector].count++;
+                } catch (e) {
+                    console.error('热力图数据处理出错:', fund, e);
+                }
+            });
+            
+            const result = Object.values(sectorData).map(s => ({
+                name: s.name,
+                value: s.value || 1,
+                change: parseFloat((s.changeSum / s.count).toFixed(2)),
+                itemStyle: {
+                    color: s.changeSum / s.count >= 0 ? 
+                        (s.changeSum / s.count > 0.3 ? '#dc2626' : '#f97316') : 
+                        (s.changeSum / s.count < -0.3 ? '#16a34a' : '#22c55e')
+                }
+            }));
+            
+            console.log('热力图数据:', result);
+            return result;
+        }
+        
         // 初始化热力图
         function initTreemap() {
             const chart = echarts.init(document.getElementById('treemap'));
-            
-            function getTreemapData() {
-                const sectorData = {};
-                
-                if (!allFundsData || allFundsData.length === 0) {
-                    console.warn('热力图: 无数据');
-                    return [];
-                }
-                
-                allFundsData.forEach(fund => {
-                    try {
-                        const sector = fund.sector || 'other';
-                        const sectorName = SECTOR_CONFIG[sector]?.name || fund.sector_name || fund.sectorName || sector;
-                        const marketCap = fund.market_cap || fund.marketCap || fund.volume || 0;
-                        
-                        // 根据周期计算涨跌幅
-                        let changePercent = fund.change_percent || fund.change || 0;
-                        if (currentTreemapPeriod === 5) {
-                            // 5日涨跌幅 - 基于1日数据模拟
-                            changePercent = changePercent * (2.5 + Math.random() * 1.5);
-                        } else if (currentTreemapPeriod === 20) {
-                            // 20日涨跌幅 - 基于1日数据模拟
-                            changePercent = changePercent * (5 + Math.random() * 3);
-                        }
-                        
-                        if (!sectorData[sector]) {
-                            sectorData[sector] = { name: sectorName, value: 0, changeSum: 0, count: 0 };
-                        }
-                        sectorData[sector].value += marketCap;
-                        sectorData[sector].changeSum += changePercent;
-                        sectorData[sector].count++;
-                    } catch (e) {
-                        console.error('热力图数据处理出错:', fund, e);
-                    }
-                });
-                
-                const result = Object.values(sectorData).map(s => ({
-                    name: s.name,
-                    value: s.value || 1,
-                    change: parseFloat((s.changeSum / s.count).toFixed(2)),
-                    itemStyle: {
-                        color: s.changeSum / s.count >= 0 ? 
-                            (s.changeSum / s.count > 0.3 ? '#dc2626' : '#f97316') : 
-                            (s.changeSum / s.count < -0.3 ? '#16a34a' : '#22c55e')
-                    }
-                }));
-                
-                console.log('热力图数据:', result);
-                return result;
-            }
             
             function render() {
                 chart.setOption({
                     tooltip: {
                         formatter: function(info) {
-                            const valueText = info.value > 1000000 ? 
-                                `${(info.value/1000000).toFixed(2)}百万` : 
-                                `${info.value.toLocaleString()}`;
+                            const valueLabel = treemapSizeMode === 'turnover' ? '成交额' : '市值';
                             return `<div class="font-medium">${info.name}</div>
-                                    <div class="text-sm">涨跌幅: ${info.data.change > 0 ? '+' : ''}${info.data.change}%</div>
-                                    <div class="text-sm">成交量: ${valueText}</div>`;
+                                    <div class="text-sm">涨跌幅: ${formatChange(info.data.change)}</div>
+                                    <div class="text-sm">${valueLabel}: ${formatValueText(info.value)}</div>`;
                         }
                     },
                     series: [{
@@ -398,7 +435,7 @@
                         label: {
                             show: true,
                             formatter: function(params) {
-                                return `{name|${params.name}}\n{value|${params.data.change > 0 ? '+' : ''}${params.data.change}%}`;
+                                return `{name|${params.name}}\n{value|${formatChange(params.data.change)}}`;
                             },
                             rich: {
                                 name: { fontSize: 13, fontWeight: 600, color: '#fff' },
@@ -539,11 +576,11 @@
                         <td class="px-3 md:px-4 py-3 text-right mono text-sm text-red-600 hidden lg:table-cell">${fund.yield ? (fund.yield/100).toFixed(2) + '%' : '--'}</td>
                         <td class="px-3 md:px-4 py-3 text-center">
                             <div class="quick-actions flex items-center justify-center gap-1">
-                                <button onclick="event.stopPropagation(); toggleCompare('${fund.code}', '${fund.name}')" 
+                                <button onclick="event.stopPropagation(); toggleCompare('${fund.code}', '${fund.name?.replace(/'/g, '\\\'')}')" 
                                     class="p-1.5 rounded transition-all ${inCompare ? 'text-blue-600 bg-blue-50' : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'}" title="加入对比">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                 </button>
-                                <button onclick="event.stopPropagation(); addToWatchlist('${fund.code}', '${fund.name}')" class="p-1.5 text-gray-400 hover:text-yellow-600 hover:bg-yellow-50 rounded transition-all" title="加入自选">
+                                <button onclick="event.stopPropagation(); addToWatchlist('${fund.code}', '${fund.name?.replace(/'/g, '\\\'')}')" class="p-1.5 text-gray-400 hover:text-yellow-600 hover:bg-yellow-50 rounded transition-all" title="加入自选">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
                                 </button>
                                 <button onclick="event.stopPropagation(); quickPreview('${fund.code}')" class="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded transition-all" title="快速预览">
@@ -598,6 +635,21 @@
             }
             updateCompareBar();
             renderTable();
+        }
+
+        // 清空对比列表
+        function clearCompare() {
+            localStorage.setItem('reits_compare', '[]');
+        }
+
+        // 跳转到对比页面
+        function goToCompare() {
+            const list = getCompareList();
+            if (list.length < 2) {
+                showToast('请至少选择2只基金进行对比', 'warning');
+                return;
+            }
+            window.location.href = './compare.html';
         }
 
         // 重写对比栏更新（适配本页UI）
@@ -776,6 +828,9 @@
         // 当前热力图周期
         let currentTreemapPeriod = 1;
         
+        // 热力图大小模式: 'turnover'(成交额) 或 'marketcap'(市值)
+        let treemapSizeMode = 'turnover';
+        
         // 实时刷新（仅在交易时间，且根据数据源类型决定更新方式）
         function startLiveUpdate() {
             setInterval(async () => {
@@ -835,7 +890,7 @@
             }, 300));
         }
 
-        // 周期切换（模拟）
+        // 周期切换
         function changePeriod(days) {
             currentTreemapPeriod = days;
             
@@ -847,7 +902,7 @@
             event.target.classList.remove('bg-gray-100', 'text-gray-600');
             event.target.classList.add('bg-blue-600', 'text-white');
             
-            // 重新渲染热力图
+            // 重新渲染热力图 - 使用真实的5日、20日数据
             const chart = echarts.getInstanceByDom(document.getElementById('treemap'));
             if (chart) {
                 const sectorData = {};
@@ -855,19 +910,31 @@
                     try {
                         const sector = fund.sector || 'other';
                         const sectorName = SECTOR_CONFIG[sector]?.name || fund.sector_name || fund.sectorName || sector;
-                        const marketCap = fund.market_cap || fund.marketCap || fund.volume || 0;
                         
+                        // 根据模式选择板块大小计算方式
+                        let sizeValue = 0;
+                        if (treemapSizeMode === 'turnover') {
+                            // 按成交额：价格 × 成交量
+                            const price = fund.price || 0;
+                            const volume = fund.volume || 0;
+                            sizeValue = fund.turnover || (price * volume) || 0;
+                        } else {
+                            // 按市值
+                            sizeValue = fund.market_cap || fund.marketCap || 0;
+                        }
+                        
+                        // 根据周期选择对应的涨跌幅数据
                         let changePercent = fund.change_percent || fund.change || 0;
-                        if (days === 5) {
-                            changePercent = changePercent * (2.5 + Math.random() * 1.5);
-                        } else if (days === 20) {
-                            changePercent = changePercent * (5 + Math.random() * 3);
+                        if (days === 5 && fund.change5d !== undefined) {
+                            changePercent = fund.change5d;
+                        } else if (days === 20 && fund.change20d !== undefined) {
+                            changePercent = fund.change20d;
                         }
                         
                         if (!sectorData[sector]) {
                             sectorData[sector] = { name: sectorName, value: 0, changeSum: 0, count: 0 };
                         }
-                        sectorData[sector].value += marketCap;
+                        sectorData[sector].value += sizeValue;
                         sectorData[sector].changeSum += changePercent;
                         sectorData[sector].count++;
                     } catch (e) {
@@ -887,11 +954,24 @@
                 }));
                 
                 chart.setOption({
+                    tooltip: {
+                        formatter: function(info) {
+                            const valueLabel = treemapSizeMode === 'turnover' ? '成交额' : '市值';
+                            return `<div class="font-medium">${info.name}</div>
+                                    <div class="text-sm">涨跌幅: ${formatChange(info.data.change)}</div>
+                                    <div class="text-sm">${valueLabel}: ${formatValueText(info.value)}</div>`;
+                        }
+                    },
                     series: [{
                         data: data,
                         label: {
+                            show: true,
                             formatter: function(params) {
-                                return params.name + '\n+' + params.data.change + '%';
+                                return `{name|${params.name}}\n{value|${formatChange(params.data.change)}}`;
+                            },
+                            rich: {
+                                name: { fontSize: 13, fontWeight: 600, color: '#fff' },
+                                value: { fontSize: 15, fontWeight: 700, color: '#fff', lineHeight: 22 }
                             }
                         }
                     }]
@@ -899,6 +979,37 @@
             }
             
             showToast(`已切换${days}日涨跌幅视图`, 'info');
+        }
+
+        // 切换热力图大小模式
+        function toggleSizeMode() {
+            treemapSizeMode = treemapSizeMode === 'turnover' ? 'marketcap' : 'turnover';
+            
+            // 更新按钮显示
+            const btn = document.getElementById('btn-size-mode');
+            if (treemapSizeMode === 'turnover') {
+                btn.innerHTML = '💰 按成交额';
+                btn.className = 'px-3 py-1.5 text-sm rounded-lg bg-purple-100 text-purple-700 hover:bg-purple-200 transition-all font-medium';
+            } else {
+                btn.innerHTML = '🏢 按市值';
+                btn.className = 'px-3 py-1.5 text-sm rounded-lg bg-indigo-100 text-indigo-700 hover:bg-indigo-200 transition-all font-medium';
+            }
+            
+            // 重新渲染热力图
+            const chart = echarts.getInstanceByDom(document.getElementById('treemap'));
+            if (chart) {
+                chart.setOption({
+                    series: [{ 
+                        data: getTreemapData(),
+                        // 强制重新计算树形布局
+                        levels: [
+                            { itemStyle: { borderColor: '#fff', borderWidth: 2, gapWidth: 2 } }
+                        ]
+                    }]
+                }, { notMerge: true });  // 强制完全重新渲染
+            }
+            
+            showToast(`已切换为按${treemapSizeMode === 'turnover' ? '成交额' : '市值'}显示`, 'info');
         }
 
         // 加入自选

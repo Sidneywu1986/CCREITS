@@ -50,6 +50,49 @@ function calculateYield(price, dividends) {
     return parseFloat((annualDividend / price * 100).toFixed(2));
 }
 
+/**
+ * 获取基金历史价格变化（5日、20日）
+ * @param {Array} fundCodes - 基金代码列表
+ * @returns {Object} - {code: {change5d, change20d}}
+ */
+async function getFundsHistoryChange(fundCodes) {
+    const result = {};
+    
+    // 为每个基金获取历史数据
+    const promises = fundCodes.map(code => {
+        return new Promise((resolve) => {
+            const sql = `
+                SELECT date, close
+                FROM price_history
+                WHERE fund_code = ?
+                ORDER BY date DESC
+                LIMIT 25
+            `;
+            
+            db.all(sql, [code], (err, rows) => {
+                if (err || !rows || rows.length < 2) {
+                    result[code] = { change5d: null, change20d: null };
+                    resolve();
+                    return;
+                }
+                
+                const today = rows[0]?.close;
+                const day5 = rows[4]?.close;
+                const day20 = rows[19]?.close;
+                
+                const change5d = day5 ? parseFloat(((today - day5) / day5 * 100).toFixed(2)) : null;
+                const change20d = day20 ? parseFloat(((today - day20) / day20 * 100).toFixed(2)) : null;
+                
+                result[code] = { change5d, change20d };
+                resolve();
+            });
+        });
+    });
+    
+    await Promise.all(promises);
+    return result;
+}
+
 // REITs 板块映射表（代码段 -> 板块信息）- 基于Excel导入的真实数据
 // 注意：数据库中的 sector 字段是主要数据来源，此为后备映射
 const SECTOR_MAP = {
@@ -201,7 +244,7 @@ router.get('/', (req, res) => {
         ORDER BY f.code
     `;
     
-    db.all(sql, [], (err, funds) => {
+    db.all(sql, [], async (err, funds) => {
         if (err) {
             console.error('获取基金列表失败:', err);
             return res.status(500).json({
@@ -209,6 +252,12 @@ router.get('/', (req, res) => {
                 error: err.message
             });
         }
+        
+        // 获取所有基金代码
+        const fundCodes = funds.map(f => f.code);
+        
+        // 批量获取历史价格计算5日、20日涨跌幅
+        const historyData = await getFundsHistoryChange(fundCodes);
         
         // 补充缺失的 sector 信息，并统一字段命名（驼峰式）
         // 同时计算溢价率和流通市值
@@ -222,6 +271,9 @@ router.get('/', (req, res) => {
             // 实时计算溢价率和流通市值
             const premium = calculatePremium(fund.price, fund.nav);
             const marketCap = calculateMarketCap(fund.price, fund.circulating_shares);
+            
+            // 获取历史涨跌幅
+            const hist = historyData[fund.code] || {};
             
             // 统一转换为驼峰命名，兼容前端
             return {
@@ -237,6 +289,8 @@ router.get('/', (req, res) => {
                 price: fund.price,
                 change: fund.change_percent,
                 changePercent: fund.change_percent,
+                change5d: hist.change5d,
+                change20d: hist.change20d,
                 yield: fund.yield,
                 premium: premium !== null ? premium : fund.premium,
                 volume: fund.volume,
