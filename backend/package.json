@@ -1,36 +1,8 @@
 {
-  "name": "reits-backend",
-  "version": "1.0.0",
-  "description": "REITs数据平台后端 - 多爬虫架构",
-  "main": "server.js",
-  "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js",
-    "crawl:all": "node scripts/crawl-all.js",
-    "crawl:announcement": "node crawlers/announcement.js",
-    "crawl:detail": "node scripts/crawl-fund-detail.js",
-    "db:migrate": "node database/migrate-add-fields.js",
-    "db:check": "node scripts/check-data.js",
-    "test:calc": "node scripts/test-calculation.js",
-    "check:funds": "node scripts/check-fund-count.js",
-    "akshare:start": "python akshare_reits_server.py",
-    "akshare:test": "node -e \"const axios=require('axios');axios.get('http://127.0.0.1:5000/health').then(r=>console.log('AKShare服务:',r.data))\"",
-    "crawl:dividend": "python crawlers/dividend_crawler.py",
-    "crawl:dividend:all": "python crawlers/dividend_crawler.py --all"
-  },
   "dependencies": {
-    "axios": "^1.6.7",
-    "cheerio": "^1.0.0-rc.12",
-    "cors": "^2.8.5",
-    "dotenv": "^16.4.5",
-    "express": "^4.18.2",
-    "iconv-lite": "^0.6.3",
-    "node-cron": "^3.0.3",
-    "sqlite3": "^5.1.7",
-    "ws": "^8.20.0",
-    "xlsx": "^0.18.5"
-  },
-  "devDependencies": {
-    "nodemon": "^3.0.3"
+    "axios": "^1.15.0",
+    "iconv-lite": "^0.7.2",
+    "node-cron": "^4.2.1",
+    "sqlite3": "^6.0.1"
   }
 }

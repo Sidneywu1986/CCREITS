@@ -1,9 +1,10 @@
-# REITs 数据平台 - Python 依赖
-# AKShare 数据接口
-
-akshare>=1.11.0
-pandas>=2.0.0
-numpy>=1.24.0
-requests>=2.31.0
-flask>=2.3.0
-flask-cors>=4.0.0
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+sqlalchemy==2.0.25
+pydantic==2.5.3
+pydantic-settings==2.1.0
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-multipart==0.0.6
+httpx==0.26.0
+aiofiles==23.2.1

@@ -39,8 +39,8 @@ class REITBasicInfoCrawler:
         """从数据库获取所有REIT基金代码"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        cursor.execute('SELECT code, name FROM funds ORDER BY code')
-        funds = [{'code': row[0], 'name': row[1]} for row in cursor.fetchall()]
+        cursor.execute('SELECT fund_code, fund_name FROM funds ORDER BY fund_code')
+        funds = [{'fund_code': row[0], 'fund_name': row[1]} for row in cursor.fetchall()]
         conn.close()
         return funds
     
@@ -240,14 +240,22 @@ class REITBasicInfoCrawler:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
             
-            # 构建更新SQL
+            # 构建更新SQL - 映射字段名到数据库列名
+            field_mapping = {
+                'scale': 'total_shares',  # 规模(亿) -> total_shares
+                'listing_date': 'ipo_date',  # 成立日期 -> ipo_date
+                'manager': 'manager',
+                'nav': 'nav',
+                'remaining_years': 'asset_type',  # 临时存储剩余期限
+            }
+            
             fields = []
             values = []
             
-            for key in ['scale', 'listing_date', 'remaining_years', 'manager', 'nav', 'debt_ratio', 'institution_hold']:
-                if fund_data.get(key) is not None:
-                    fields.append(f"{key} = ?")
-                    values.append(fund_data[key])
+            for source_key, db_column in field_mapping.items():
+                if fund_data.get(source_key) is not None:
+                    fields.append(f"{db_column} = ?")
+                    values.append(fund_data[source_key])
             
             if not fields:
                 print(f"[{fund_data['code']}] 无数据可更新")
@@ -257,10 +265,10 @@ class REITBasicInfoCrawler:
             fields.append("updated_at = ?")
             values.append(fund_data['updated_at'])
             
-            # 添加WHERE条件
+            # 添加WHERE条件 - 使用fund_code
             values.append(fund_data['code'])
             
-            sql = f"UPDATE funds SET {', '.join(fields)} WHERE code = ?"
+            sql = f"UPDATE funds SET {', '.join(fields)} WHERE fund_code = ?"
             cursor.execute(sql, values)
             conn.commit()
             conn.close()
@@ -271,21 +279,21 @@ class REITBasicInfoCrawler:
             print(f"[DB] 更新{fund_data['code']}失败: {e}")
             return False
     
-    def crawl_single(self, code: str, name: str) -> Dict:
+    def crawl_single(self, fund_code: str, fund_name: str) -> Dict:
         """
         爬取单只REIT的基础信息
         """
-        print(f"\n[{code}] {name}")
+        print(f"\n[{fund_code}] {fund_name}")
         print("-" * 50)
         
         # 从多个数据源获取数据
-        eastmoney_data = self.fetch_eastmoney_basic(code)
-        eastmoney_api_data = self.fetch_eastmoney_detail_api(code)
-        sina_data = self.fetch_sina_basic(code)
-        cninfo_data = self.fetch_cninfo_basic(code)
+        eastmoney_data = self.fetch_eastmoney_basic(fund_code)
+        eastmoney_api_data = self.fetch_eastmoney_detail_api(fund_code)
+        sina_data = self.fetch_sina_basic(fund_code)
+        cninfo_data = self.fetch_cninfo_basic(fund_code)
         
         # 合并数据
-        merged = self.merge_data(code, [eastmoney_data, eastmoney_api_data, sina_data, cninfo_data])
+        merged = self.merge_data(fund_code, [eastmoney_data, eastmoney_api_data, sina_data, cninfo_data])
         
         # 打印获取到的数据
         print(f"  规模: {merged.get('scale', '--')}亿")
@@ -318,7 +326,7 @@ class REITBasicInfoCrawler:
                 break
             
             try:
-                self.crawl_single(fund['code'], fund['name'])
+                self.crawl_single(fund['fund_code'], fund['fund_name'])
                 success_count += 1
             except Exception as e:
                 print(f"  [ERROR] 爬取失败: {e}")
