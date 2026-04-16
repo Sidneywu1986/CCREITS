@@ -1,0 +1,22 @@
+{
+  "name": "reits-frontend",
+  "version": "1.0.0",
+  "scripts": {
+    "build:css": "tailwindcss -i ./src/input.css -o ./css/tailwind.css --minify",
+    "watch:css": "tailwindcss -i ./src/input.css -o ./css/tailwind.css --watch",
+    "test": "jest",
+    "test:watch": "jest --watch"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "tailwindcss": "^3.4.19"
+  },
+  "jest": {
+    "testEnvironment": "jsdom",
+    "testMatch": [
+      "**/*.test.js"
+    ],
+    "setupFilesAfterEnv": []
+  }
+}

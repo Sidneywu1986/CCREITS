@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>分红日历 - REITs数据平台</title>
+    <link rel="stylesheet" href="./css/tailwind.css">
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./css/common.css">
+    <style>
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background-color: #f8fafc; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 2px; }
+        
+        /* 紧凑日历样式 */
+        .mini-calendar { 
+            font-size: 12px; 
+        }
+        .mini-calendar .day-cell {
+            min-height: 48px;
+            padding: 2px;
+        }
+        .dividend-tag {
+            font-size: 11px;
+            line-height: 1.2;
+            padding: 1px 2px;
+            border-radius: 2px;
+            margin-bottom: 1px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        /* 板块标签颜色 - 统一规范 */
+        .sector-logistics { background: #dbeafe; color: #1e40af; }
+        .sector-industrial { background: #e0e7ff; color: #3730a3; }
+        .sector-transport { background: #d1fae5; color: #065f46; }
+        .sector-energy { background: #fef3c7; color: #92400e; }
+        .sector-consumer { background: #fce7f3; color: #be185d; }
+        .sector-housing { background: #f3e8ff; color: #7c3aed; }
+        .sector-municipal { background: #f3f4f6; color: #374151; }
+        .sector-water { background: #cffafe; color: #0e7490; }
+        .sector-eco { background: #d1fae5; color: #047857; }
+        .sector-datacenter { background: #ffedd5; color: #c2410c; }
+        .sector-tourism { background: #ccfbf1; color: #0f766e; }
+        .sector-commercial { background: #e2e8f0; color: #475569; }
+        .sector-elderly { background: #ffe4e6; color: #be123c; }
+        .sector-urban { background: #fef08a; color: #854d0e; }
+        
+        .compare-bar {
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+        }
+        .compare-bar.show { transform: translateY(0); }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+    <!-- Header -->
+    <header class="h-[60px] bg-white border-b border-gray-200 flex items-center justify-between px-6 flex-none z-40">
+        <div class="flex items-center gap-4">
+            <div class="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-lg flex items-center justify-center text-white font-bold text-sm">R</div>
+            <span class="font-bold text-gray-900 text-lg tracking-tight">REITs数据平台</span>
+            <nav class="hidden md:flex items-center gap-0.5 ml-4">
+                <a href="./market.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">市场</a>
+                <a href="./fund-detail.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">详情</a>
+                <a href="./ai-chat.html" class="px-3 py-1.5 text-sm font-medium text-purple-600 bg-purple-50 rounded-lg transition-all flex items-center gap-1">
+                    <span class="w-1.5 h-1.5 bg-purple-500 rounded-full animate-pulse"></span>
+                    AI聊REITs
+                </a>
+                <a href="./announcements.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">公告</a>
+                <a href="./portfolio.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">自选</a>
+                <a href="./compare.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">对比</a>
+                <a href="./tools.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">工具</a>
+                <a href="./dividend-calendar.html" class="px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg">分红</a>
+                <a href="./fund-archive.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">AI投研</a>
+            </nav>
+        </div>
+        
+        <div class="w-40 mx-2">
+            <div class="relative">
+                <input type="text" id="global-search" placeholder="搜索基金代码或名称..." 
+                    class="w-full pl-10 pr-4 py-2 bg-gray-100 border border-transparent rounded-lg text-sm focus:outline-none focus:bg-white focus:border-blue-500 transition-all">
+                <svg class="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+            </div>
+        </div>
+        
+        <div class="flex items-center gap-3 md:gap-4">
+            <button class="p-2 text-gray-500 hover:text-gray-700 relative" onclick="window.location.href='./announcements.html'">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                </svg>
+                <span id="nav-badge" class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full hidden"></span>
+            </button>
+            <button onclick="window.location.href='./portfolio.html'" class="hidden sm:flex px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-medium rounded-lg hover:shadow-lg hover:shadow-blue-200 transition-all items-center gap-2">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                自选
+            </button>
+            <button onclick="showAbout()" class="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-full flex items-center justify-center text-xs hover:shadow-lg transition-all" title="关于平台">?</button>
+        </div>
+    </header>
+
+    <!-- 主内容区 -->
+    <main class="flex-1 overflow-auto bg-slate-50">
+        <div class="w-full h-full flex flex-col">
+            
+            <!-- 顶部：紧凑日历条 -->
+            <div class="bg-white border-b border-gray-200 p-3 flex-none">
+                <div class="flex items-center justify-between mb-2">
+                    <h2 class="text-base font-bold text-gray-900">📅 分红日历</h2>
+                    <div class="flex items-center gap-2">
+                        <button id="prev-month" class="p-1 hover:bg-gray-100 rounded text-gray-600">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                        </button>
+                        <span id="current-month-display" class="text-sm font-medium text-gray-900">2026年3月</span>
+                        <button id="next-month" class="p-1 hover:bg-gray-100 rounded text-gray-600">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                        </button>
+                    </div>
+                </div>
+                <!-- 紧凑日历网格 -->
+                <div id="mini-calendar" class="mini-calendar">
+                    <!-- 动态生成 -->
+                </div>
+            </div>
+
+            <!-- 三栏布局 -->
+            <div class="flex-1 grid grid-cols-3 gap-4 p-4 overflow-hidden">
+                
+                <!-- 左栏：分红日历详细列表 -->
+                <div class="bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col overflow-hidden">
+                    <div class="p-3 border-b border-gray-100 flex items-center justify-between">
+                        <h3 class="font-bold text-gray-900 text-sm">📋 分红明细</h3>
+                        <div class="flex gap-2">
+                            <button class="text-xs px-2 py-1 bg-blue-50 text-blue-600 rounded">全部</button>
+                            <button class="text-xs px-2 py-1 text-gray-500 hover:bg-gray-50 rounded">本周</button>
+                        </div>
+                    </div>
+                    <div id="dividend-list" class="flex-1 overflow-y-auto p-3 space-y-2">
+                        <!-- 动态生成 -->
+                    </div>
+                </div>
+
+                <!-- 中栏：收益分析 -->
+                <div class="flex flex-col gap-4 overflow-hidden">
+                    <!-- 图表 -->
+                    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-3 flex-1">
+                        <h3 class="font-bold text-gray-900 text-sm mb-2">📊 月度分红趋势</h3>
+                        <div id="monthly-chart" style="height: calc(100% - 30px);"></div>
+                    </div>
+                    <!-- 排行榜 -->
+                    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-3 flex-1 overflow-hidden">
+                        <h3 class="font-bold text-gray-900 text-sm mb-2">🏆 高分红排行</h3>
+                        <div id="ranking-list" class="overflow-y-auto space-y-2" style="max-height: calc(100% - 30px);">
+                            <!-- 动态生成 -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 右栏：我的分红 -->
+                <div class="flex flex-col gap-4 overflow-hidden">
+                    <!-- 即将到账提醒 -->
+                    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-3">
+                        <h3 class="font-bold text-gray-900 text-sm mb-2">⏰ 即将到账</h3>
+                        <div id="upcoming-reminder" class="space-y-2">
+                            <!-- 动态生成 -->
+                        </div>
+                    </div>
+                    
+                    <!-- 税务计算器 -->
+                    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-3">
+                        <h3 class="font-bold text-gray-900 text-sm mb-2">🧮 税务计算</h3>
+                        <div class="space-y-2">
+                            <div class="flex items-center justify-between text-xs">
+                                <span class="text-gray-500">持有期限</span>
+                                <select class="text-xs border rounded px-2 py-1">
+                                    <option>1个月以内</option>
+                                    <option>1-12个月</option>
+                                    <option>1年以上</option>
+                                </select>
+                            </div>
+                            <div class="flex items-center justify-between text-xs">
+                                <span class="text-gray-500">分红金额</span>
+                                <input type="text" placeholder="10000" class="w-20 text-xs border rounded px-2 py-1 text-right">
+                            </div>
+                            <div class="flex items-center justify-between text-xs border-t pt-2">
+                                <span class="text-gray-700 font-medium">应纳税额</span>
+                                <span class="text-red-600 font-bold">2000元</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 历史到账记录 -->
+                    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-3 flex-1 overflow-hidden">
+                        <h3 class="font-bold text-gray-900 text-sm mb-2">📜 历史记录</h3>
+                        <div id="history-list" class="overflow-y-auto space-y-2" style="max-height: calc(100% - 30px);">
+                            <div class="text-xs text-gray-400 text-center py-4">暂无历史记录</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 底部对比栏 -->
+    <div id="compare-bar" class="compare-bar fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur border-t border-gray-200 shadow-lg z-50 px-4 py-2">
+        <div class="w-full flex items-center justify-between">
+            <div class="flex items-center gap-2 overflow-hidden">
+                <span class="text-xs font-medium text-gray-700 flex-none">🛒 对比:</span>
+                <div id="compare-items" class="flex gap-1.5 overflow-x-auto"></div>
+            </div>
+            <div class="flex items-center gap-2 flex-none ml-2">
+                <span id="compare-count" class="text-xs text-gray-500">0/4</span>
+                <button onclick="clearCompare(); updateCompareBar();" class="text-xs text-gray-400 hover:text-red-500">清空</button>
+                <button onclick="goToCompare()" id="btn-compare" class="px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg opacity-50 cursor-not-allowed" disabled>
+                    对比 →
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 分红详情弹窗 -->
+    <div id="dividend-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden" onclick="closeModal(event)">
+        <div class="bg-white rounded-xl max-w-md w-full mx-4 p-4 shadow-2xl" onclick="event.stopPropagation()">
+            <div class="flex justify-between items-center mb-3">
+                <h3 id="modal-title" class="text-base font-bold text-gray-900">分红详情</h3>
+                <button onclick="document.getElementById('dividend-modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600 p-1">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div id="modal-content" class="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
+                <!-- 动态生成 -->
+            </div>
+        </div>
+    </div>
+
+    <script src="./js/common.js"></script>
+    <script src="./js/api.js"></script>
+    <script>
+        // 全局基金数据
+        let calendarFundsData = ALL_FUNDS || [];
+        
+        // 异步加载基金数据
+        async function loadCalendarFunds() {
+            try {
+                console.log('🔄 正在从API加载基金数据...');
+                const response = await REITS_API.getFunds();
+                if (response.data && response.data.length > 0) {
+                    calendarFundsData = response.data;
+                    console.log('✅ API数据加载成功:', calendarFundsData.length, '只基金');
+                    showDataSource('API');
+                }
+            } catch (error) {
+                console.warn('⚠️ API加载失败，使用Mock数据:', error.message);
+                calendarFundsData = ALL_FUNDS || [];
+                showDataSource('Mock');
+            }
+        }
+        
+        // 显示数据来源
+        function showDataSource(source) {
+            const indicator = document.createElement('div');
+            indicator.className = 'fixed bottom-4 right-4 text-xs px-3 py-1.5 rounded-full z-50 transition-all ' + 
+                (source === 'API' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700');
+            indicator.innerHTML = source === 'API' 
+                ? '🟢 实时数据（API）' 
+                : '🟡 模拟数据（Mock）';
+            document.body.appendChild(indicator);
+            setTimeout(() => { indicator.style.opacity = '0.5'; }, 3000);
+        }
+        
+        // 生成分红模拟数据
+        function generateDividendData() {
+            const dividends = [];
+            const startDate = new Date('2025-01-01');
+            const endDate = new Date('2026-12-31');
+            const totalDays = Math.floor((endDate - startDate) / (1000 * 60 * 60 * 24));
+            
+            for (let i = 0; i < 180; i++) {
+                const fund = calendarFundsData[Math.floor(Math.random() * calendarFundsData.length)];
+                const offset = Math.floor(Math.random() * totalDays);
+                const date = new Date(startDate.getTime() + offset * 86400000);
+                
+                dividends.push({
+                    id: i,
+                    code: fund.code,
+                    name: fund.name,
+                    shortName: fund.name.replace('REIT', '').slice(0, 4),
+                    sector: fund.sector,
+                    exDate: date.toISOString().split('T')[0],
+                    recordDate: new Date(date.getTime() + 2 * 86400000).toISOString().split('T')[0],
+                    paymentDate: new Date(date.getTime() + 14 * 86400000).toISOString().split('T')[0],
+                    amount: parseFloat((0.3 + Math.random() * 1.2).toFixed(2)),
+                    yield: fund.yield
+                });
+            }
+            
+            dividends.sort((a, b) => new Date(a.exDate) - new Date(b.exDate));
+            return dividends;
+        }
+        
+        let DIVIDEND_DATA = [];
+        let currentYear = 2026;
+        let currentMonth = 3;
+        let monthlyChart = null;
+        
+        // 异步初始化数据
+        async function initCalendarData() {
+            await loadCalendarFunds();
+            DIVIDEND_DATA = generateDividendData();
+            initCalendar(); // 初始化日历显示
+        }
+        
+        // 获取板块颜色标签（使用统一规范）
+        function getSectorTagClass(sector) {
+            const tagMap = {
+                'industrial': 'sector-industrial',
+                'logistics': 'sector-logistics',
+                'transport': 'sector-transport',
+                'energy': 'sector-energy',
+                'housing': 'sector-housing',
+                'consumer': 'sector-consumer',
+                'eco': 'sector-eco',
+                'water': 'sector-water',
+                'municipal': 'sector-municipal',
+                'datacenter': 'sector-datacenter',
+                'tourism': 'sector-tourism',
+                'commercial': 'sector-commercial',
+                'elderly': 'sector-elderly',
+                'urban': 'sector-urban'
+            };
+            return tagMap[sector] || 'sector-industrial';
+        }
+        
+        function getDividendsForDate(year, month, day) {
+            const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            return DIVIDEND_DATA.filter(d => d.exDate === dateStr);
+        }
+        
+        // 渲染紧凑日历
+        function renderMiniCalendar() {
+            const firstDay = new Date(currentYear, currentMonth - 1, 1);
+            const lastDay = new Date(currentYear, currentMonth, 0);
+            const startWeekday = firstDay.getDay();
+            const daysInMonth = lastDay.getDate();
+            const today = new Date();
+            const isCurrentMonth = today.getFullYear() === currentYear && today.getMonth() + 1 === currentMonth;
+            
+            // 星期标题
+            let html = '<div class="grid grid-cols-7 gap-1 text-center mb-1">';
+            ['日', '一', '二', '三', '四', '五', '六'].forEach((day, idx) => {
+                const colorClass = idx === 0 ? 'text-red-500' : idx === 6 ? 'text-blue-500' : 'text-gray-600';
+                html += `<div class="py-1 ${colorClass} font-medium text-xs">${day}</div>`;
+            });
+            html += '</div>';
+            
+            // 日期格子
+            html += '<div class="grid grid-cols-7 gap-1">';
+            
+            // 空白占位
+            for (let i = 0; i < startWeekday; i++) {
+                html += `<div class="day-cell bg-gray-50 rounded"></div>`;
+            }
+            
+            // 日期
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dividends = getDividendsForDate(currentYear, currentMonth, day);
+                const hasDividend = dividends.length > 0;
+                const isToday = isCurrentMonth && today.getDate() === day;
+                
+                let bgClass = 'bg-white';
+                if (isToday) bgClass = 'bg-blue-50 border-2 border-blue-500';
+                else if (hasDividend) bgClass = 'bg-yellow-50';
+                
+                html += `<div class="day-cell ${bgClass} border border-gray-100 rounded cursor-pointer hover:shadow-md transition-all" onclick="${hasDividend ? `showDividendDetail(${day})` : ''}">`;
+                html += `<div class="text-xs font-medium ${isToday ? 'text-blue-600' : 'text-gray-700'} text-center">${day}</div>`;
+                
+                if (hasDividend) {
+                    dividends.slice(0, 2).forEach(d => {
+                        html += `<div class="dividend-tag ${getSectorTagClass(d.sector)}" title="${d.name} ${d.amount}元/份">${d.shortName} ¥${d.amount}</div>`;
+                    });
+                    if (dividends.length > 2) {
+                        html += `<div class="text-xs text-orange-600 text-center">+${dividends.length - 2}</div>`;
+                    }
+                }
+                
+                html += '</div>';
+            }
+            
+            html += '</div>';
+            
+            document.getElementById('mini-calendar').innerHTML = html;
+            document.getElementById('current-month-display').textContent = `${currentYear}年${currentMonth}月`;
+        }
+        
+        // 渲染分红明细列表
+        function renderDividendList() {
+            const container = document.getElementById('dividend-list');
+            const sorted = [...DIVIDEND_DATA].sort((a, b) => new Date(b.exDate) - new Date(a.exDate)).slice(0, 20);
+            
+            container.innerHTML = sorted.map(d => {
+                const daysLeft = Math.ceil((new Date(d.exDate) - new Date()) / (1000 * 60 * 60 * 24));
+                const isUrgent = daysLeft >= 0 && daysLeft <= 3;
+                
+                return `
+                    <div class="p-2 border border-gray-100 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors" onclick="window.location.href='./fund-archive.html?code=${d.code}'">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2 min-w-0">
+                                <span class="w-2 h-2 rounded-full ${getSectorTagClass(d.sector).replace('sector-', 'bg-').replace('text-', '')}"></span>
+                                <div class="min-w-0">
+                                    <div class="font-medium text-xs text-gray-900 truncate">${d.name}</div>
+                                    <div class="text-xs text-gray-400 mono">${d.code}</div>
+                                </div>
+                            </div>
+                            <div class="text-right flex-none ml-2">
+                                <div class="text-red-600 font-bold text-sm">¥${d.amount}</div>
+                                <div class="text-xs text-gray-400">${d.exDate.slice(5)}</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between mt-1 text-xs text-gray-500">
+                            <span>登记: ${d.recordDate.slice(5)}</span>
+                            <span>到账: ${d.paymentDate.slice(5)}</span>
+                            ${isUrgent ? '<span class="text-red-600 font-bold">⚠️ ' + daysLeft + '天后</span>' : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        // 渲染月度图表
+        function renderMonthlyChart() {
+            const monthlyData = {};
+            for (let m = 1; m <= 12; m++) monthlyData[m] = 0;
+            DIVIDEND_DATA.forEach(d => monthlyData[parseInt(d.exDate.split('-')[1])] += d.amount);
+            
+            if (!monthlyChart) {
+                monthlyChart = echarts.init(document.getElementById('monthly-chart'));
+                window.addEventListener('resize', () => monthlyChart?.resize());
+            }
+            
+            monthlyChart.setOption({
+                tooltip: { trigger: 'axis', formatter: '{b}月: {c}元' },
+                grid: { left: '2%', right: '2%', bottom: '5%', top: '15%', containLabel: true },
+                xAxis: { type: 'category', data: ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'], axisLine: { lineStyle: { color: '#e2e8f0' } }, axisLabel: { color: '#64748b', fontSize: 9, interval: 0 }},
+                yAxis: { type: 'value', name: '元', nameTextStyle: { fontSize: 9 }, axisLine: { show: false }, splitLine: { lineStyle: { color: '#f1f5f9' } }, axisLabel: { color: '#64748b', fontSize: 9 }},
+                series: [{ type: 'bar', data: Object.values(monthlyData), barWidth: '40%', itemStyle: { borderRadius: [3, 3, 0, 0], color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: '#3b82f6' },{ offset: 1, color: '#60a5fa' }]) }}]
+            });
+        }
+        
+        // 渲染排行榜
+        function renderRanking() {
+            const fundMap = {};
+            DIVIDEND_DATA.forEach(d => {
+                if (!fundMap[d.code]) fundMap[d.code] = { name: d.name, shortName: d.shortName, total: 0, count: 0, sector: d.sector, yield: d.yield };
+                fundMap[d.code].total += d.amount;
+                fundMap[d.code].count++;
+            });
+            
+            const ranking = Object.entries(fundMap).map(([code, data]) => ({ code, ...data, avg: data.total / data.count })).sort((a, b) => b.total - a.total).slice(0, 10);
+            
+            document.getElementById('ranking-list').innerHTML = ranking.map((item, idx) => {
+                let rankClass = 'bg-gray-50 text-gray-500';
+                if (idx === 0) rankClass = 'bg-yellow-100 text-yellow-700';
+                else if (idx === 1) rankClass = 'bg-gray-200 text-gray-700';
+                else if (idx === 2) rankClass = 'bg-orange-100 text-orange-700';
+                
+                return `
+                    <div class="p-2 border border-gray-100 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors" onclick="window.location.href='./fund-archive.html?code=${item.code}'">
+                        <div class="flex items-center gap-2">
+                            <div class="w-5 h-5 rounded ${rankClass} flex items-center justify-center text-xs font-bold flex-none">${idx + 1}</div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-1">
+                                    <span class="w-1.5 h-1.5 rounded-full ${getSectorTagClass(item.sector).replace('tag-', 'bg-').replace('text-', '')}"></span>
+                                    <div class="font-medium text-xs text-gray-900 truncate">${item.name}</div>
+                                </div>
+                                <div class="text-xs text-gray-400 mono">${item.code}</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between mt-1 text-xs">
+                            <span class="text-red-600 font-bold">累计 ¥${item.total.toFixed(2)}</span>
+                            <span class="text-gray-400">${item.count}次</span>
+                            <span class="text-green-600">年化 ${item.yield}%</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        // 渲染即将到账提醒
+        function renderUpcomingReminder() {
+            const today = new Date();
+            const upcoming = DIVIDEND_DATA.filter(d => new Date(d.paymentDate) >= today).sort((a, b) => new Date(a.paymentDate) - new Date(b.paymentDate)).slice(0, 5);
+            
+            const container = document.getElementById('upcoming-reminder');
+            if (upcoming.length === 0) {
+                container.innerHTML = '<div class="text-xs text-gray-400 text-center py-4">暂无即将到账分红</div>';
+                return;
+            }
+            
+            container.innerHTML = upcoming.map(d => {
+                const daysLeft = Math.ceil((new Date(d.paymentDate) - today) / (1000 * 60 * 60 * 24));
+                return `
+                    <div class="flex items-center justify-between p-2 bg-yellow-50 border border-yellow-100 rounded-lg">
+                        <div class="min-w-0">
+                            <div class="font-medium text-xs text-gray-900 truncate">${d.shortName}</div>
+                            <div class="text-xs text-gray-500">${d.paymentDate.slice(5)} 到账</div>
+                        </div>
+                        <div class="text-right flex-none ml-2">
+                            <div class="text-red-600 font-bold text-sm">¥${d.amount}</div>
+                            <div class="text-xs ${daysLeft <= 3 ? 'text-red-600 font-bold' : 'text-gray-400'}">${daysLeft}天后</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        // 显示分红详情
+        function showDividendDetail(day) {
+            const dividends = getDividendsForDate(currentYear, currentMonth, day);
+            if (dividends.length === 0) return;
+            
+            document.getElementById('modal-title').textContent = `${currentYear}年${currentMonth}月${day}日 分红详情`;
+            document.getElementById('modal-content').innerHTML = dividends.map(d => `
+                <div class="p-2 border border-gray-100 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors" onclick="window.location.href='./fund-archive.html?code=${d.code}'">
+                    <div class="flex justify-between items-start">
+                        <div class="min-w-0">
+                            <div class="font-medium text-xs text-gray-900 truncate">${d.name}</div>
+                            <div class="text-xs text-gray-400 mono">${d.code}</div>
+                        </div>
+                        <div class="text-right flex-none ml-2">
+                            <div class="text-red-600 font-bold text-xs">${d.amount}元/份</div>
+                            <div class="text-xs text-gray-400">派息率${d.yield}%</div>
+                        </div>
+                    </div>
+                    <div class="flex gap-3 mt-1 text-xs text-gray-500">
+                        <span>除息: <span class="text-gray-700">${d.exDate.slice(5)}</span></span>
+                        <span>派息: <span class="text-gray-700">${d.paymentDate.slice(5)}</span></span>
+                    </div>
+                </div>
+            `).join('');
+            
+            document.getElementById('dividend-modal').classList.remove('hidden');
+        }
+        
+        function closeModal(event) {
+            if (event.target.id === 'dividend-modal') {
+                document.getElementById('dividend-modal').classList.add('hidden');
+            }
+        }
+        
+        function changeMonth(delta) {
+            let newMonth = currentMonth + delta;
+            let newYear = currentYear;
+            if (newMonth < 1) { newMonth = 12; newYear--; }
+            else if (newMonth > 12) { newMonth = 1; newYear++; }
+            currentYear = newYear;
+            currentMonth = newMonth;
+            renderMiniCalendar();
+        }
+        
+        // 事件绑定
+        document.getElementById('prev-month').addEventListener('click', () => changeMonth(-1));
+        document.getElementById('next-month').addEventListener('click', () => changeMonth(1));
+        
+        // 初始化日历
+        function initCalendar() {
+            renderMiniCalendar();
+            renderDividendList();
+            renderMonthlyChart();
+            renderRanking();
+            renderUpcomingReminder();
+            updateCompareBar();
+        }
+        
+        // 页面加载时异步初始化
+        window.addEventListener('DOMContentLoaded', () => {
+            initCalendarData();
+        });
+    </script>
+<!-- 关于平台弹窗 -->
+<div id="about-modal" class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center opacity-0 invisible transition-all" onclick="if(event.target===this)closeAbout()">
+    <div class="bg-white rounded-2xl shadow-2xl w-[90%] max-w-md transform scale-95 transition-transform p-6" id="about-content">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold text-gray-900">关于 REITs 数据平台</h3>
+            <button onclick="closeAbout()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-all">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="space-y-4 text-gray-600">
+            <p>REITs 数据平台是一个<strong>开放式金融数据平台</strong>，无需登录即可使用全部功能。</p>
+            <div class="bg-blue-50 rounded-xl p-4">
+                <h4 class="font-semibold text-blue-900 mb-2">🚀 平台特色</h4>
+                <ul class="text-sm space-y-1 text-blue-800">
+                    <li>• 实时行情数据 - 跟踪所有 REITs 基金</li>
+                    <li>• 板块热力图 - 直观展示涨跌分布</li>
+                    <li>• 智能对比 - 多维度基金对比分析</li>
+                    <li>• 公告追踪 - 重要信息及时掌握</li>
+                </ul>
+            </div>
+            <p class="text-xs text-gray-400">数据来源：新浪财经、东方财富、AKShare</p>
+        </div>
+    </div>
+</div>
+<style>
+    #about-modal.show { opacity: 1; visibility: visible; }
+    #about-modal.show #about-content { transform: scale(1); }
+</style>
+<script>
+    function showAbout() {
+        document.getElementById('about-modal').classList.add('show');
+    }
+    function closeAbout() {
+        document.getElementById('about-modal').classList.remove('show');
+    }
+</script>
+</body>
+</html>

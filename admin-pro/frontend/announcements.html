@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>公告追踪 - REITs数据平台</title>
+    <link rel="stylesheet" href="./css/tailwind.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./css/common.css">
+    <style>
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background-color: #f8fafc; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        .line-clamp-2 {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .compare-bar {
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+        }
+        .compare-bar.show { transform: translateY(0); }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+    <!-- Header -->
+    <header class="h-[60px] bg-white border-b border-gray-200 flex items-center justify-between px-6 flex-none z-40">
+        <div class="flex items-center gap-4">
+            <div class="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-lg flex items-center justify-center text-white font-bold text-sm">R</div>
+            <span class="font-bold text-gray-900 text-lg tracking-tight">REITs数据平台</span>
+            <nav class="hidden md:flex items-center gap-0.5 ml-4">
+                <a href="./market.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">市场</a>
+                <a href="./fund-detail.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">详情</a>
+                <a href="./ai-chat.html" class="px-3 py-1.5 text-sm font-medium text-purple-600 bg-purple-50 rounded-lg transition-all flex items-center gap-1">
+                    <span class="w-1.5 h-1.5 bg-purple-500 rounded-full animate-pulse"></span>
+                    AI聊REITs
+                </a>
+                <a href="./announcements.html" class="px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg">公告</a>
+                <a href="./portfolio.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">自选</a>
+                <a href="./compare.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">对比</a>
+                <a href="./tools.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">工具</a>
+                <a href="./dividend-calendar.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">分红</a>
+                <a href="./fund-archive.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">AI投研</a>
+            </nav>
+        </div>
+        
+        <div class="w-40 mx-2">
+            <div class="relative">
+                <input type="text" id="global-search" placeholder="搜索基金代码或名称..." 
+                    class="w-full pl-10 pr-4 py-2 bg-gray-100 border border-transparent rounded-lg text-sm focus:outline-none focus:bg-white focus:border-blue-500 transition-all">
+                <svg class="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+            </div>
+        </div>
+        
+        <div class="flex items-center gap-3 md:gap-4">
+            <button onclick="crawlAnnouncements()" class="px-3 py-1.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-all flex items-center gap-1.5" id="crawl-btn">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+                刷新
+            </button>
+            <button class="p-2 text-gray-500 hover:text-gray-700 relative" onclick="window.location.href='./announcements.html'">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                </svg>
+                <span id="nav-badge" class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full hidden"></span>
+            </button>
+            <button onclick="window.location.href='./portfolio.html'" class="hidden sm:flex px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-medium rounded-lg hover:shadow-lg hover:shadow-blue-200 transition-all items-center gap-2">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                自选
+            </button>
+            <button onclick="showAbout()" class="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-full flex items-center justify-center text-xs hover:shadow-lg transition-all" title="关于平台">?</button>
+        </div>
+    </header>
+
+    <!-- 主内容区 -->
+    <main class="flex-1 overflow-auto">
+        <div class="max-w-7xl mx-auto p-4 md:p-6 space-y-5">
+            
+            <!-- AI分类标签卡片 -->
+            <div class="bg-white rounded-xl border border-gray-200 p-4 md:p-5 shadow-sm">
+                <div class="flex items-center gap-2 mb-4">
+                    <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                    </svg>
+                    <h2 class="text-base font-semibold text-gray-900">AI 智能分类 · 公告追踪</h2>
+                    <span id="data-source-badge" class="ml-auto text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-500">加载中...</span>
+                </div>
+                <div class="flex flex-wrap gap-3" id="category-filters">
+                    <button onclick="filterCategory('all')" class="cat-btn px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg transition-all flex items-center gap-2">
+                        全部 <span class="cat-count text-xs bg-white/20 px-1.5 py-0.5 rounded">0</span>
+                    </button>
+                    <button onclick="filterCategory('operation')" class="cat-btn px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition-all flex items-center gap-2">
+                        运营公告 <span class="cat-count text-xs bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded">0</span>
+                    </button>
+                    <button onclick="filterCategory('dividend')" class="cat-btn px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition-all flex items-center gap-2">
+                        分红公告 <span class="cat-count text-xs bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded">0</span>
+                    </button>
+                    <button onclick="filterCategory('inquiry')" class="cat-btn px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition-all flex items-center gap-2">
+                        问询函件 <span class="cat-count text-xs bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded">0</span>
+                    </button>
+                    <button onclick="filterCategory('financial')" class="cat-btn px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition-all flex items-center gap-2">
+                        财务报告 <span class="cat-count text-xs bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded">0</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 专业筛选栏 -->
+            <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                <div class="flex flex-wrap items-center gap-4">
+                    <!-- 搜索框 -->
+                    <div class="relative flex-1 min-w-[200px] max-w-md">
+                        <svg class="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
+                        <input type="text" id="announcement-search" placeholder="搜索公告标题、基金代码或名称..." 
+                            class="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-500 focus:bg-white transition-all">
+                    </div>
+                    
+                    <!-- 交易所筛选 -->
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm text-gray-500 whitespace-nowrap">交易所：</span>
+                        <select id="exchange-filter" onchange="applyFilters()" class="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                            <option value="all">全部</option>
+                            <option value="SSE">🏛️ 上交所</option>
+                            <option value="SZSE">🏛️ 深交所</option>
+                        </select>
+                    </div>
+
+                    <!-- 时间范围 -->
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm text-gray-500 whitespace-nowrap">时间：</span>
+                        <select id="time-filter-select" onchange="filterTimeSelect(this.value)" class="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                            <option value="7">近一周</option>
+                            <option value="30">近一月</option>
+                            <option value="90">近三月</option>
+                            <option value="180">近半年</option>
+                            <option value="365">近一年</option>
+                            <option value="0" selected>全部</option>
+                        </select>
+                    </div>
+
+                    <!-- 重置按钮 -->
+                    <button onclick="resetFilters()" class="ml-auto px-3 py-2 text-sm text-gray-500 hover:text-blue-600 flex items-center gap-1 transition-all">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                        重置筛选
+                    </button>
+                </div>
+
+                <!-- 筛选统计 -->
+                <div class="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
+                    <div class="flex items-center gap-4">
+                        <span>共 <span id="total-count" class="text-blue-600 font-bold">0</span> 条公告</span>
+                        <span id="active-filters" class="hidden">已应用筛选：<span id="filter-tags"></span></span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <label class="flex items-center gap-1.5 cursor-pointer">
+                            <input type="checkbox" id="only-favorite" onchange="applyFilters()" class="rounded text-blue-600 focus:ring-blue-500">
+                            <span>仅看自选基金</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 公告卡片列表 -->
+            <div id="announcement-list" class="space-y-4">
+                <!-- 动态生成 -->
+            </div>
+
+            <!-- 加载更多 -->
+            <div id="load-more-container" class="flex justify-center pt-2 pb-4">
+                <button onclick="loadMore()" class="px-6 py-2.5 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all flex items-center gap-2">
+                    加载更多
+                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- 空状态 -->
+            <div id="empty-state" class="hidden">
+                <div class="card p-10 md:p-16 flex flex-col items-center justify-center text-center">
+                    <div class="text-5xl mb-4">📭</div>
+                    <h3 class="text-lg font-medium text-gray-900 mb-1">暂无相关公告</h3>
+                    <p class="text-sm text-gray-500">请尝试切换分类或调整搜索关键词</p>
+                    <button onclick="crawlAnnouncements()" class="mt-4 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-all">
+                        立即爬取公告
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 底部占位，避免被对比栏遮挡 -->
+        <div class="h-20"></div>
+    </main>
+
+    <!-- 底部对比悬浮栏 -->
+    <div id="compare-bar" class="compare-bar fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur border-t border-gray-200 shadow-lg z-50 px-4 md:px-6 py-3 md:py-4">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-3 md:gap-4 overflow-hidden">
+                <span class="text-sm font-medium text-gray-700 flex-none">🛒 对比栏:</span>
+                <div id="compare-items" class="flex gap-2 overflow-x-auto">
+                    <!-- 动态添加 -->
+                </div>
+            </div>
+            <div class="flex items-center gap-2 md:gap-3 flex-none ml-3">
+                <span id="compare-count" class="text-xs text-gray-500">已选 0/4</span>
+                <button onclick="clearCompare(); updateCompareBar();" class="text-xs text-gray-400 hover:text-red-500">清空</button>
+                <button onclick="goToCompare()" id="btn-compare" class="px-4 md:px-6 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg opacity-50 cursor-not-allowed" disabled>
+                    开始对比 →
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="./js/common.js"></script>
+    <script src="./js/api.js"></script>
+    <script>
+        // 公告分类配置
+        const CATEGORY_CONFIG = {
+            operation: { name: '运营公告', tagClass: 'bg-emerald-100 text-emerald-700', aiLabel: '运营公告' },
+            dividend: { name: '分红公告', tagClass: 'bg-rose-100 text-rose-700', aiLabel: '分红公告' },
+            inquiry: { name: '问询函件', tagClass: 'bg-amber-100 text-amber-700', aiLabel: '问询函件' },
+            financial: { name: '财务报告', tagClass: 'bg-blue-100 text-blue-700', aiLabel: '财务报告' },
+            other: { name: '其他公告', tagClass: 'bg-gray-100 text-gray-700', aiLabel: '其他公告' }
+        };
+
+        // 状态
+        let allAnnouncements = [];
+        let filteredAnnouncements = [];
+        let currentCategory = 'all';
+        let currentTimeDays = 0;  // 默认显示全部
+        let searchKeyword = '';
+        let displayCount = 100;
+        let currentExchange = 'all';
+        let isLoading = false;
+
+        // 防抖函数
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        // 显示数据来源
+        function showDataSource(source, count = 0) {
+            const badge = document.getElementById('data-source-badge');
+            if (source === 'API') {
+                badge.className = 'ml-auto text-xs px-2 py-1 rounded-full bg-green-100 text-green-700';
+                badge.textContent = `🟢 实时数据 ${count}条`;
+            } else if (source === 'Mock') {
+                badge.className = 'ml-auto text-xs px-2 py-1 rounded-full bg-yellow-100 text-yellow-700';
+                badge.textContent = `🟡 模拟数据 ${count}条`;
+            } else {
+                badge.className = 'ml-auto text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-500';
+                badge.textContent = '加载中...';
+            }
+        }
+
+        // 从API加载公告数据
+        async function loadAnnouncements() {
+            if (isLoading) return;
+            isLoading = true;
+            showDataSource('Loading');
+            
+            try {
+                console.log('🔄 正在从API加载公告...');
+                const response = await REITS_API.getAnnouncements({ 
+                    limit: 100,
+                    days: 30
+                });
+                
+                if (response.success && response.data && response.data.length > 0) {
+                    console.log('✅ API公告加载成功:', response.data.length, '条');
+                    // 转换API数据格式
+                    allAnnouncements = response.data.map(item => ({
+                        id: item.id,
+                        code: item.fund_code || '',
+                        name: item.fund_name || '',
+                        sector: '',
+                        sectorName: item.sector_name || '',
+                        category: item.category || 'other',
+                        title: item.title || '',
+                        summary: item.summary || '',
+                        date: item.publish_date || '',
+                        exchange: item.exchange || '',
+                        sourceUrl: item.source_url || '',
+                        pdfUrl: item.pdf_url || '',
+                        cninfoUrl: item.cninfo_url || '',
+                        confidence: item.confidence || 85,
+                        isRead: false
+                    }));
+                    showDataSource('API', allAnnouncements.length);
+                } else {
+                    console.warn('⚠️ API返回空数据，使用模拟数据');
+                    allAnnouncements = generateMockAnnouncements();
+                    showDataSource('Mock', allAnnouncements.length);
+                }
+            } catch (error) {
+                console.error('❌ API公告加载失败:', error);
+                allAnnouncements = generateMockAnnouncements();
+                showDataSource('Mock', allAnnouncements.length);
+            }
+            
+            isLoading = false;
+            applyFilters();
+        }
+
+        // 手动触发爬取 - 使用巨潮资讯网爬虫
+        async function crawlAnnouncements() {
+            const btn = document.getElementById('crawl-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> 爬取中...';
+            
+            try {
+                // 调用巨潮资讯网批量爬虫
+                const response = await fetch('/api/cninfo/crawl-all', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ maxWorkers: 3, maxCount: 30 })
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    showToast('巨潮资讯网爬虫已启动，正在后台爬取全部79只REIT公告...', 'success');
+                    // 5秒后刷新数据
+                    setTimeout(async () => {
+                        await loadAnnouncements();
+                        showToast('公告数据已更新！', 'success');
+                    }, 5000);
+                } else {
+                    showToast('爬取失败: ' + result.error, 'error');
+                }
+            } catch (error) {
+                console.error('爬取失败:', error);
+                showToast('爬取失败，请稍后重试', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> 刷新';
+            }
+        }
+
+        // 生成模拟公告数据（降级用）
+        function generateMockAnnouncements() {
+            const categories = ['operation', 'dividend', 'inquiry', 'financial'];
+            const titles = {
+                operation: [
+                    '关于2026年第一季度运营情况的公告',
+                    '关于基础设施项目运营进展的提示性公告',
+                    '关于聘请运营管理机构的公告',
+                    '关于原始权益人增持计划完成的公告',
+                    '关于召开2026年第一次临时股东大会的通知'
+                ],
+                dividend: [
+                    '2026年度第一次收益分配公告',
+                    '关于2025年度末期收益分配的公告',
+                    '2026年第一次分红实施公告',
+                    '关于收益分配方案调整的公告'
+                ],
+                inquiry: [
+                    '关于对上海证券交易所问询函回复的公告',
+                    '关于深圳证券交易所关注函回复的公告',
+                    '关于收到交易所问询函的公告'
+                ],
+                financial: [
+                    '2025年年度报告及摘要',
+                    '2026年第一季度报告',
+                    '2025年度审计报告',
+                    '2026年一季度财务报表及附注'
+                ]
+            };
+            const summaries = {
+                operation: '本基金基础设施项目运营情况良好，2026年第一季度核心指标保持稳定。',
+                dividend: '根据基金合同约定，本基金拟进行收益分配，可供分配金额为人民币X万元。',
+                inquiry: '本基金管理人已就问询函所涉及事项进行了认真核查并回复。',
+                financial: '本基金2026年第一季度实现营业收入X万元，净利润X万元。'
+            };
+
+            const data = [];
+            const exchanges = ['SSE', 'SZSE'];
+            
+            for (let i = 0; i < 60; i++) {
+                const cat = categories[i % categories.length];
+                const exchange = exchanges[i % 2];
+                const date = new Date();
+                date.setDate(date.getDate() - (i % 30));
+                const dateStr = date.toISOString().split('T')[0];
+                
+                data.push({
+                    id: i + 1,
+                    code: exchange === 'SSE' ? '50800' + (i % 9) : '180' + String(i % 9).padStart(3, '0'),
+                    name: '示例REITs基金' + (i + 1),
+                    sector: '',
+                    sectorName: exchange === 'SSE' ? '🏛️ 上交所' : '🏛️ 深交所',
+                    category: cat,
+                    title: titles[cat][i % titles[cat].length],
+                    summary: summaries[cat],
+                    date: dateStr,
+                    exchange: exchange,
+                    sourceUrl: '',
+                    pdfUrl: '',
+                    confidence: 85 + (i % 10),
+                    isRead: false
+                });
+            }
+            return data;
+        }
+
+        // 应用筛选
+        function applyFilters() {
+            let data = [...allAnnouncements];
+
+            // 分类筛选
+            if (currentCategory !== 'all') {
+                data = data.filter(a => a.category === currentCategory);
+            }
+
+            // 交易所筛选
+            currentExchange = document.getElementById('exchange-filter')?.value || 'all';
+            if (currentExchange !== 'all') {
+                data = data.filter(a => a.exchange === currentExchange);
+            }
+
+            // 自选基金筛选
+            const onlyFavorite = document.getElementById('only-favorite')?.checked;
+            if (onlyFavorite) {
+                const favorites = JSON.parse(localStorage.getItem('reits_favorites') || '[]');
+                data = data.filter(a => favorites.includes(a.code));
+            }
+
+            // 时间筛选
+            if (currentTimeDays > 0) {
+                const cutoff = new Date();
+                cutoff.setDate(cutoff.getDate() - currentTimeDays);
+                data = data.filter(a => {
+                    if (!a.date) return false;
+                    return new Date(a.date) >= cutoff;
+                });
+            }
+
+            // 搜索筛选
+            const searchInput = document.getElementById('announcement-search')?.value.trim() || '';
+            if (searchInput) {
+                const kw = searchInput.toLowerCase();
+                data = data.filter(a => 
+                    (a.title && a.title.toLowerCase().includes(kw)) ||
+                    (a.code && a.code.toLowerCase().includes(kw)) ||
+                    (a.name && a.name.toLowerCase().includes(kw))
+                );
+            }
+
+            filteredAnnouncements = data;
+            displayCount = 20;
+            renderAnnouncements();
+            updateCategoryCounts();
+            updateFilterStats();
+        }
+
+        // 更新筛选统计
+        function updateFilterStats() {
+            document.getElementById('total-count').textContent = filteredAnnouncements.length;
+            
+            const activeFilters = [];
+            if (currentExchange !== 'all') {
+                activeFilters.push(currentExchange === 'SSE' ? '上交所' : '深交所');
+            }
+            
+            const filterTags = document.getElementById('filter-tags');
+            const activeFiltersDiv = document.getElementById('active-filters');
+            
+            if (activeFilters.length > 0) {
+                filterTags.innerHTML = activeFilters.map(f => `<span class="px-2 py-0.5 bg-blue-100 text-blue-700 rounded">${f}</span>`).join('');
+                activeFiltersDiv.classList.remove('hidden');
+            } else {
+                activeFiltersDiv.classList.add('hidden');
+            }
+        }
+
+        // 重置筛选
+        function resetFilters() {
+            currentCategory = 'all';
+            currentTimeDays = 0;  // 默认显示全部
+            currentExchange = 'all';
+            
+            // 重置UI
+            document.getElementById('exchange-filter').value = 'all';
+            document.getElementById('time-filter-select').value = '0';  // 全部
+            document.getElementById('announcement-search').value = '';
+            document.getElementById('only-favorite').checked = false;
+            
+            // 重置分类按钮
+            document.querySelectorAll('.cat-btn').forEach(btn => {
+                btn.classList.remove('bg-blue-600', 'text-white');
+                btn.classList.add('bg-gray-100', 'text-gray-700');
+                const count = btn.querySelector('.cat-count');
+                count.classList.remove('bg-white/20');
+                count.classList.add('bg-gray-200', 'text-gray-600');
+            });
+            document.querySelector('.cat-btn').classList.remove('bg-gray-100', 'text-gray-700');
+            document.querySelector('.cat-btn').classList.add('bg-blue-600', 'text-white');
+            
+            applyFilters();
+        }
+
+        // 分类筛选按钮点击
+        function filterCategory(category) {
+            currentCategory = category;
+            document.querySelectorAll('.cat-btn').forEach(btn => {
+                btn.classList.remove('bg-blue-600', 'text-white');
+                btn.classList.add('bg-gray-100', 'text-gray-700');
+                const count = btn.querySelector('.cat-count');
+                count.classList.remove('bg-white/20');
+                count.classList.add('bg-gray-200', 'text-gray-600');
+            });
+            const target = event.target.closest('.cat-btn');
+            target.classList.remove('bg-gray-100', 'text-gray-700');
+            target.classList.add('bg-blue-600', 'text-white');
+            const count = target.querySelector('.cat-count');
+            count.classList.remove('bg-gray-200', 'text-gray-600');
+            count.classList.add('bg-white/20');
+            applyFilters();
+        }
+
+        // 时间选择器筛选
+        function filterTimeSelect(value) {
+            currentTimeDays = parseInt(value);
+            applyFilters();
+        }
+
+        // 更新分类计数
+        function updateCategoryCounts() {
+            const counts = { all: allAnnouncements.length };
+            Object.keys(CATEGORY_CONFIG).forEach(cat => {
+                counts[cat] = allAnnouncements.filter(a => a.category === cat).length;
+            });
+
+            document.querySelectorAll('.cat-btn').forEach(btn => {
+                const onclick = btn.getAttribute('onclick');
+                const match = onclick.match(/filterCategory\('([^']+)'\)/);
+                if (match) {
+                    const cat = match[1];
+                    btn.querySelector('.cat-count').textContent = counts[cat] || 0;
+                }
+            });
+        }
+
+        // 渲染公告列表
+        function renderAnnouncements() {
+            const container = document.getElementById('announcement-list');
+            const emptyState = document.getElementById('empty-state');
+            const loadMoreContainer = document.getElementById('load-more-container');
+            const pageData = filteredAnnouncements.slice(0, displayCount);
+
+            if (filteredAnnouncements.length === 0) {
+                container.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                loadMoreContainer.classList.add('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+            loadMoreContainer.classList.toggle('hidden', displayCount >= filteredAnnouncements.length);
+
+            container.innerHTML = pageData.map(item => {
+                const catConfig = CATEGORY_CONFIG[item.category] || CATEGORY_CONFIG.other;
+                const exchangeName = item.exchange === 'SSE' ? '🏛️ 上交所' : (item.exchange === 'SZSE' ? '🏛️ 深交所' : (item.sectorName || ''));
+                const hasPdf = item.pdfUrl && item.pdfUrl.length > 0;
+                const hasSource = item.sourceUrl && item.sourceUrl.length > 0;
+                // 优先使用PDF链接，其次是原文链接
+                const mainLink = hasPdf ? item.pdfUrl : (hasSource ? item.sourceUrl : null);
+                
+                return `
+                    <div class="card card-hover p-4 md:p-5 ${!item.isRead ? 'bg-blue-50/30 border-blue-100' : ''}">
+                        <div class="flex flex-col md:flex-row md:items-start gap-4">
+                            <div class="flex-1 min-w-0">
+                                <div class="flex flex-wrap items-center gap-2 mb-2">
+                                    <span class="sector-tag ${catConfig.tagClass}">${catConfig.name}</span>
+                                    ${exchangeName ? `<span class="sector-tag bg-gray-100 text-gray-600">${exchangeName}</span>` : ''}
+                                    <span class="mono text-xs text-gray-500">${item.code || '-'}</span>
+                                    ${item.name ? `<span class="text-xs text-gray-700 truncate max-w-[200px]">${item.name}</span>` : ''}
+                                </div>
+                                <h3 class="text-base font-bold text-gray-900 mb-2 ${!item.isRead ? 'text-blue-900' : ''} ${mainLink ? 'cursor-pointer hover:text-blue-600' : ''}" 
+                                    ${mainLink ? `onclick="window.open('${mainLink}', '_blank'); markAsRead(${item.id});"` : ''}>
+                                    ${item.title}
+                                    ${hasPdf ? '<span class="ml-2 text-xs text-red-500 font-normal">[PDF]</span>' : ''}
+                                </h3>
+                                <p class="text-sm text-gray-600 line-clamp-2 mb-3">${item.summary || ''}</p>
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-3 text-xs text-gray-400">
+                                        <span class="flex items-center gap-1">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                            </svg>
+                                            ${item.date || '-'}
+                                        </span>
+                                        ${item.confidence ? `<span class="text-blue-500">AI置信度 ${item.confidence}%</span>` : ''}
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        ${hasPdf ? `
+                                            <a href="${item.pdfUrl}" target="_blank" onclick="event.stopPropagation(); markAsRead(${item.id});" 
+                                                class="px-3 py-1.5 bg-red-50 text-red-600 text-xs font-medium rounded-lg hover:bg-red-100 transition-all flex items-center gap-1">
+                                                <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"/>
+                                                </svg>
+                                                阅读PDF
+                                            </a>
+                                        ` : ''}
+                                        <!-- 巨潮资讯网搜索链接 -->
+                                        ${item.code ? `
+                                            <a href="${(item.cninfoUrl || 'https://www.cninfo.com.cn/new/disclosure/stock?stockCode=' + item.code).replace('http://', 'https://')}" target="_blank" onclick="event.stopPropagation(); markAsRead(${item.id});" 
+                                                class="text-xs text-blue-600 font-medium hover:underline flex items-center gap-1"
+                                                rel="noopener noreferrer">
+                                                查看原文 →
+                                            </a>
+                                        ` : ''}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // 获取交易所公告页面URL
+        function getExchangeAnnouncementUrl(code, exchange) {
+            if (exchange === 'SSE' || code.startsWith('508')) {
+                // 上交所 - 使用基金详情页或公告页
+                return `https://www.sse.com.cn/assortment/fund/reits/home/`;
+            } else if (exchange === 'SZSE' || code.startsWith('180')) {
+                // 深交所
+                return `https://www.szse.cn/sustainablefinance/products/disclosure/reits/index.html`;
+            }
+            return '#';
+        }
+
+        // 标记已读
+        function markAsRead(id) {
+            const item = allAnnouncements.find(a => a.id === id);
+            if (item) {
+                item.isRead = true;
+                renderAnnouncements();
+            }
+        }
+
+        function loadMore() {
+            displayCount += 20;
+            renderAnnouncements();
+        }
+
+        // 重写对比栏更新（适配本页UI）
+        function updateCompareBar() {
+            const list = getCompareList();
+            const bar = document.getElementById('compare-bar');
+            const items = document.getElementById('compare-items');
+            const countSpan = document.getElementById('compare-count');
+            const compareBtn = document.getElementById('btn-compare');
+            
+            if (list.length === 0) {
+                bar.classList.remove('show');
+                return;
+            }
+            bar.classList.add('show');
+            
+            items.innerHTML = list.map(item => `
+                <div class="flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-lg flex-none">
+                    <span class="text-sm text-blue-900 font-medium truncate max-w-[120px]">${item.name}</span>
+                    <button onclick="event.stopPropagation(); removeFromCompare('${item.code}'); updateCompareBar();" class="text-blue-400 hover:text-blue-600">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+            `).join('');
+            
+            countSpan.textContent = `已选 ${list.length}/4`;
+            compareBtn.disabled = list.length < 2;
+            compareBtn.classList.toggle('opacity-50', list.length < 2);
+            compareBtn.classList.toggle('cursor-not-allowed', list.length < 2);
+        }
+
+        // 搜索监听 - 公告专用搜索框
+        document.getElementById('announcement-search').addEventListener('input', debounce((e) => {
+            searchKeyword = e.target.value.trim();
+            applyFilters();
+        }, 300));
+
+        // 初始化
+        window.onload = async function() {
+            // 强制重置所有筛选器为默认值
+            document.getElementById('exchange-filter').value = 'all';
+            document.getElementById('time-filter-select').value = '0';
+            document.getElementById('announcement-search').value = '';
+            document.getElementById('only-favorite').checked = false;
+            
+            // 重置状态变量
+            currentCategory = 'all';
+            currentTimeDays = 0;
+            currentExchange = 'all';
+            searchKeyword = '';
+            
+            await loadAnnouncements();
+            updateCompareBar();
+        };
+    </script>
+<!-- 关于平台弹窗 -->
+<div id="about-modal" class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center opacity-0 invisible transition-all" onclick="if(event.target===this)closeAbout()">
+    <div class="bg-white rounded-2xl shadow-2xl w-[90%] max-w-md transform scale-95 transition-transform p-6" id="about-content">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold text-gray-900">关于 REITs 数据平台</h3>
+            <button onclick="closeAbout()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-all">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="space-y-4 text-gray-600">
+            <p>REITs 数据平台是一个<strong>开放式金融数据平台</strong>，无需登录即可使用全部功能。</p>
+            <div class="bg-blue-50 rounded-xl p-4">
+                <h4 class="font-semibold text-blue-900 mb-2">🚀 平台特色</h4>
+                <ul class="text-sm space-y-1 text-blue-800">
+                    <li>• 实时行情数据 - 跟踪所有 REITs 基金</li>
+                    <li>• 板块热力图 - 直观展示涨跌分布</li>
+                    <li>• 智能对比 - 多维度基金对比分析</li>
+                    <li>• 公告追踪 - 重要信息及时掌握</li>
+                </ul>
+            </div>
+            <p class="text-xs text-gray-400">数据来源：新浪财经、东方财富、AKShare</p>
+        </div>
+    </div>
+</div>
+<style>
+    #about-modal.show { opacity: 1; visibility: visible; }
+    #about-modal.show #about-content { transform: scale(1); }
+</style>
+<script>
+    function showAbout() {
+        document.getElementById('about-modal').classList.add('show');
+    }
+    function closeAbout() {
+        document.getElementById('about-modal').classList.remove('show');
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,288 @@
+/* ==================== REITs 数据平台 - 新世代通用样式 ==================== */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+/*
+ * ==================== 设计规范 ====================
+ *
+ * 【字体大小规范】
+ * - text-3xl (30px): 特大数值（如基金详情页价格）
+ * - text-2xl (24px): 大标题、重要统计数据
+ * - text-xl  (20px): 卡片标题、模块标题
+ * - text-lg  (18px): 小标题、导航栏品牌名
+ * - text-base (16px): 正文、按钮文字
+ * - text-sm  (14px): 列表内容、表单文字（默认正文大小）
+ * - text-xs  (12px): 辅助信息、标签、时间戳（最小字体）
+ * 
+ * 【颜色规范】
+ * - 上涨: text-red-600 / #dc2626 (A股标准)
+ * - 下跌: text-green-600 / #16a34a (A股标准)
+ * - 主色: text-blue-600 / #2563eb
+ * - 正文: text-gray-900 / #0f172a
+ * - 次要: text-gray-600 / #475569
+ * - 辅助: text-gray-400 / #94a3b8
+ *
+ * 【板块标签】统一使用 .sector-tag + .sector-{xxx}
+ * 【等宽数字】统一使用 .mono 类
+ */
+
+:root {
+    --primary: #2563eb;
+    --primary-dark: #1d4ed8;
+    --primary-light: #3b82f6;
+    --success: #16a34a;
+    --danger: #dc2626;
+    --warning: #f59e0b;
+    --info: #8b5cf6;
+    --bg: #f8fafc;
+    --card-bg: #ffffff;
+    --border: #e2e8f0;
+    --text-main: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #94a3b8;
+    --gray-50: #f8fafc;
+    --gray-100: #f1f5f9;
+    --gray-200: #e2e8f0;
+    --gray-300: #cbd5e1;
+    --gray-400: #94a3b8;
+    --gray-500: #64748b;
+    --gray-600: #475569;
+    --gray-700: #334155;
+    --gray-800: #1e293b;
+    --gray-900: #0f172a;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background-color: var(--bg);
+    color: var(--text-main);
+    -webkit-font-smoothing: antialiased;
+}
+
+.mono { font-family: 'JetBrains Mono', 'SF Mono', 'Fira Code', Consolas, monospace; }
+
+/* 滚动条 */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--gray-400); }
+
+/* 卡片 */
+.card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+}
+
+.card-hover { transition: all 0.2s ease; }
+.card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+}
+
+/* 按钮 */
+.btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background: linear-gradient(135deg, var(--primary), #4f46e5);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.btn-primary:hover { box-shadow: 0 4px 12px rgba(37,99,235,0.25); }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-outline {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: #fff;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.btn-outline:hover { background: var(--gray-50); border-color: var(--gray-300); }
+
+/* 表格 */
+.data-table { width: 100%; border-collapse: collapse; }
+.data-table thead { background: var(--gray-50); border-bottom: 1px solid var(--border); }
+.data-table th {
+    padding: 12px 16px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--gray-500);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    white-space: nowrap;
+}
+.data-table td {
+    padding: 14px 16px;
+    font-size: 13px;
+    border-bottom: 1px solid #f1f5f9;
+}
+.data-table tbody tr { transition: background 0.15s ease; }
+.data-table tbody tr:hover { background: #fefce8; }
+.data-table tbody tr:last-child td { border-bottom: none; }
+
+/* 涨跌色 */
+.text-up { color: var(--danger); }
+.text-down { color: var(--success); }
+.bg-up { background: rgba(220,38,38,0.08); }
+.bg-down { background: rgba(22,163,74,0.08); }
+
+/* 板块标签 */
+.sector-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+.sector-logistics { background: #dbeafe; color: #1e40af; }
+.sector-industrial { background: #e0e7ff; color: #3730a3; }
+.sector-transport { background: #d1fae5; color: #065f46; }
+.sector-energy { background: #fef3c7; color: #92400e; }
+.sector-consumer { background: #fce7f3; color: #be185d; }
+.sector-housing { background: #f3e8ff; color: #7c3aed; }
+.sector-municipal { background: #f3f4f6; color: #374151; }
+.sector-water { background: #cffafe; color: #0e7490; }
+.sector-eco { background: #d1fae5; color: #047857; }
+.sector-datacenter { background: #ffedd5; color: #c2410c; }
+.sector-tourism { background: #ccfbf1; color: #0f766e; }
+.sector-commercial { background: #e2e8f0; color: #475569; }
+.sector-elderly { background: #ffe4e6; color: #be123c; }
+.sector-urban { background: #fef08a; color: #854d0e; }
+
+/* 动画 */
+@keyframes pulse-red {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(220,38,38,0.6); }
+    50% { box-shadow: 0 0 0 5px rgba(220,38,38,0); }
+}
+.pulse-dot { animation: pulse-red 2s infinite; }
+
+@keyframes flash-up {
+    0%, 100% { background: transparent; }
+    50% { background: rgba(22,163,74,0.1); }
+}
+@keyframes flash-down {
+    0%, 100% { background: transparent; }
+    50% { background: rgba(220,38,38,0.1); }
+}
+.flash-up { animation: flash-up 0.5s ease; }
+.flash-down { animation: flash-down 0.5s ease; }
+
+/* 分页 */
+.pagination { display: flex; align-items: center; gap: 4px; }
+.pagination button {
+    min-width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 8px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.pagination button:hover:not(:disabled) { background: var(--gray-50); border-color: var(--gray-300); }
+.pagination button.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.pagination button:disabled { color: var(--gray-300); cursor: not-allowed; }
+
+/* Toast */
+.toast {
+    position: fixed;
+    bottom: 90px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    padding: 10px 18px;
+    border-radius: 10px;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 500;
+    z-index: 9999;
+    opacity: 0;
+    transition: all 0.3s ease;
+    pointer-events: none;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast-success { background: var(--success); }
+.toast-error { background: var(--danger); }
+.toast-warning { background: var(--warning); }
+.toast-info { background: var(--primary); }
+
+/* 底部对比栏 */
+.compare-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(255,255,255,0.96);
+    backdrop-filter: blur(10px);
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -4px 16px rgba(0,0,0,0.06);
+    padding: 12px 24px;
+    transform: translateY(100%);
+    transition: transform 0.3s ease;
+    z-index: 50;
+}
+.compare-bar.show { transform: translateY(0); }
+
+/* 通用头部 */
+.top-header {
+    height: 60px;
+    background: #fff;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    flex: none;
+    z-index: 40;
+}
+
+/* 粘性筛选栏 */
+.sticky-filter {
+    position: sticky;
+    top: 60px;
+    z-index: 30;
+    background: rgba(248,250,252,0.95);
+    backdrop-filter: blur(8px);
+}
+
+/* 行操作按钮默认隐藏 */
+.quick-actions {
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s ease;
+}
+tr:hover .quick-actions { opacity: 1; visibility: visible; }
+
+/* 响应式 */
+@media (max-width: 768px) {
+    .top-header { padding: 0 16px; }
+    .data-table th, .data-table td { padding: 10px 12px; }
+    .compare-bar { padding: 10px 16px; }
+}

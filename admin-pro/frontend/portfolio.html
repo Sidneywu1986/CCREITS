@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>自选股 - REITs数据平台</title>
+    <link rel="stylesheet" href="./css/tailwind.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./css/common.css">
+    <style>
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background-color: #f8fafc; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        .fund-row { transition: all 0.15s ease; }
+        .fund-row:hover { background-color: #fefce8; }
+        .fund-row:hover .quick-actions { opacity: 1; visibility: visible; }
+        
+        .quick-actions { 
+            opacity: 0; 
+            visibility: hidden; 
+            transition: all 0.2s ease;
+        }
+        
+        .drag-handle {
+            cursor: grab;
+        }
+        .drag-handle:active {
+            cursor: grabbing;
+        }
+        .drag-over {
+            border-top: 2px solid #3b82f6;
+            background: rgba(59,130,246,0.05);
+        }
+
+        .compare-bar {
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+        }
+        .compare-bar.show { transform: translateY(0); }
+
+        .flash-up { animation: flashUp 0.5s ease; }
+        .flash-down { animation: flashDown 0.5s ease; }
+        @keyframes flashUp { 0%,100%{background:transparent} 50%{background:rgba(220,38,38,0.08)} }
+        @keyframes flashDown { 0%,100%{background:transparent} 50%{background:rgba(22,163,74,0.08)} }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+    <!-- Header -->
+    <header class="h-[60px] bg-white border-b border-gray-200 flex items-center justify-between px-6 flex-none z-40">
+        <div class="flex items-center gap-4">
+            <div class="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-lg flex items-center justify-center text-white font-bold text-sm">R</div>
+            <span class="font-bold text-gray-900 text-lg tracking-tight">REITs数据平台</span>
+            <nav class="hidden md:flex items-center gap-0.5 ml-4">
+                <a href="./market.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">市场</a>
+                <a href="./fund-detail.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">详情</a>
+                <a href="./ai-chat.html" class="px-3 py-1.5 text-sm font-medium text-purple-600 bg-purple-50 rounded-lg transition-all flex items-center gap-1">
+                    <span class="w-1.5 h-1.5 bg-purple-500 rounded-full animate-pulse"></span>
+                    AI聊REITs
+                </a>
+                <a href="./announcements.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">公告</a>
+                <a href="./portfolio.html" class="px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg">自选</a>
+                <a href="./compare.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">对比</a>
+                <a href="./tools.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">工具</a>
+                <a href="./dividend-calendar.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">分红</a>
+                <a href="./fund-archive.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">AI投研</a>
+            </nav>
+        </div>
+        
+        <div class="w-40 mx-2">
+            <div class="relative">
+                <input type="text" id="global-search" placeholder="搜索基金代码或名称..." 
+                    class="w-full pl-10 pr-4 py-2 bg-gray-100 border border-transparent rounded-lg text-sm focus:outline-none focus:bg-white focus:border-blue-500 transition-all">
+                <svg class="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+            </div>
+        </div>
+        
+        <div class="flex items-center gap-3 md:gap-4">
+            <button class="p-2 text-gray-500 hover:text-gray-700 relative" onclick="window.location.href='./announcements.html'">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                </svg>
+                <span id="nav-badge" class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full hidden"></span>
+            </button>
+            <button onclick="window.location.href='./portfolio.html'" class="hidden sm:flex px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-medium rounded-lg hover:shadow-lg hover:shadow-blue-200 transition-all items-center gap-2">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                自选
+            </button>
+            <button onclick="showAbout()" class="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-full flex items-center justify-center text-xs hover:shadow-lg transition-all" title="关于平台">?</button>
+        </div>
+    </header>
+
+    <!-- 主内容区 -->
+    <main class="flex-1 overflow-auto">
+        <div class="max-w-7xl mx-auto p-4 md:p-6 space-y-5">
+            
+            <!-- 统计卡片 -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                    <div class="text-xs text-gray-500 mb-1">自选数量</div>
+                    <div class="text-2xl font-bold text-gray-900 mono" id="stat-count">0</div>
+                </div>
+                <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                    <div class="text-xs text-gray-500 mb-1">自选总市值</div>
+                    <div class="text-2xl font-bold text-gray-900 mono" id="stat-market-cap">--</div>
+                </div>
+                <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                    <div class="text-xs text-gray-500 mb-1">平均派息率</div>
+                    <div class="text-2xl font-bold text-red-600 mono" id="stat-avg-yield">--</div>
+                </div>
+                <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                    <div class="text-xs text-gray-500 mb-1">今日涨跌</div>
+                    <div class="text-2xl font-bold mono" id="stat-total-change">--</div>
+                </div>
+            </div>
+
+            <!-- 操作栏 -->
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div class="flex items-center gap-2">
+                    <button id="batch-select-btn" class="px-4 py-2 bg-white border border-gray-200 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-50 transition-all">
+                        批量选择
+                    </button>
+                    <button id="batch-delete-btn" class="hidden px-4 py-2 bg-white border border-red-200 text-red-600 text-sm font-medium rounded-lg hover:bg-red-50 transition-all">
+                        删除选中 (<span id="selected-count">0</span>)
+                    </button>
+                    <button id="cancel-select-btn" class="hidden px-4 py-2 bg-white border border-gray-200 text-gray-500 text-sm font-medium rounded-lg hover:bg-gray-50 transition-all">
+                        取消选择
+                    </button>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button id="export-btn" class="px-4 py-2 bg-white border border-gray-200 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-50 transition-all flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                        导出CSV
+                    </button>
+                    <button id="refresh-btn" class="px-4 py-2 bg-white border border-gray-200 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-50 transition-all flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                        刷新行情
+                    </button>
+                </div>
+            </div>
+
+            <!-- 自选列表卡片 -->
+            <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                <div class="px-4 md:px-6 py-3 border-b border-gray-200 flex items-center justify-between bg-gray-50/50">
+                    <h2 class="font-semibold text-gray-900 flex items-center gap-2 text-sm md:text-base">⭐ 我的自选股</h2>
+                    <div class="text-xs text-gray-500">共 <span id="list-count">0</span> 只 · 拖拽👋可排序</div>
+                </div>
+                <table class="w-full">
+                    <thead class="bg-gray-50 border-b border-gray-200">
+                        <tr>
+                            <th class="px-3 md:px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider" id="checkbox-header" style="display: none;">
+                                <input type="checkbox" id="select-all" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 h-4 w-4">
+                            </th>
+                            <th class="px-3 md:px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider w-10">👋</th>
+                            <th class="px-3 md:px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">基金代码</th>
+                            <th class="px-3 md:px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">基金简称</th>
+                            <th class="px-3 md:px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden sm:table-cell">板块</th>
+                            <th class="px-3 md:px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">最新价</th>
+                            <th class="px-3 md:px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">涨跌幅</th>
+                            <th class="px-3 md:px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">派息率</th>
+                            <th class="px-3 md:px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="fund-list" class="divide-y divide-gray-100">
+                        <!-- 动态生成 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- 底部对比悬浮栏 -->
+    <div id="compare-bar" class="compare-bar fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur border-t border-gray-200 shadow-lg z-50 px-4 md:px-6 py-3 md:py-4">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-3 md:gap-4 overflow-hidden">
+                <span class="text-sm font-medium text-gray-700 flex-none">🛒 对比栏:</span>
+                <div id="compare-items" class="flex gap-2 overflow-x-auto">
+                    <!-- 动态添加 -->
+                </div>
+            </div>
+            <div class="flex items-center gap-2 md:gap-3 flex-none ml-3">
+                <span id="compare-count" class="text-xs text-gray-500">已选 0/4</span>
+                <button onclick="clearCompare(); updateCompareBar();" class="text-xs text-gray-400 hover:text-red-500">清空</button>
+                <button onclick="goToCompare()" id="btn-compare" class="px-4 md:px-6 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg opacity-50 cursor-not-allowed" disabled>
+                    开始对比 →
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="./js/common.js"></script>
+    <script src="./js/api.js"></script>
+    <script>
+        // 状态
+        let watchlist = [];
+        let batchMode = false;
+        let selectedItems = new Set();
+        let searchKeyword = '';
+        let filteredFunds = [];
+
+        // 全局基金数据
+        let portfolioFundsData = ALL_FUNDS || [];
+        
+        // 异步加载基金数据
+        async function loadPortfolioFunds() {
+            try {
+                console.log('🔄 正在从API加载基金数据...');
+                const response = await REITS_API.getFunds();
+                if (response.data && response.data.length > 0) {
+                    portfolioFundsData = response.data;
+                    console.log('✅ API数据加载成功:', portfolioFundsData.length, '只基金');
+                    showDataSource('API');
+                }
+            } catch (error) {
+                console.warn('⚠️ API加载失败，使用Mock数据:', error.message);
+                portfolioFundsData = ALL_FUNDS || [];
+                showDataSource('Mock');
+            }
+        }
+        
+        // 显示数据来源
+        function showDataSource(source) {
+            const indicator = document.createElement('div');
+            indicator.className = 'fixed bottom-4 left-4 text-xs px-3 py-1.5 rounded-full z-50 transition-all ' + 
+                (source === 'API' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700');
+            indicator.innerHTML = source === 'API' 
+                ? '🟢 实时数据（API）' 
+                : '🟡 模拟数据（Mock）';
+            document.body.appendChild(indicator);
+            setTimeout(() => { indicator.style.opacity = '0.5'; }, 3000);
+        }
+        
+        // 加载自选股
+        function loadWatchlist() {
+            const stored = localStorage.getItem('watchlist');
+            if (stored) {
+                watchlist = JSON.parse(stored);
+            } else {
+                watchlist = [
+                    { code: '508056', name: '中金普洛斯REIT', addTime: new Date().toISOString() },
+                    { code: '180201', name: '平安广州广河REIT', addTime: new Date().toISOString() },
+                    { code: '508099', name: '建信中关村REIT', addTime: new Date().toISOString() }
+                ];
+                saveWatchlist();
+            }
+            applyFilter();
+            updateCompareBar();
+        }
+
+        // 保存自选股
+        function saveWatchlist() {
+            localStorage.setItem('watchlist', JSON.stringify(watchlist));
+        }
+
+        // 获取自选基金的实时数据
+        function getWatchlistFunds() {
+            return watchlist.map(item => {
+                const fund = portfolioFundsData.find(f => f.code === item.code);
+                return {
+                    ...item,
+                    ...fund,
+                    price: fund ? fund.price : 0,
+                    change: fund ? fund.change : 0,
+                    sector: fund ? fund.sector : '',
+                    sectorName: fund ? fund.sectorName : '',
+                    yield: fund ? fund.yield : 0,
+                    marketCap: fund ? fund.marketCap : 0,
+                    debt: fund ? fund.debt : 0
+                };
+            }).filter(f => f.code);
+        }
+
+        // 应用搜索过滤
+        function applyFilter() {
+            let funds = getWatchlistFunds();
+            if (searchKeyword) {
+                const kw = searchKeyword.toLowerCase();
+                funds = funds.filter(f => f.code.toLowerCase().includes(kw) || f.name.toLowerCase().includes(kw));
+            }
+            filteredFunds = funds;
+            renderWatchlist();
+            updateStats();
+        }
+
+        // 更新统计
+        function updateStats() {
+            const funds = getWatchlistFunds();
+            const count = funds.length;
+            const totalMarketCap = funds.reduce((sum, f) => sum + (f.marketCap || 0), 0);
+            const avgYield = count ? (funds.reduce((sum, f) => sum + (f.yield || 0), 0) / count) : 0;
+            const totalChange = funds.reduce((sum, f) => sum + (f.change || 0), 0);
+
+            document.getElementById('stat-count').textContent = count;
+            document.getElementById('stat-market-cap').textContent = totalMarketCap.toFixed(0) + '亿';
+            document.getElementById('stat-avg-yield').textContent = avgYield.toFixed(1) + '%';
+            document.getElementById('stat-total-change').innerHTML = totalChange > 0
+                ? `<span class="text-red-600">+${totalChange.toFixed(2)}%</span>`
+                : `<span class="text-green-600">${totalChange.toFixed(2)}%</span>`;
+            document.getElementById('list-count').textContent = watchlist.length;
+        }
+
+        // 渲染自选列表
+        function renderWatchlist() {
+            const tbody = document.getElementById('fund-list');
+            const checkboxHeader = document.getElementById('checkbox-header');
+            const selectAllCheckbox = document.getElementById('select-all');
+            const funds = filteredFunds;
+            const compareList = getCompareList();
+
+            checkboxHeader.style.display = batchMode ? 'table-cell' : 'none';
+
+            if (funds.length === 0) {
+                const isEmptyWatchlist = watchlist.length === 0;
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="9" class="text-center py-16">
+                            <div class="text-5xl mb-4">⭐</div>
+                            <div class="text-gray-500 mb-2 font-medium">${isEmptyWatchlist ? '暂无自选基金' : '未找到匹配基金'}</div>
+                            <div class="text-sm text-gray-400 mb-6">${isEmptyWatchlist ? '去市场页面添加心仪基金到自选' : '请尝试其他关键词'}</div>
+                            ${isEmptyWatchlist ? `<a href="./market.html" class="inline-flex items-center px-5 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-all">去市场添加</a>` : ''}
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = funds.map((fund, index) => {
+                const inCompare = compareList.find(c => c.code === fund.code);
+                const sectorClass = SECTOR_CONFIG[fund.sector]?.tagClass || 'bg-gray-100 text-gray-600';
+                const isSelected = selectedItems.has(fund.code);
+
+                return `
+                    <tr class="fund-row ${isSelected ? 'bg-blue-50' : ''}" draggable="${!batchMode}" data-index="${index}" data-code="${fund.code}">
+                        ${batchMode ? `
+                            <td class="px-3 md:px-4 py-3">
+                                <input type="checkbox" class="select-item rounded border-gray-300 text-blue-600 focus:ring-blue-500 h-4 w-4" data-code="${fund.code}" ${isSelected ? 'checked' : ''}>
+                            </td>
+                        ` : ''}
+                        <td class="px-3 md:px-4 py-3 text-center drag-handle text-gray-400">
+                            <span class="text-sm select-none">👋</span>
+                        </td>
+                        <td class="px-3 md:px-4 py-3">
+                            <span class="mono text-blue-600 font-medium text-sm">${fund.code}</span>
+                        </td>
+                        <td class="px-3 md:px-4 py-3">
+                            <div class="font-medium text-gray-900 text-sm">${fund.name}</div>
+                        </td>
+                        <td class="px-3 md:px-4 py-3 hidden sm:table-cell">
+                            <span class="sector-tag ${sectorClass}">${fund.sectorName}</span>
+                        </td>
+                        <td class="px-3 md:px-4 py-3 text-right mono text-sm text-gray-900" id="price-${fund.code}">${fund.price.toFixed(3)}</td>
+                        <td class="px-3 md:px-4 py-3 text-right mono text-sm ${fund.change >= 0 ? 'text-red-600' : 'text-green-600'}" id="change-${fund.code}">
+                            ${fund.change >= 0 ? '+' : ''}${fund.change.toFixed(2)}%
+                        </td>
+                        <td class="px-3 md:px-4 py-3 text-right mono text-sm text-red-600 hidden lg:table-cell">${fund.yield.toFixed(2)}%</td>
+                        <td class="px-3 md:px-4 py-3 text-center">
+                            <div class="quick-actions flex items-center justify-center gap-1">
+                                <button onclick="toggleCompare('${fund.code}', '${fund.name?.replace(/'/g, '\\\'')}')" 
+                                    class="p-1.5 rounded transition-all ${inCompare ? 'text-blue-600 bg-blue-50' : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'}" title="加入对比">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                </button>
+                                <button onclick="removeFromWatchlist('${fund.code}')" class="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-all" title="删除自选">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            if (batchMode && selectAllCheckbox) {
+                selectAllCheckbox.checked = selectedItems.size === funds.length && funds.length > 0;
+            }
+
+            attachDragEvents();
+        }
+
+        // 移除自选
+        function removeFromWatchlist(code) {
+            watchlist = watchlist.filter(item => item.code !== code);
+            selectedItems.delete(code);
+            saveWatchlist();
+            applyFilter();
+            updateCompareBar();
+            showToast('已移除自选', 'info');
+        }
+
+        // 批量删除
+        function batchDelete() {
+            if (selectedItems.size === 0) {
+                showToast('请先选择要删除的基金', 'warning');
+                return;
+            }
+            if (confirm(`确定删除 ${selectedItems.size} 只自选基金吗？`)) {
+                watchlist = watchlist.filter(item => !selectedItems.has(item.code));
+                selectedItems.clear();
+                saveWatchlist();
+                applyFilter();
+                updateCompareBar();
+                showToast('删除成功', 'success');
+            }
+        }
+
+        // 导出CSV
+        function exportCSV() {
+            const funds = getWatchlistFunds();
+            if (funds.length === 0) {
+                showToast('暂无自选数据可导出', 'warning');
+                return;
+            }
+            const headers = ['代码', '名称', '板块', '最新价', '涨跌幅', '派息率', '债务率', '市值'];
+            const rows = funds.map(f => [
+                f.code, f.name, f.sectorName, f.price, f.change + '%', f.yield + '%', (f.debt || 0) + '%', f.marketCap + '亿'
+            ]);
+            const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n');
+            const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.href = url;
+            link.setAttribute('download', `reits_watchlist_${new Date().toISOString().slice(0,10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            showToast('导出成功', 'success');
+        }
+
+        // 刷新行情
+        function refreshQuotes() {
+            watchlist.forEach(item => {
+                const fund = portfolioFundsData.find(f => f.code === item.code);
+                if (fund) {
+                    const change = (Math.random() - 0.5) * 0.3;
+                    fund.price = parseFloat((fund.price * (1 + change / 100)).toFixed(3));
+                    fund.change = parseFloat((fund.change + change).toFixed(2));
+
+                    const priceEl = document.getElementById(`price-${fund.code}`);
+                    const changeEl = document.getElementById(`change-${fund.code}`);
+                    if (priceEl) {
+                        priceEl.textContent = fund.price.toFixed(3);
+                        priceEl.classList.add(fund.change >= 0 ? 'flash-up' : 'flash-down');
+                        setTimeout(() => priceEl.classList.remove('flash-up', 'flash-down'), 500);
+                    }
+                    if (changeEl) {
+                        changeEl.textContent = (fund.change >= 0 ? '+' : '') + fund.change.toFixed(2) + '%';
+                        changeEl.className = `px-3 md:px-4 py-3 text-right mono text-sm ${fund.change >= 0 ? 'text-red-600' : 'text-green-600'}`;
+                    }
+                }
+            });
+            updateStats();
+        }
+
+        // 拖拽排序
+        function attachDragEvents() {
+            const items = document.querySelectorAll('#fund-list tr[draggable="true"]');
+            let dragSrc = null;
+
+            items.forEach(item => {
+                item.addEventListener('dragstart', (e) => {
+                    dragSrc = item;
+                    e.dataTransfer.effectAllowed = 'move';
+                    item.style.opacity = '0.5';
+                });
+
+                item.addEventListener('dragend', () => {
+                    item.style.opacity = '';
+                    items.forEach(i => i.classList.remove('drag-over'));
+                });
+
+                item.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                });
+
+                item.addEventListener('dragenter', (e) => {
+                    e.preventDefault();
+                    if (dragSrc !== item) {
+                        item.classList.add('drag-over');
+                    }
+                });
+
+                item.addEventListener('dragleave', () => {
+                    item.classList.remove('drag-over');
+                });
+
+                item.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    if (dragSrc !== item) {
+                        const srcIndex = parseInt(dragSrc.dataset.index);
+                        const targetIndex = parseInt(item.dataset.index);
+
+                        const newWatchlist = [...watchlist];
+                        const [moved] = newWatchlist.splice(srcIndex, 1);
+                        newWatchlist.splice(targetIndex, 0, moved);
+                        watchlist = newWatchlist;
+                        saveWatchlist();
+                        applyFilter();
+                        showToast('排序已保存', 'success');
+                    }
+                    item.classList.remove('drag-over');
+                    if (dragSrc) dragSrc.style.opacity = '';
+                });
+            });
+        }
+
+        // 批量选择模式
+        function toggleBatchMode() {
+            batchMode = !batchMode;
+            if (!batchMode) {
+                selectedItems.clear();
+            }
+            const batchDeleteBtn = document.getElementById('batch-delete-btn');
+            const cancelSelectBtn = document.getElementById('cancel-select-btn');
+            const batchSelectBtn = document.getElementById('batch-select-btn');
+
+            if (batchMode) {
+                batchDeleteBtn.classList.remove('hidden');
+                cancelSelectBtn.classList.remove('hidden');
+                batchSelectBtn.classList.add('hidden');
+            } else {
+                batchDeleteBtn.classList.add('hidden');
+                cancelSelectBtn.classList.add('hidden');
+                batchSelectBtn.classList.remove('hidden');
+            }
+
+            document.getElementById('selected-count').textContent = selectedItems.size;
+            renderWatchlist();
+        }
+
+        // 全选/取消全选
+        function toggleSelectAll() {
+            const funds = filteredFunds;
+            const selectAll = document.getElementById('select-all');
+            if (selectAll.checked) {
+                funds.forEach(f => selectedItems.add(f.code));
+            } else {
+                selectedItems.clear();
+            }
+            document.getElementById('selected-count').textContent = selectedItems.size;
+            renderWatchlist();
+        }
+
+        // 对比功能
+        function toggleCompare(code, name) {
+            const list = getCompareList();
+            if (list.find(item => item.code === code)) {
+                removeFromCompare(code);
+            } else {
+                if (list.length >= 4) {
+                    showToast('对比栏已满（最多4只）', 'warning');
+                    return;
+                }
+                addToCompare(code, name);
+            }
+            updateCompareBar();
+            renderWatchlist();
+        }
+
+        // 更新对比栏（与市场页一致）
+        function updateCompareBar() {
+            const list = getCompareList();
+            const bar = document.getElementById('compare-bar');
+            const items = document.getElementById('compare-items');
+            const countSpan = document.getElementById('compare-count');
+            const compareBtn = document.getElementById('btn-compare');
+
+            if (list.length === 0) {
+                bar.classList.remove('show');
+                return;
+            }
+            bar.classList.add('show');
+
+            items.innerHTML = list.map(item => `
+                <div class="flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-lg flex-none">
+                    <span class="text-sm text-blue-900 font-medium truncate max-w-[120px]">${item.name}</span>
+                    <button onclick="removeFromCompare('${item.code}'); updateCompareBar(); renderWatchlist();" class="text-blue-400 hover:text-blue-600">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+            `).join('');
+
+            countSpan.textContent = `已选 ${list.length}/4`;
+            compareBtn.disabled = list.length < 2;
+            compareBtn.classList.toggle('opacity-50', list.length < 2);
+            compareBtn.classList.toggle('cursor-not-allowed', list.length < 2);
+        }
+
+        // 事件绑定
+        document.getElementById('batch-select-btn')?.addEventListener('click', toggleBatchMode);
+        document.getElementById('batch-delete-btn')?.addEventListener('click', batchDelete);
+        document.getElementById('cancel-select-btn')?.addEventListener('click', toggleBatchMode);
+        document.getElementById('export-btn')?.addEventListener('click', exportCSV);
+        document.getElementById('refresh-btn')?.addEventListener('click', () => { refreshQuotes(); showToast('行情已刷新', 'success'); });
+        document.getElementById('select-all')?.addEventListener('change', toggleSelectAll);
+
+        // 搜索 - 由 common.js 接管下拉框功能
+        // 这里额外添加实时过滤功能（不影响下拉框）
+        const searchInput = document.getElementById('global-search');
+        if (searchInput) {
+            searchInput.addEventListener('input', debounce((e) => {
+                searchKeyword = e.target.value.trim();
+                applyFilter();
+            }, 300));
+        }
+
+        document.addEventListener('change', (e) => {
+            if (e.target.classList.contains('select-item')) {
+                const code = e.target.dataset.code;
+                if (e.target.checked) {
+                    selectedItems.add(code);
+                } else {
+                    selectedItems.delete(code);
+                }
+                document.getElementById('selected-count').textContent = selectedItems.size;
+                const selectAll = document.getElementById('select-all');
+                if (selectAll) {
+                    selectAll.checked = selectedItems.size === filteredFunds.length && filteredFunds.length > 0;
+                }
+            }
+        });
+
+        // 初始化
+        window.addEventListener('DOMContentLoaded', async () => {
+            await loadPortfolioFunds(); // 先加载基金数据
+            loadWatchlist();
+            setInterval(refreshQuotes, 10000);
+            if (Math.random() > 0.5) {
+                document.getElementById('nav-badge')?.classList.remove('hidden');
+            }
+        });
+    </script>
+<!-- 关于平台弹窗 -->
+<div id="about-modal" class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center opacity-0 invisible transition-all" onclick="if(event.target===this)closeAbout()">
+    <div class="bg-white rounded-2xl shadow-2xl w-[90%] max-w-md transform scale-95 transition-transform p-6" id="about-content">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold text-gray-900">关于 REITs 数据平台</h3>
+            <button onclick="closeAbout()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-all">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="space-y-4 text-gray-600">
+            <p>REITs 数据平台是一个<strong>开放式金融数据平台</strong>，无需登录即可使用全部功能。</p>
+            <div class="bg-blue-50 rounded-xl p-4">
+                <h4 class="font-semibold text-blue-900 mb-2">🚀 平台特色</h4>
+                <ul class="text-sm space-y-1 text-blue-800">
+                    <li>• 实时行情数据 - 跟踪所有 REITs 基金</li>
+                    <li>• 板块热力图 - 直观展示涨跌分布</li>
+                    <li>• 智能对比 - 多维度基金对比分析</li>
+                    <li>• 公告追踪 - 重要信息及时掌握</li>
+                </ul>
+            </div>
+            <p class="text-xs text-gray-400">数据来源：新浪财经、东方财富、AKShare</p>
+        </div>
+    </div>
+</div>
+<style>
+    #about-modal.show { opacity: 1; visibility: visible; }
+    #about-modal.show #about-content { transform: scale(1); }
+</style>
+<script>
+    function showAbout() {
+        document.getElementById('about-modal').classList.add('show');
+    }
+    function closeAbout() {
+        document.getElementById('about-modal').classList.remove('show');
+    }
+</script>
+</body>
+</html>
