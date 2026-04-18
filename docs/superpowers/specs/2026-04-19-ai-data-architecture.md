@@ -211,12 +211,14 @@ CREATE TABLE research_funds (
     FOREIGN KEY (session_id) REFERENCES research_sessions(id)
 );
 
--- 投研结果
+-- 投研结果（结构化分段存储）
 CREATE TABLE research_results (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     session_id INTEGER NOT NULL,
     analysis_type VARCHAR(50),                   -- financial/operation/industry/...
-    result_content TEXT,                          -- 分析报告JSON
+    conclusion TEXT,                              -- 核心结论
+    supporting_data TEXT,                        -- 支撑数据（JSON数组）
+    references TEXT,                             -- 参考来源（JSON数组）
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (session_id) REFERENCES research_sessions(id)
 );
@@ -336,8 +338,39 @@ CREATE INDEX idx_article_category ON articles(category);
 
 ### 4.3 向量化时机
 
-- **策略**：入库同时向量化
-- **流程**：爬取/解析 → 清洗 → 入库 → 同步调用embedding API → 存入Milvus
+- **策略**：**异步队列向量化**（入库优先，向量化后台处理）
+- **流程**：爬取/解析 → 清洗 → 入库（标记`vectorized=false`）→ 后台队列调用embedding API → 存入Milvus → 更新`vectorized=true`
+- **失败处理**：未向量化记录入`vector_pending`队列表，支持重试，不丢数据
+- **降级策略**：向量服务不可用时，AI查询降级到PostgreSQL全文检索（`to_tsvector`）
+
+### 4.4 向量待处理队列表
+
+```sql
+-- 向量待处理队列
+CREATE TABLE vector_pending (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    source_type VARCHAR(20) NOT NULL,           -- hotspot/article/announcement
+    source_id INTEGER NOT NULL,
+    retry_count INTEGER DEFAULT 0,
+    last_retry_at DATETIME,
+    status VARCHAR(20) DEFAULT 'pending',        -- pending/processing/failed/done
+    error_message TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_pending_status ON vector_pending(status);
+CREATE INDEX idx_pending_retry ON vector_pending(retry_count);
+```
+
+### 4.5 Milvus降级策略
+
+**降级触发条件**：Milvus服务不可用（连接超时、查询失败）
+**降级方案**：切换到PostgreSQL全文检索
+- `announcement_content` 表添加 `fulltext_vector tsvector` 索引
+- `social_hotspots` 表添加 `fulltext_vector tsvector` 索引
+- `articles` 表添加 `fulltext_vector tsvector` 索引
+- AI查询时优先Milvus，失败则自动降级到全文检索
+- 降级期间的数据仍正常入库，向量化在Milvus恢复后补处理
 
 ---
 
@@ -345,16 +378,18 @@ CREATE INDEX idx_article_category ON articles(category);
 
 ### 5.1 调度器架构
 
+**分离调度策略**：每个数据源独立调度器，故障隔离，互不影响。
+
 ```
-APScheduler (统一调度器)
+独立调度器（各自进程）
     │
-    ├── HotspotSpider (30分钟)
+    ├── HotspotScheduler (30分钟)
     │       └── weibo → tonghuashun → xueqiu
     │
-    ├── ArticleSpider (每日 8:00)
+    ├── ArticleScheduler (每日 8:00)
     │       └── wechat → cninfo → other_media
     │
-    └── AnnouncementSpider (每日 6:00, 18:00)
+    └── AnnouncementScheduler (每日 6:00, 18:00)
             └── sse → szse → cninfo
 ```
 
