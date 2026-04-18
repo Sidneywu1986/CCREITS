@@ -716,6 +716,7 @@
                 selectedAnnouncements.push({ id, title, summary: summary || '' });
             }
             updateSelectionUI();
+            updateChatPanelHeader();
             initChatForSelected();
         }
 
@@ -760,6 +761,7 @@
             selectedAnnouncementIds = selectedAnnouncementIds.filter(i => i !== id);
             selectedAnnouncements = selectedAnnouncements.filter(a => a.id !== id);
             updateSelectionUI();
+            updateChatPanelHeader();
             initChatForSelected();
         }
 
@@ -767,7 +769,31 @@
             selectedAnnouncementIds = [];
             selectedAnnouncements = [];
             updateSelectionUI();
+            updateChatPanelHeader();
             initChatForSelected();
+        }
+
+        // 更新聊天面板头部显示选中公告
+        function updateChatPanelHeader() {
+            const header = document.getElementById('selected-announcements-header');
+            const list = document.getElementById('selected-announcements-list');
+            const emptyMsg = document.getElementById('selected-announcements-empty');
+
+            if (selectedAnnouncements.length === 0) {
+                header.classList.add('hidden');
+                list.innerHTML = '';
+                emptyMsg.classList.remove('hidden');
+            } else {
+                header.classList.remove('hidden');
+                emptyMsg.classList.add('hidden');
+                header.textContent = `已选公告 (${selectedAnnouncements.length}/3)`;
+                list.innerHTML = selectedAnnouncements.map((a, i) => `
+                    <div class="text-xs bg-white rounded px-2 py-1 flex justify-between items-center gap-2">
+                        <span class="truncate flex-1">${i+1}. ${a.title}</span>
+                        <button onclick="removeFromSelection(${a.id})" class="text-gray-400 hover:text-red-500 font-bold flex-none">×</button>
+                    </div>
+                `).join('');
+            }
         }
 
         function loadMore() {
@@ -940,6 +966,7 @@
             
             await loadAnnouncements();
             updateCompareBar();
+            updateChatPanelHeader();
         };
     </script>
 <!-- 关于平台弹窗 -->
