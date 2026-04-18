@@ -632,7 +632,7 @@
                             <input type="checkbox"
                                    class="mt-1 w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
                                    ${selectedAnnouncementIds.includes(item.id) ? 'checked' : ''}
-                                   onclick="event.stopPropagation(); alert('checkbox clicked: ${item.id}'); toggleSelection(${item.id}, '${item.title.replace(/'/g, "\\'")}', '${(item.summary || '').replace(/'/g, "\\'")}')">
+                                   onclick="event.stopPropagation(); toggleSelection(${item.id}, '${item.title.replace(/'/g, "\\'")}', '${(item.summary || '').replace(/'/g, "\\'")}')">
                             <div class="flex-1 min-w-0">
                                 <div class="flex flex-wrap items-center gap-2 mb-2">
                                     <span class="sector-tag ${catConfig.tagClass}">${catConfig.name}</span>
@@ -725,6 +725,7 @@
             console.log('updateSelectionUI called, cards found:', document.querySelectorAll('.announcement-card').length);
             // 只更新已选中卡片的样式，不重建整个列表
             const cards = document.querySelectorAll('.announcement-card');
+            console.log('Before update, announcement-list innerHTML length:', document.getElementById('announcement-list')?.innerHTML?.length);
             cards.forEach(card => {
                 const id = parseInt(card.dataset.id);
                 const isSelected = selectedAnnouncementIds.includes(id);
