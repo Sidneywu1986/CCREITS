@@ -1035,8 +1035,8 @@
         // K线图（日K/周K）- 使用 ECharts
         async function loadKlineChart(type) {
             try {
-                const period = type === 'weekly' ? '1w' : '1d';
-                const response = await fetch(`/api/funds/${currentCode}/kline?period=${period}&limit=60`);
+                const period = type === 'weekly' ? 'weekly' : 'daily';
+                const response = await fetch(`http://localhost:5076/api/funds/price-history?code=${currentCode}&time_range=${period}`);
                 const result = await response.json();
                 
                 let data = [];

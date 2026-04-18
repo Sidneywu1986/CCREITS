@@ -3,7 +3,7 @@
  * 简单直接，不做复杂转换
  */
 
-const API_BASE_URL = '/api';
+const API_BASE_URL = 'http://localhost:5074/api';
 const USE_MOCK = false;
 
 async function request(url, options = {}) {

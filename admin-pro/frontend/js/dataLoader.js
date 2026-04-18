@@ -8,7 +8,7 @@
  * @returns {Promise<Array>} 基金数据数组
  */
 async function loadFundsFromAPI() {
-  const API_BASE_URL = '/api';
+  const API_BASE_URL = 'http://localhost:5076/api';
   const response = await fetch(`${API_BASE_URL}/funds`, {
     headers: {
       'Content-Type': 'application/json'

@@ -768,7 +768,7 @@
         // 加载大盘指数数据
         async function loadMarketIndices() {
             try {
-                const response = await fetch('/api/market/indices');
+                const response = await fetch('http://localhost:5076/api/market-indices/list');
                 if (!response.ok) throw new Error('Network error');
                 const result = await response.json();
                 if (result.success && result.data) {
@@ -849,13 +849,25 @@
                     showTradingStatus();
                     return;
                 }
-                
-                // 如果是 API 数据，尝试重新获取（每30秒一次）
+
+                // 如果是 API 数据，使用实时行情API更新
                 if (currentDataSource === 'api') {
                     try {
-                        const response = await REITS_API.getFunds();
-                        if (response.data && response.data.length > 0) {
-                            allFundsData = response.data;
+                        const quotesResponse = await fetch('http://localhost:5076/api/quotes/realtime');
+                        const quotesResult = await quotesResponse.json();
+                        if (quotesResult.success && quotesResult.data && quotesResult.data.length > 0) {
+                            // 更新现有数据
+                            quotesResult.data.forEach(q => {
+                                const fund = allFundsData.find(f => f.code === q.fund_code);
+                                if (fund) {
+                                    fund.price = q.current_price;
+                                    fund.change = q.change;
+                                    fund.change_percent = q.change_pct;
+                                    fund.volume = q.volume;
+                                    fund.amount = q.amount;
+                                    fund.updateTime = q.timestamp;
+                                }
+                            });
                             filteredData = [...allFundsData];
                         }
                     } catch (e) {
@@ -869,9 +881,9 @@
                         fund.change_percent = parseFloat(((fund.change_percent || 0) + change).toFixed(2));
                     });
                 }
-                
+
                 applyFilters();
-                
+
                 // 闪烁动画
                 filteredData.slice((currentPage-1)*pageSize, currentPage*pageSize).forEach(fund => {
                     const priceEl = document.getElementById(`price-${fund.code}`);
@@ -880,7 +892,7 @@
                         setTimeout(() => priceEl.classList.remove('flash-up', 'flash-down'), 500);
                     }
                 });
-                
+
                 showTradingStatus();
             }, 5000);
         }
@@ -935,10 +947,10 @@
                         
                         // 根据周期选择对应的涨跌幅数据
                         let changePercent = fund.change_percent || fund.change || 0;
-                        if (days === 5 && fund.change5d !== undefined) {
-                            changePercent = fund.change5d;
-                        } else if (days === 20 && fund.change20d !== undefined) {
-                            changePercent = fund.change20d;
+                        if (days === 5 && fund.change_5d !== undefined) {
+                            changePercent = fund.change_5d;
+                        } else if (days === 20 && fund.change_20d !== undefined) {
+                            changePercent = fund.change_20d;
                         }
                         
                         if (!sectorData[sector]) {
@@ -1077,31 +1089,53 @@
         let allFundsData = ALL_FUNDS || []; // 默认使用Mock数据
         let filteredData = [...allFundsData];
         
-        // 异步加载数据（优先从API获取）
+        // 异步加载数据（优先从实时行情API获取）
         async function loadData() {
             try {
-                console.log('🔄 正在从API加载数据...');
-                const response = await REITS_API.getFunds();
-                
-                if (response.data && response.data.length > 0) {
-                    allFundsData = response.data;
+                console.log('🔄 正在从实时行情API加载数据...');
+
+                // 优先使用实时行情API
+                const quotesResponse = await fetch('http://localhost:5076/api/quotes/realtime');
+                const quotesResult = await quotesResponse.json();
+
+                if (quotesResult.success && quotesResult.data && quotesResult.data.length > 0) {
+                    // 转换为前端期望的格式
+                    allFundsData = quotesResult.data.map(q => ({
+                        code: q.fund_code,
+                        name: q.name,
+                        sector: q.sector,
+                        price: q.current_price,
+                        change: q.change,
+                        change_percent: q.change_pct,
+                        change_5d: q.change_5d,
+                        change_20d: q.change_20d,
+                        volume: q.volume,
+                        amount: q.amount,
+                        market_cap: q.market_cap,
+                        turnover: q.amount,
+                        open: q.open_price,
+                        prev_close: q.prev_close,
+                        high: q.high_price,
+                        low: q.low_price,
+                        updateTime: q.timestamp
+                    }));
                     filteredData = [...allFundsData];
                     currentDataSource = 'api'; // 标记为API数据
-                    console.log(`✅ API数据加载成功: ${allFundsData.length} 只基金`);
-                    
+                    console.log(`✅ 实时行情加载成功: ${allFundsData.length} 只基金`);
+
                     // 显示数据来源标识
                     showDataSource('API');
                 } else {
-                    throw new Error('API返回数据为空');
+                    throw new Error('实时行情API返回数据为空');
                 }
             } catch (error) {
-                console.warn('⚠️ API加载失败，使用Mock数据:', error.message);
+                console.warn('⚠️ 实时行情加载失败，使用Mock数据:', error.message);
                 allFundsData = ALL_FUNDS || [];
                 filteredData = [...allFundsData];
                 currentDataSource = 'mock'; // 标记为Mock数据
                 showDataSource('Mock');
             }
-            
+
             // 数据加载完成后初始化页面
             initTreemap();
             applyFilters();
