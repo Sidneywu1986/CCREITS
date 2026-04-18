@@ -1,0 +1,279 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1776409270057,
+  "projectRoot": "D:\\tools\\消费看板5（前端）\\backend",
+  "techStack": {
+    "languages": [
+      {
+        "name": "JavaScript/TypeScript",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "package.json"
+        ]
+      },
+      {
+        "name": "Python",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "requirements.txt"
+        ]
+      }
+    ],
+    "frameworks": [],
+    "packageManager": "npm",
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": null,
+    "testCommand": null,
+    "lintCommand": null,
+    "devCommand": null,
+    "scripts": {}
+  },
+  "conventions": {
+    "namingStyle": null,
+    "importStyle": null,
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [
+      "scripts",
+      "tests"
+    ],
+    "gitBranches": null
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "api": {
+      "path": "api",
+      "purpose": "API routes",
+      "fileCount": 1,
+      "lastAccessed": 1776409269477,
+      "keyFiles": [
+        "dividend_calendar.py"
+      ]
+    },
+    "core": {
+      "path": "core",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1776409269478,
+      "keyFiles": [
+        "config.py"
+      ]
+    },
+    "crawlers": {
+      "path": "crawlers",
+      "purpose": null,
+      "fileCount": 31,
+      "lastAccessed": 1776409270007,
+      "keyFiles": [
+        "akshare.js",
+        "akshare_crawler.py",
+        "akshare_crawler_v2.py",
+        "announcement.js",
+        "announcement_akshare.py"
+      ]
+    },
+    "database": {
+      "path": "database",
+      "purpose": null,
+      "fileCount": 9,
+      "lastAccessed": 1776409270008,
+      "keyFiles": [
+        "ai_chat_schema.sql",
+        "db.js",
+        "index_schema.sql",
+        "migrate-add-fields.js",
+        "reits.db"
+      ]
+    },
+    "logs": {
+      "path": "logs",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1776409270009,
+      "keyFiles": [
+        "app.log"
+      ]
+    },
+    "modules": {
+      "path": "modules",
+      "purpose": null,
+      "fileCount": 0,
+      "lastAccessed": 1776409270010,
+      "keyFiles": []
+    },
+    "scripts": {
+      "path": "scripts",
+      "purpose": "Build/utility scripts",
+      "fileCount": 0,
+      "lastAccessed": 1776409270010,
+      "keyFiles": []
+    },
+    "services": {
+      "path": "services",
+      "purpose": "Business logic services",
+      "fileCount": 2,
+      "lastAccessed": 1776409270011,
+      "keyFiles": [
+        "realtime_quotes.py",
+        "__init__.py"
+      ]
+    },
+    "tests": {
+      "path": "tests",
+      "purpose": "Test files",
+      "fileCount": 0,
+      "lastAccessed": 1776409270011,
+      "keyFiles": []
+    },
+    "__pycache__": {
+      "path": "__pycache__",
+      "purpose": null,
+      "fileCount": 8,
+      "lastAccessed": 1776409270012,
+      "keyFiles": [
+        "admin_app.cpython-311.pyc",
+        "admin_main.cpython-311.pyc",
+        "admin_models.cpython-311.pyc",
+        "admin_sqladmin.cpython-311.pyc",
+        "api_adapter.cpython-311.pyc"
+      ]
+    }
+  },
+  "hotPaths": [
+    {
+      "path": "services\\announcements.py",
+      "accessCount": 47,
+      "lastAccessed": 1776492075616,
+      "type": "file"
+    },
+    {
+      "path": "api_adapter.py",
+      "accessCount": 42,
+      "lastAccessed": 1776479782420,
+      "type": "file"
+    },
+    {
+      "path": "services\\realtime_quotes.py",
+      "accessCount": 22,
+      "lastAccessed": 1776406902659,
+      "type": "file"
+    },
+    {
+      "path": "",
+      "accessCount": 4,
+      "lastAccessed": 1776489975665,
+      "type": "directory"
+    },
+    {
+      "path": "crawlers\\cninfo_crawler.py",
+      "accessCount": 2,
+      "lastAccessed": 1776368762067,
+      "type": "file"
+    },
+    {
+      "path": "crawlers\\akshare_crawler.py",
+      "accessCount": 1,
+      "lastAccessed": 1776368163187,
+      "type": "file"
+    },
+    {
+      "path": "crawlers\\announcement_cninfo.py",
+      "accessCount": 1,
+      "lastAccessed": 1776368269916,
+      "type": "file"
+    },
+    {
+      "path": "crawlers\\announcement_html.py",
+      "accessCount": 1,
+      "lastAccessed": 1776368368007,
+      "type": "file"
+    },
+    {
+      "path": "crawlers\\announcement_v3.py",
+      "accessCount": 1,
+      "lastAccessed": 1776368466473,
+      "type": "file"
+    },
+    {
+      "path": "crawlers\\fund_info_multi_source.py",
+      "accessCount": 1,
+      "lastAccessed": 1776368866071,
+      "type": "file"
+    },
+    {
+      "path": "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\claude\\D--tools-----5----\\c8aa5ebb-201b-47cd-b2a3-470049a1fda4\\tasks\\bto71chib.output",
+      "accessCount": 1,
+      "lastAccessed": 1776399814386,
+      "type": "file"
+    },
+    {
+      "path": "crawlers\\market-index.js",
+      "accessCount": 1,
+      "lastAccessed": 1776409166418,
+      "type": "file"
+    },
+    {
+      "path": "database\\index_schema.sql",
+      "accessCount": 1,
+      "lastAccessed": 1776411347823,
+      "type": "file"
+    },
+    {
+      "path": "C:\\Users\\Administrator\\Desktop\\market-index.js",
+      "accessCount": 1,
+      "lastAccessed": 1776415566562,
+      "type": "file"
+    },
+    {
+      "path": "database\\db.js",
+      "accessCount": 1,
+      "lastAccessed": 1776415704569,
+      "type": "file"
+    },
+    {
+      "path": "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\claude\\D--tools-----5----\\d9d1a342-3b26-406e-a3b3-bf9651aa49e0\\tasks\\baztr6njh.output",
+      "accessCount": 1,
+      "lastAccessed": 1776449203394,
+      "type": "file"
+    },
+    {
+      "path": "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\claude\\D--tools-----5----\\d9d1a342-3b26-406e-a3b3-bf9651aa49e0\\tasks\\bso2bp5j2.output",
+      "accessCount": 1,
+      "lastAccessed": 1776470821270,
+      "type": "file"
+    },
+    {
+      "path": "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\claude\\D--tools-----5----\\d9d1a342-3b26-406e-a3b3-bf9651aa49e0\\tasks\\b18czwsx5.output",
+      "accessCount": 1,
+      "lastAccessed": 1776473608730,
+      "type": "file"
+    },
+    {
+      "path": "test_sse_api.py",
+      "accessCount": 1,
+      "lastAccessed": 1776477074886,
+      "type": "file"
+    },
+    {
+      "path": "test_sse_api2.py",
+      "accessCount": 1,
+      "lastAccessed": 1776477116713,
+      "type": "file"
+    },
+    {
+      "path": "test_sse_network.py",
+      "accessCount": 1,
+      "lastAccessed": 1776477147358,
+      "type": "file"
+    }
+  ],
+  "userDirectives": []
+}

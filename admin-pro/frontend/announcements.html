@@ -701,7 +701,6 @@
 
         // 选择公告（单选改多选）
         function toggleSelection(id, title, summary) {
-            console.log('toggleSelection called:', id, title);
             const idx = selectedAnnouncementIds.indexOf(id);
             if (idx > -1) {
                 // 已选中，移除
@@ -722,10 +721,8 @@
         }
 
         function updateSelectionUI() {
-            console.log('updateSelectionUI called, cards found:', document.querySelectorAll('.announcement-card').length);
             // 只更新已选中卡片的样式，不重建整个列表
             const cards = document.querySelectorAll('.announcement-card');
-            console.log('Before update, announcement-list innerHTML length:', document.getElementById('announcement-list')?.innerHTML?.length);
             cards.forEach(card => {
                 const id = parseInt(card.dataset.id);
                 const isSelected = selectedAnnouncementIds.includes(id);
@@ -923,7 +920,7 @@
         // 重写对比栏更新（适配本页UI）
         function updateCompareBar() {
             try {
-                const list = getCompareList ? getCompareList() : [];
+                const list = typeof getCompareList === 'function' ? getCompareList() : [];
                 const bar = document.getElementById('compare-bar');
                 if (!bar) return;
                 const items = document.getElementById('compare-items');

@@ -44,3 +44,4 @@ backend/reits_announcements/
 # Database WAL files
 *.db-shm
 *.db-wal
+.gstack/

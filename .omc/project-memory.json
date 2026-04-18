@@ -1,0 +1,322 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1776446349184,
+  "projectRoot": "D:\\tools\\消费看板5（前端）",
+  "techStack": {
+    "languages": [],
+    "frameworks": [],
+    "packageManager": null,
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": null,
+    "testCommand": null,
+    "lintCommand": null,
+    "devCommand": null,
+    "scripts": {}
+  },
+  "conventions": {
+    "namingStyle": null,
+    "importStyle": null,
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [
+      "docs",
+      "scripts",
+      "tests"
+    ],
+    "gitBranches": null
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "admin-pro": {
+      "path": "admin-pro",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1776446349131,
+      "keyFiles": [
+        "start_frontend.bat"
+      ]
+    },
+    "archive_legacy": {
+      "path": "archive_legacy",
+      "purpose": null,
+      "fileCount": 0,
+      "lastAccessed": 1776446349132,
+      "keyFiles": []
+    },
+    "backend": {
+      "path": "backend",
+      "purpose": null,
+      "fileCount": 16,
+      "lastAccessed": 1776446349132,
+      "keyFiles": [
+        "admin_app.py",
+        "admin_models.py",
+        "akshare.log",
+        "akshare_server.py",
+        "api_adapter.py"
+      ]
+    },
+    "data": {
+      "path": "data",
+      "purpose": "Data files",
+      "fileCount": 14,
+      "lastAccessed": 1776446349134,
+      "keyFiles": [
+        "reits_40_funds_complete.sql",
+        "reits_60_funds_final.sql",
+        "reits_funds.csv",
+        "reits_funds.json",
+        "reits_funds_79.csv"
+      ]
+    },
+    "docs": {
+      "path": "docs",
+      "purpose": "Documentation",
+      "fileCount": 10,
+      "lastAccessed": 1776446349134,
+      "keyFiles": [
+        "AKShare配置说明.md",
+        "ANNOUNCEMENT_8TABLES_DESIGN.md",
+        "CNINFO_CRAWLER.md",
+        "data-calculation-plan.md",
+        "PDF_EXTRACTION_DESIGN.md"
+      ]
+    },
+    "scripts": {
+      "path": "scripts",
+      "purpose": "Build/utility scripts",
+      "fileCount": 2,
+      "lastAccessed": 1776446349135,
+      "keyFiles": [
+        "clean_data.py",
+        "sync_funds_data.py"
+      ]
+    },
+    "tests": {
+      "path": "tests",
+      "purpose": "Test files",
+      "fileCount": 2,
+      "lastAccessed": 1776446349135,
+      "keyFiles": [
+        "test_api_adapter.py",
+        "test_data_clean.py"
+      ]
+    },
+    "backend\\api": {
+      "path": "backend\\api",
+      "purpose": "API routes",
+      "fileCount": 1,
+      "lastAccessed": 1776446349136,
+      "keyFiles": [
+        "dividend_calendar.py"
+      ]
+    }
+  },
+  "hotPaths": [
+    {
+      "path": "admin-pro\\frontend\\announcements.html",
+      "accessCount": 83,
+      "lastAccessed": 1776522602246,
+      "type": "file"
+    },
+    {
+      "path": "backend\\api_adapter.py",
+      "accessCount": 10,
+      "lastAccessed": 1776410766238,
+      "type": "file"
+    },
+    {
+      "path": "admin-pro\\frontend\\market.html",
+      "accessCount": 8,
+      "lastAccessed": 1776410514486,
+      "type": "file"
+    },
+    {
+      "path": "admin-pro\\src\\main.tsx",
+      "accessCount": 3,
+      "lastAccessed": 1776321928926,
+      "type": "file"
+    },
+    {
+      "path": "backend\\services\\realtime_quotes.py",
+      "accessCount": 3,
+      "lastAccessed": 1776398743552,
+      "type": "file"
+    },
+    {
+      "path": "admin-pro\\src\\components\\MarketChart.tsx",
+      "accessCount": 2,
+      "lastAccessed": 1776322369877,
+      "type": "file"
+    },
+    {
+      "path": "scripts\\clean_data.py",
+      "accessCount": 2,
+      "lastAccessed": 1776337851691,
+      "type": "file"
+    },
+    {
+      "path": "",
+      "accessCount": 2,
+      "lastAccessed": 1776513923384,
+      "type": "directory"
+    },
+    {
+      "path": "admin-pro\\frontend\\css\\common.css",
+      "accessCount": 2,
+      "lastAccessed": 1776521877218,
+      "type": "directory"
+    },
+    {
+      "path": "admin-pro\\src\\pages\\DividendCalendarPage.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1776320889389,
+      "type": "file"
+    },
+    {
+      "path": "admin-pro\\src\\services\\marketService.ts",
+      "accessCount": 1,
+      "lastAccessed": 1776321389471,
+      "type": "file"
+    },
+    {
+      "path": "admin-pro\\src\\context\\MarketContext.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1776321455568,
+      "type": "file"
+    },
+    {
+      "path": "admin-pro\\src\\components\\MarketIndexCard.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1776321479870,
+      "type": "file"
+    },
+    {
+      "path": "backend\\crawlers\\fund-detail.js",
+      "accessCount": 1,
+      "lastAccessed": 1776323380416,
+      "type": "file"
+    },
+    {
+      "path": "admin-pro\\frontend\\fund-detail.html",
+      "accessCount": 1,
+      "lastAccessed": 1776323464636,
+      "type": "file"
+    },
+    {
+      "path": "backend\\akshare_server.py",
+      "accessCount": 1,
+      "lastAccessed": 1776326784617,
+      "type": "file"
+    },
+    {
+      "path": "backend\\api\\dividend_calendar.py",
+      "accessCount": 1,
+      "lastAccessed": 1776326785373,
+      "type": "file"
+    },
+    {
+      "path": "backend\\admin_app.py",
+      "accessCount": 1,
+      "lastAccessed": 1776336296824,
+      "type": "file"
+    },
+    {
+      "path": "tests\\test_data_clean.py",
+      "accessCount": 1,
+      "lastAccessed": 1776336849808,
+      "type": "file"
+    },
+    {
+      "path": "data\\reits_funds_79_cleaned.json",
+      "accessCount": 1,
+      "lastAccessed": 1776337884857,
+      "type": "file"
+    },
+    {
+      "path": "C:\\Users\\Administrator\\.claude\\plans\\wild-rolling-galaxy.md",
+      "accessCount": 1,
+      "lastAccessed": 1776342941057,
+      "type": "file"
+    },
+    {
+      "path": "backend\\test_api_adapter.py",
+      "accessCount": 1,
+      "lastAccessed": 1776343682585,
+      "type": "file"
+    },
+    {
+      "path": "admin-pro\\src\\services\\fundService.ts",
+      "accessCount": 1,
+      "lastAccessed": 1776344800005,
+      "type": "file"
+    },
+    {
+      "path": "admin-pro\\src\\test\\FundInfoCard.test.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1776345426936,
+      "type": "file"
+    },
+    {
+      "path": "admin-pro\\src\\test\\fundService.test.ts",
+      "accessCount": 1,
+      "lastAccessed": 1776345434779,
+      "type": "file"
+    },
+    {
+      "path": "admin-pro\\src\\components\\FundInfoCard.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1776345497157,
+      "type": "file"
+    },
+    {
+      "path": "backend\\sector_mapping.json",
+      "accessCount": 1,
+      "lastAccessed": 1776398692568,
+      "type": "file"
+    },
+    {
+      "path": "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\claude\\D--tools-----5----\\c8aa5ebb-201b-47cd-b2a3-470049a1fda4\\tasks\\b6955c7xe.output",
+      "accessCount": 1,
+      "lastAccessed": 1776399051411,
+      "type": "file"
+    },
+    {
+      "path": "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\claude\\D--tools-----5----\\c8aa5ebb-201b-47cd-b2a3-470049a1fda4\\tasks\\b37gs1yse.output",
+      "accessCount": 1,
+      "lastAccessed": 1776399161252,
+      "type": "file"
+    },
+    {
+      "path": "backend",
+      "accessCount": 1,
+      "lastAccessed": 1776409732808,
+      "type": "directory"
+    },
+    {
+      "path": "docs\\superpowers\\specs\\2026-04-18-multi-select-chat-design.md",
+      "accessCount": 1,
+      "lastAccessed": 1776509925557,
+      "type": "file"
+    },
+    {
+      "path": "docs\\superpowers\\plans\\2026-04-18-multi-select-chat-plan.md",
+      "accessCount": 1,
+      "lastAccessed": 1776511885008,
+      "type": "file"
+    },
+    {
+      "path": "admin-pro\\frontend\\js\\api.js",
+      "accessCount": 1,
+      "lastAccessed": 1776520509626,
+      "type": "directory"
+    }
+  ],
+  "userDirectives": []
+}

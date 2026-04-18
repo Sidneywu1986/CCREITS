@@ -1,0 +1,56 @@
+{
+  "agents": [
+    {
+      "agent_id": "abc29ec2b9f8fe220",
+      "agent_type": "Explore",
+      "started_at": "2026-04-17T07:34:09.261Z",
+      "parent_mode": "none",
+      "status": "running"
+    },
+    {
+      "agent_id": "a8ec781bf95e16224",
+      "agent_type": "general-purpose",
+      "started_at": "2026-04-18T04:50:36.168Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-04-18T05:08:25.869Z",
+      "duration_ms": 1069701
+    },
+    {
+      "agent_id": "a140dcc06f908f916",
+      "agent_type": "general-purpose",
+      "started_at": "2026-04-18T05:08:46.781Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-04-18T05:30:27.686Z",
+      "duration_ms": 1300905
+    },
+    {
+      "agent_id": "a7e341b70437d4188",
+      "agent_type": "general-purpose",
+      "started_at": "2026-04-18T05:59:57.025Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-04-18T06:19:32.363Z",
+      "duration_ms": 1175338
+    },
+    {
+      "agent_id": "ad8529a3859c6de98",
+      "agent_type": "general-purpose",
+      "started_at": "2026-04-18T06:20:14.728Z",
+      "parent_mode": "none",
+      "status": "running"
+    },
+    {
+      "agent_id": "afa79fee5efa34249",
+      "agent_type": "general-purpose",
+      "started_at": "2026-04-18T08:12:59.358Z",
+      "parent_mode": "none",
+      "status": "running"
+    }
+  ],
+  "total_spawned": 6,
+  "total_completed": 3,
+  "total_failed": 0,
+  "last_updated": "2026-04-18T08:12:59.466Z"
+}

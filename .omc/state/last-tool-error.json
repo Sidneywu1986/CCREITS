@@ -1,0 +1,7 @@
+{
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"cd /d \\\"D:\\\\tools\\\\消费看板5（前端）\\\" && git diff admin-pro/frontend/announcements.html | head -200\"}",
+  "error": "Exit code 1\n/usr/bin/bash: line 1: cd: too many arguments",
+  "timestamp": "2026-04-18T13:31:38.732Z",
+  "retry_count": 1
+}

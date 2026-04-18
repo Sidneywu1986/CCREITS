@@ -1,0 +1,223 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1776313110556,
+  "projectRoot": "D:\\tools\\消费看板5（前端）",
+  "techStack": {
+    "languages": [],
+    "frameworks": [],
+    "packageManager": null,
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": null,
+    "testCommand": null,
+    "lintCommand": null,
+    "devCommand": null,
+    "scripts": {}
+  },
+  "conventions": {
+    "namingStyle": null,
+    "importStyle": null,
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [
+      "docs"
+    ],
+    "gitBranches": null
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "admin-pro": {
+      "path": "admin-pro",
+      "purpose": null,
+      "fileCount": 3,
+      "lastAccessed": 1776313110456,
+      "keyFiles": [
+        "package.vite.json",
+        "tsconfig.json",
+        "vite.config.ts"
+      ]
+    },
+    "archive_legacy": {
+      "path": "archive_legacy",
+      "purpose": null,
+      "fileCount": 0,
+      "lastAccessed": 1776313110457,
+      "keyFiles": []
+    },
+    "backend": {
+      "path": "backend",
+      "purpose": null,
+      "fileCount": 12,
+      "lastAccessed": 1776313110458,
+      "keyFiles": [
+        "admin_app.py",
+        "admin_models.py",
+        "akshare.log",
+        "akshare_server.py",
+        "check_db.py"
+      ]
+    },
+    "data": {
+      "path": "data",
+      "purpose": "Data files",
+      "fileCount": 10,
+      "lastAccessed": 1776313110458,
+      "keyFiles": [
+        "reits_40_funds_complete.sql",
+        "reits_60_funds_final.sql",
+        "reits_funds.csv",
+        "reits_funds.json",
+        "reits_funds_79.csv"
+      ]
+    },
+    "docs": {
+      "path": "docs",
+      "purpose": "Documentation",
+      "fileCount": 10,
+      "lastAccessed": 1776313110459,
+      "keyFiles": [
+        "AKShare配置说明.md",
+        "ANNOUNCEMENT_8TABLES_DESIGN.md",
+        "CNINFO_CRAWLER.md",
+        "data-calculation-plan.md",
+        "PDF_EXTRACTION_DESIGN.md"
+      ]
+    },
+    "admin-pro\\node_modules": {
+      "path": "admin-pro\\node_modules",
+      "purpose": "Dependencies",
+      "fileCount": 0,
+      "lastAccessed": 1776313110460,
+      "keyFiles": []
+    },
+    "admin-pro\\src": {
+      "path": "admin-pro\\src",
+      "purpose": "Source code",
+      "fileCount": 2,
+      "lastAccessed": 1776313110460,
+      "keyFiles": [
+        "main.tsx",
+        "vite-env.d.ts"
+      ]
+    },
+    "backend\\api": {
+      "path": "backend\\api",
+      "purpose": "API routes",
+      "fileCount": 1,
+      "lastAccessed": 1776313110461,
+      "keyFiles": [
+        "dividend_calendar.py"
+      ]
+    }
+  },
+  "hotPaths": [
+    {
+      "path": "admin-pro\\src\\main.tsx",
+      "accessCount": 3,
+      "lastAccessed": 1776321928926,
+      "type": "file"
+    },
+    {
+      "path": "admin-pro\\src\\components\\MarketChart.tsx",
+      "accessCount": 2,
+      "lastAccessed": 1776322369877,
+      "type": "file"
+    },
+    {
+      "path": "scripts\\clean_data.py",
+      "accessCount": 2,
+      "lastAccessed": 1776337851691,
+      "type": "file"
+    },
+    {
+      "path": "admin-pro\\src\\pages\\DividendCalendarPage.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1776320889389,
+      "type": "file"
+    },
+    {
+      "path": "admin-pro\\src\\services\\marketService.ts",
+      "accessCount": 1,
+      "lastAccessed": 1776321389471,
+      "type": "file"
+    },
+    {
+      "path": "admin-pro\\src\\context\\MarketContext.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1776321455568,
+      "type": "file"
+    },
+    {
+      "path": "admin-pro\\src\\components\\MarketIndexCard.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1776321479870,
+      "type": "file"
+    },
+    {
+      "path": "backend\\crawlers\\fund-detail.js",
+      "accessCount": 1,
+      "lastAccessed": 1776323380416,
+      "type": "file"
+    },
+    {
+      "path": "admin-pro\\frontend\\fund-detail.html",
+      "accessCount": 1,
+      "lastAccessed": 1776323464636,
+      "type": "file"
+    },
+    {
+      "path": "",
+      "accessCount": 1,
+      "lastAccessed": 1776326631997,
+      "type": "directory"
+    },
+    {
+      "path": "backend\\akshare_server.py",
+      "accessCount": 1,
+      "lastAccessed": 1776326784617,
+      "type": "file"
+    },
+    {
+      "path": "backend\\api\\dividend_calendar.py",
+      "accessCount": 1,
+      "lastAccessed": 1776326785373,
+      "type": "file"
+    },
+    {
+      "path": "backend\\admin_app.py",
+      "accessCount": 1,
+      "lastAccessed": 1776336296824,
+      "type": "file"
+    },
+    {
+      "path": "tests\\test_data_clean.py",
+      "accessCount": 1,
+      "lastAccessed": 1776336849808,
+      "type": "file"
+    },
+    {
+      "path": "data\\reits_funds_79_cleaned.json",
+      "accessCount": 1,
+      "lastAccessed": 1776337884857,
+      "type": "file"
+    },
+    {
+      "path": "backend\\api_adapter.py",
+      "accessCount": 1,
+      "lastAccessed": 1776338057559,
+      "type": "file"
+    },
+    {
+      "path": "tests\\test_api_adapter.py",
+      "accessCount": 1,
+      "lastAccessed": 1776338118286,
+      "type": "file"
+    }
+  ],
+  "userDirectives": []
+}

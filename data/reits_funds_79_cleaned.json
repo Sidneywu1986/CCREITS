@@ -1,0 +1,296 @@
+{
+  "total": 55,
+  "update_time": "2026-04-06",
+  "funds": [
+    {
+      "code": "508096",
+      "name": "中信建投国家电投新能源REIT",
+      "short_name": "中信建投国家电投"
+    },
+    {
+      "code": "508066",
+      "name": "华夏南京交通高速公路REIT",
+      "short_name": "华夏南京交通高速"
+    },
+    {
+      "code": "508095",
+      "name": "华夏华电清洁能源REIT",
+      "short_name": "华夏华电清洁能源"
+    },
+    {
+      "code": "508055",
+      "name": "汇添富上海地产租赁住房REIT",
+      "short_name": "汇添富上海地产租"
+    },
+    {
+      "code": "508018",
+      "name": "华夏中国交建高速公路REIT",
+      "short_name": "华夏中国交建REIT"
+    },
+    {
+      "code": "508077",
+      "name": "国泰海通东久新经济产业园REIT",
+      "short_name": "国泰海通东久新经"
+    },
+    {
+      "code": "180105",
+      "name": "易方达广开产业园REIT",
+      "short_name": "易方达广开产园RE"
+    },
+    {
+      "code": "508060",
+      "name": "国泰海通城投宽庭保障性租赁住房REIT",
+      "short_name": "国泰海通城投宽庭"
+    },
+    {
+      "code": "508026",
+      "name": "嘉实中国电建清洁能源REIT",
+      "short_name": "嘉实中国电建清洁"
+    },
+    {
+      "code": "180106",
+      "name": "中金印力消费基础设施REIT",
+      "short_name": "中金印力消费REIT"
+    },
+    {
+      "code": "508001",
+      "name": "浙商证券沪杭甬高速REIT",
+      "short_name": "浙商沪杭甬REIT"
+    },
+    {
+      "code": "508033",
+      "name": "易方达深高速REIT",
+      "short_name": "易方达深高速REIT"
+    },
+    {
+      "code": "180801",
+      "name": "中航首钢生物质REIT",
+      "short_name": "中航首钢绿能REIT"
+    },
+    {
+      "code": "508010",
+      "name": "中金重庆两江REIT",
+      "short_name": "中金重庆两江REIT"
+    },
+    {
+      "code": "180502",
+      "name": "华夏特变电工新能源REIT",
+      "short_name": "华夏特变电工新能"
+    },
+    {
+      "code": "508058",
+      "name": "中金厦门安居保障性租赁住房REIT",
+      "short_name": "中金厦门安居REIT"
+    },
+    {
+      "code": "180107",
+      "name": "易方达华威农贸市场REIT",
+      "short_name": "易方达华威市场RE"
+    },
+    {
+      "code": "508019",
+      "name": "中金湖北科投光谷产业园REIT",
+      "short_name": "中金湖北科投光谷"
+    },
+    {
+      "code": "508099",
+      "name": "华夏金隅智造工场REIT",
+      "short_name": "华夏金隅智造工场"
+    },
+    {
+      "code": "180501",
+      "name": "红土创新深圳安居保障性租赁住房REIT",
+      "short_name": "红土创新深圳安居"
+    },
+    {
+      "code": "508086",
+      "name": "工银瑞信河北高速REIT",
+      "short_name": "工银河北高速REIT"
+    },
+    {
+      "code": "508085",
+      "name": "汇添富九州通医药仓储物流REIT",
+      "short_name": "汇添富九州通医药"
+    },
+    {
+      "code": "180103",
+      "name": "华安张江产业园REIT",
+      "short_name": "华安张江产业园RE"
+    },
+    {
+      "code": "180101",
+      "name": "博时招商蛇口产业园REIT",
+      "short_name": "博时蛇口产园REIT"
+    },
+    {
+      "code": "508036",
+      "name": "招商高速公路REIT",
+      "short_name": "招商高速公路REIT"
+    },
+    {
+      "code": "180603",
+      "name": "华夏大悦城购物中心REIT",
+      "short_name": "华夏大悦城商业RE"
+    },
+    {
+      "code": "180602",
+      "name": "嘉实物美消费REIT",
+      "short_name": "嘉实物美消费REIT"
+    },
+    {
+      "code": "180302",
+      "name": "华泰苏州恒泰租赁住房REIT",
+      "short_name": "华泰苏州恒泰租赁"
+    },
+    {
+      "code": "180202",
+      "name": "华夏越秀高速公路REIT",
+      "short_name": "华夏越秀高速REIT"
+    },
+    {
+      "code": "508048",
+      "name": "中金中国绿发商业资产REIT",
+      "short_name": "中金中国绿发商业"
+    },
+    {
+      "code": "508081",
+      "name": "中银中外运仓储物流REIT",
+      "short_name": "中银中外运仓储物"
+    },
+    {
+      "code": "508012",
+      "name": "中金联东科技创新产业园REIT",
+      "short_name": "中金联东科创REIT"
+    },
+    {
+      "code": "508009",
+      "name": "中金安徽交控REIT",
+      "short_name": "中金安徽交控REIT"
+    },
+    {
+      "code": "508021",
+      "name": "华夏中核清洁能源REIT",
+      "short_name": "华夏中核清洁能源"
+    },
+    {
+      "code": "508080",
+      "name": "中金亦庄产业园REIT",
+      "short_name": "中金亦庄产业园RE"
+    },
+    {
+      "code": "508078",
+      "name": "华夏首创奥特莱斯REIT",
+      "short_name": "华夏首创奥莱REIT"
+    },
+    {
+      "code": "508082",
+      "name": "华泰宝湾物流REIT",
+      "short_name": "华泰宝湾物流REIT"
+    },
+    {
+      "code": "508006",
+      "name": "富国首创水务REIT",
+      "short_name": "富国首创水务REIT"
+    },
+    {
+      "code": "508008",
+      "name": "国金中国铁建高速REIT",
+      "short_name": "国金中国铁建REIT"
+    },
+    {
+      "code": "180604",
+      "name": "华安百联消费REIT",
+      "short_name": "华安百联消费REIT"
+    },
+    {
+      "code": "180201",
+      "name": "平安广州广河REIT",
+      "short_name": "平安广州广河REIT"
+    },
+    {
+      "code": "508087",
+      "name": "中信建投沈阳国际软件园REIT",
+      "short_name": "中信建投沈阳国际"
+    },
+    {
+      "code": "508022",
+      "name": "招商科创REIT",
+      "short_name": "招商科创REIT"
+    },
+    {
+      "code": "180802",
+      "name": "中航京能国际能源REIT",
+      "short_name": "中航京能国际能源"
+    },
+    {
+      "code": "180705",
+      "name": "创金合信首农产业园REIT",
+      "short_name": "创金合信首农REIT"
+    },
+    {
+      "code": "180305",
+      "name": "华泰南京建邺产业园REIT",
+      "short_name": "华泰南京建邺REIT"
+    },
+    {
+      "code": "180102",
+      "name": "华夏合肥高新REIT",
+      "short_name": "华夏合肥高新REIT"
+    },
+    {
+      "code": "508056",
+      "name": "华泰江苏交控REIT",
+      "short_name": "华泰江苏交控REIT"
+    },
+    {
+      "code": "508031",
+      "name": "国泰海通济南能源REIT",
+      "short_name": "国泰海通济南能源"
+    },
+    {
+      "code": "180605",
+      "name": "华夏中海商业REIT",
+      "short_name": "华夏中海商业REIT"
+    },
+    {
+      "code": "180401",
+      "name": "南方顺丰物流REIT",
+      "short_name": "南方顺丰物流REIT"
+    },
+    {
+      "code": "180404",
+      "name": "工银蒙能清洁能源REIT",
+      "short_name": "工银蒙能清洁能源"
+    },
+    {
+      "code": "508007",
+      "name": "中金山东高速REIT",
+      "short_name": "中金山东高速REIT"
+    },
+    {
+      "code": "180503",
+      "name": "嘉实京东仓储基础设施REIT",
+      "short_name": "嘉实京东仓储基础"
+    },
+    {
+      "code": "180507",
+      "name": "中信建投明阳智能新能源REIT",
+      "short_name": "中信建投明阳智能"
+    }
+  ],
+  "cleaning_info": {
+    "original_total": 79,
+    "removed_duplicates": 24,
+    "duplicate_codes": [
+      "180105",
+      "180106",
+      "180801",
+      "180502",
+      "180107",
+      "508099",
+      "180501",
+      "180103",
+      "508036"
+    ]
+  }
+}
