@@ -627,7 +627,7 @@
                 const mainLink = hasPdf ? item.pdfUrl : (hasSource ? item.sourceUrl : null);
                 
                 return `
-                    <div class="card card-hover p-4 md:p-5 ${!item.isRead ? 'bg-blue-50/30 border-blue-100' : ''} ${selectedAnnouncementIds.includes(item.id) ? 'ring-2 ring-blue-500 bg-blue-50' : ''}">
+                    <div class="card card-hover p-4 md:p-5 announcement-card ${!item.isRead ? 'bg-blue-50/30 border-blue-100' : ''} ${selectedAnnouncementIds.includes(item.id) ? 'ring-2 ring-blue-500 bg-blue-50' : ''}" data-id="${item.id}">
                         <div class="flex items-start gap-3">
                             <input type="checkbox"
                                    class="mt-1 w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
@@ -720,8 +720,21 @@
         }
 
         function updateSelectionUI() {
-            // 更新所有卡片的复选框状态和样式
-            renderAnnouncements();
+            // 只更新已选中卡片的样式，不重建整个列表
+            const cards = document.querySelectorAll('.announcement-card');
+            cards.forEach(card => {
+                const id = parseInt(card.dataset.id);
+                const isSelected = selectedAnnouncementIds.includes(id);
+                const checkbox = card.querySelector('input[type="checkbox"]');
+                if (checkbox) {
+                    checkbox.checked = isSelected;
+                }
+                if (isSelected) {
+                    card.classList.add('ring-2', 'ring-blue-500', 'bg-blue-50');
+                } else {
+                    card.classList.remove('ring-2', 'ring-blue-500', 'bg-blue-50');
+                }
+            });
         }
 
         function initChatForSelected() {
