@@ -210,7 +210,7 @@
         </div>
 
         <!-- 右侧AI聊天面板 -->
-        <div class="w-[350px] border-l bg-white shadow-lg flex flex-col h-full fixed right-0 top-[60px]" id="chat-panel" style="width:350px;right:0;top:60px;height:calc(100vh - 60px);">
+        <div class="w-[400px] border-l bg-white shadow-lg flex flex-col h-full fixed right-0 top-[60px]" id="chat-panel" style="width:400px;right:0;top:60px;height:calc(100vh - 60px);">
             <div class="p-4 border-b bg-gray-50">
                 <h2 class="font-bold text-gray-800">AI 公告讨论</h2>
                 <div id="selected-announcements-header" class="hidden mt-2 text-xs font-medium text-blue-700"></div>
@@ -222,7 +222,7 @@
                     选择一条公告，然后在这里与AI讨论其内容
                 </div>
             </div>
-            <div class="border-t p-3 flex gap-2 bg-red-100" style="border: 3px solid red;">
+            <div class="border-t p-3 flex gap-2">
                 <input type="text" id="chat-input" placeholder="输入问题..." class="flex-1 border rounded-lg px-3 py-2 text-sm" onkeypress="if(event.key==='Enter') sendChatMessage()">
                 <button onclick="sendChatMessage()" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">发送</button>
             </div>
