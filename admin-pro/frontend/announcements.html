@@ -641,7 +641,7 @@
                                     ${item.name ? `<span class="text-xs text-gray-700">${item.name}</span>` : ''}
                                 </div>
                                 <h3 class="text-base font-bold text-gray-900 mb-2 ${!item.isRead ? 'text-blue-900' : ''} ${mainLink ? 'cursor-pointer hover:text-blue-600' : ''}"
-                                    ${mainLink ? `onclick="toggleSelection(${item.id}, '${item.title.replace(/'/g, "\\'")}', '${(item.summary || '').replace(/'/g, "\\'")}'); window.open('${mainLink}', '_blank'); markAsRead(${item.id});"` : `onclick="toggleSelection(${item.id}, '${item.title.replace(/'/g, "\\'")}', '${(item.summary || '').replace(/'/g, "\\'")}')"`}>
+                                    ${mainLink ? `onclick="window.open('${mainLink}', '_blank'); markAsRead(${item.id});"` : ''}>
                                     ${item.title}
                                 </h3>
                                 ${item.status ? `<span class="ml-2 px-2 py-0.5 text-xs font-medium rounded-full ${STATUS_CONFIG[item.status]?.class || 'bg-gray-100 text-gray-600'}">${STATUS_CONFIG[item.status]?.label || item.status}</span>` : ''}
