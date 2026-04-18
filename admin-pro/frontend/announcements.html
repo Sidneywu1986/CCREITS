@@ -657,6 +657,12 @@
                                         </span>
                                     </div>
                                 </div>
+                                <div class="flex items-center justify-between mt-2 pt-2 border-t">
+                                    <div class="flex items-center gap-2">
+                                        ${item.status_changed_at ? `<span class="text-xs text-gray-400">状态变更: ${item.status_changed_at}</span>` : ''}
+                                    </div>
+                                    ${getStatusActions(item.status, item.id)}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -744,6 +750,51 @@
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+
+        // 获取状态操作按钮
+        function getStatusActions(status, id) {
+            const actions = {
+                'draft': [
+                    { label: '提交审核', class: 'bg-yellow-50 text-yellow-700 hover:bg-yellow-100', nextStatus: 'pending' },
+                    { label: '删除', class: 'bg-red-50 text-red-600 hover:bg-red-100', nextStatus: 'deleted' }
+                ],
+                'pending': [
+                    { label: '通过', class: 'bg-green-50 text-green-700 hover:bg-green-100', nextStatus: 'published' },
+                    { label: '驳回', class: 'bg-gray-50 text-gray-700 hover:bg-gray-100', nextStatus: 'draft' }
+                ],
+                'published': [
+                    { label: '归档', class: 'bg-blue-50 text-blue-700 hover:bg-blue-100', nextStatus: 'archived' }
+                ],
+                'archived': [
+                    { label: '恢复', class: 'bg-green-50 text-green-700 hover:bg-green-100', nextStatus: 'published' }
+                ]
+            };
+
+            const btns = actions[status] || [];
+            return btns.map(btn =>
+                `<button onclick="updateStatus(${id}, '${btn.nextStatus}')" class="px-2 py-1 text-xs rounded-lg ${btn.class}">${btn.label}</button>`
+            ).join('');
+        }
+
+        // 更新公告状态
+        async function updateStatus(id, newStatus) {
+            try {
+                const response = await fetch(`/api/announcements/${id}/status`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: newStatus, changed_by: 'user' })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    showToast('状态已更新', 'success');
+                    await loadAnnouncements();
+                } else {
+                    showToast(result.message || '更新失败', 'error');
+                }
+            } catch (error) {
+                showToast('更新失败: ' + error.message, 'error');
+            }
         }
 
         // 重写对比栏更新（适配本页UI）
