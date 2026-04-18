@@ -921,31 +921,36 @@
 
         // 重写对比栏更新（适配本页UI）
         function updateCompareBar() {
-            const list = getCompareList();
-            const bar = document.getElementById('compare-bar');
-            const items = document.getElementById('compare-items');
-            const countSpan = document.getElementById('compare-count');
-            const compareBtn = document.getElementById('btn-compare');
-            
-            if (list.length === 0) {
-                bar.classList.remove('show');
-                return;
+            try {
+                const list = getCompareList ? getCompareList() : [];
+                const bar = document.getElementById('compare-bar');
+                if (!bar) return;
+                const items = document.getElementById('compare-items');
+                const countSpan = document.getElementById('compare-count');
+                const compareBtn = document.getElementById('btn-compare');
+
+                if (list.length === 0) {
+                    bar.classList.remove('show');
+                    return;
+                }
+                bar.classList.add('show');
+
+                items.innerHTML = list.map(item => `
+                    <div class="flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-lg flex-none">
+                        <span class="text-sm text-blue-900 font-medium truncate max-w-[120px]">${item.name}</span>
+                        <button onclick="event.stopPropagation(); removeFromCompare('${item.code}'); updateCompareBar();" class="text-blue-400 hover:text-blue-600">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+                `).join('');
+
+                countSpan.textContent = `已选 ${list.length}/4`;
+                compareBtn.disabled = list.length < 2;
+                compareBtn.classList.toggle('opacity-50', list.length < 2);
+                compareBtn.classList.toggle('cursor-not-allowed', list.length < 2);
+            } catch (e) {
+                console.warn('updateCompareBar error:', e);
             }
-            bar.classList.add('show');
-            
-            items.innerHTML = list.map(item => `
-                <div class="flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-lg flex-none">
-                    <span class="text-sm text-blue-900 font-medium truncate max-w-[120px]">${item.name}</span>
-                    <button onclick="event.stopPropagation(); removeFromCompare('${item.code}'); updateCompareBar();" class="text-blue-400 hover:text-blue-600">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                    </button>
-                </div>
-            `).join('');
-            
-            countSpan.textContent = `已选 ${list.length}/4`;
-            compareBtn.disabled = list.length < 2;
-            compareBtn.classList.toggle('opacity-50', list.length < 2);
-            compareBtn.classList.toggle('cursor-not-allowed', list.length < 2);
         }
 
         // 搜索监听 - 公告专用搜索框
