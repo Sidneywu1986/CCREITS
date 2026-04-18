@@ -213,7 +213,9 @@
         <div class="w-[350px] border-l bg-white shadow-lg flex flex-col" id="chat-panel">
             <div class="p-4 border-b bg-gray-50">
                 <h2 class="font-bold text-gray-800">AI 公告讨论</h2>
-                <p class="text-xs text-gray-500 mt-1" id="current-announcement-title">点击公告开始讨论</p>
+                <div id="selected-announcements-header" class="hidden mt-2 text-xs font-medium text-blue-700"></div>
+                <div id="selected-announcements-list" class="mt-1 space-y-1"></div>
+                <p id="selected-announcements-empty" class="text-xs text-gray-500 mt-1">点击公告复选框开始讨论</p>
             </div>
             <div class="flex-1 overflow-y-auto p-4 space-y-3" id="chat-messages">
                 <div class="text-center text-gray-400 text-sm py-8">
@@ -626,7 +628,11 @@
                 
                 return `
                     <div class="card card-hover p-4 md:p-5 ${!item.isRead ? 'bg-blue-50/30 border-blue-100' : ''} ${selectedAnnouncementIds.includes(item.id) ? 'ring-2 ring-blue-500 bg-blue-50' : ''}">
-                        <div class="flex flex-col md:flex-row md:items-start gap-4">
+                        <div class="flex items-start gap-3">
+                            <input type="checkbox"
+                                   class="mt-1 w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
+                                   ${selectedAnnouncementIds.includes(item.id) ? 'checked' : ''}
+                                   onclick="event.stopPropagation(); toggleSelection(${item.id}, '${item.title.replace(/'/g, "\\'")}', '${(item.summary || '').replace(/'/g, "\\'")}')">
                             <div class="flex-1 min-w-0">
                                 <div class="flex flex-wrap items-center gap-2 mb-2">
                                     <span class="sector-tag ${catConfig.tagClass}">${catConfig.name}</span>
