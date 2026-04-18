@@ -277,6 +277,8 @@
         let isLoading = false;
         let selectedAnnouncementId = null;
         let selectedAnnouncementTitle = '';
+        let chatMessages = [];
+        let isAiTyping = false;
 
         // 防抖函数
         function debounce(func, wait) {
@@ -697,6 +699,17 @@
             selectedAnnouncementTitle = title;
             const titleEl = document.getElementById('current-announcement-title');
             if (titleEl) titleEl.textContent = '当前公告: ' + title;
+
+            // 清空聊天记录
+            chatMessages = [];
+            renderChatMessages();
+
+            // 如果有该公告的摘要，添加为第一条AI消息
+            const announcement = allAnnouncements.find(a => a.id === id);
+            if (announcement && announcement.summary) {
+                addChatMessage('assistant', `我正在查看公告: "${title}"。\n\n摘要: ${announcement.summary}\n\n有什么想讨论的吗?`);
+            }
+
             // 刷新列表以更新选中样式
             renderAnnouncements();
         }
@@ -706,43 +719,65 @@
             renderAnnouncements();
         }
 
+        // 渲染聊天消息
+        function renderChatMessages() {
+            const container = document.getElementById('chat-messages');
+            if (!container) return;
+
+            if (chatMessages.length === 0) {
+                container.innerHTML = '<div class="text-center text-gray-400 text-sm py-8">选择一条公告，然后在这里与AI讨论其内容</div>';
+                return;
+            }
+
+            container.innerHTML = chatMessages.map(msg => `
+                <div class="${msg.role === 'user' ? 'bg-blue-100 ml-8' : 'bg-gray-100 mr-8'} rounded-lg p-3">
+                    <div class="text-xs font-bold mb-1 ${msg.role === 'user' ? 'text-blue-700' : 'text-gray-700'}">${msg.role === 'user' ? '你' : 'AI'}</div>
+                    <div class="text-sm text-gray-800 whitespace-pre-wrap">${escapeHtml(msg.content)}</div>
+                </div>
+            `).join('');
+
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function addChatMessage(role, content) {
+            chatMessages.push({ role, content });
+            renderChatMessages();
+        }
+
         // 发送聊天消息
-        function sendChatMessage() {
+        async function sendChatMessage() {
             const input = document.getElementById('chat-input');
             const message = input.value.trim();
-            if (!message) return;
-
-            const messagesContainer = document.getElementById('chat-messages');
+            if (!message || !selectedAnnouncementId || isAiTyping) return;
 
             // 添加用户消息
-            const userMsg = document.createElement('div');
-            userMsg.className = 'flex justify-end';
-            userMsg.innerHTML = `
-                <div class="bg-blue-600 text-white px-4 py-2 rounded-lg rounded-br-none max-w-[80%]">
-                    ${escapeHtml(message)}
-                </div>
-            `;
-            messagesContainer.appendChild(userMsg);
-
-            // 清空输入框
+            addChatMessage('user', message);
             input.value = '';
+            isAiTyping = true;
 
-            // 滚动到底部
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            // 添加AI typing指示器
+            const typingId = 'typing-' + Date.now();
+            const container = document.getElementById('chat-messages');
+            container.innerHTML += `<div id="${typingId}" class="bg-gray-100 mr-8 rounded-lg p-3">
+                <div class="text-xs font-bold text-gray-700 mb-1">AI</div>
+                <div class="text-sm text-gray-500">思考中...</div>
+            </div>`;
+            container.scrollTop = container.scrollHeight;
 
-            // 模拟AI回复
-            setTimeout(() => {
-                const aiMsg = document.createElement('div');
-                aiMsg.className = 'flex justify-start';
-                aiMsg.innerHTML = `
-                    <div class="bg-gray-100 text-gray-800 px-4 py-2 rounded-lg rounded-bl-none max-w-[80%]">
-                        <p class="text-sm">关于这个问题，我可以帮您分析：</p>
-                        <p class="text-sm mt-1">请选择左侧一条具体的公告，AI将基于公告内容为您解答。</p>
-                    </div>
-                `;
-                messagesContainer.appendChild(aiMsg);
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            }, 1000);
+            try {
+                // TODO: 调用真实AI接口（这里先用模拟响应）
+                await new Promise(resolve => setTimeout(resolve, 1000));
+
+                const response = `关于"${selectedAnnouncementTitle}"的问题: ${message}\n\n这是一个演示响应。在实际实现中，这里会调用AI接口来回答您关于该公告的问题。`;
+
+                document.getElementById(typingId).remove();
+                addChatMessage('assistant', response);
+            } catch (error) {
+                document.getElementById(typingId).remove();
+                addChatMessage('assistant', '抱歉，发生了错误: ' + error.message);
+            }
+
+            isAiTyping = false;
         }
 
         // HTML转义
