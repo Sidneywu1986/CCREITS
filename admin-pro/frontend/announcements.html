@@ -210,7 +210,7 @@
         </div>
 
         <!-- 右侧AI聊天面板 -->
-        <div class="w-[350px] border-l bg-white shadow-lg flex flex-col" id="chat-panel">
+        <div class="w-[350px] border-l bg-white shadow-lg flex flex-col h-full" id="chat-panel">
             <div class="p-4 border-b bg-gray-50">
                 <h2 class="font-bold text-gray-800">AI 公告讨论</h2>
                 <div id="selected-announcements-header" class="hidden mt-2 text-xs font-medium text-blue-700"></div>
@@ -701,6 +701,7 @@
 
         // 选择公告（单选改多选）
         function toggleSelection(id, title, summary) {
+            console.log('toggleSelection called:', id, title);
             const idx = selectedAnnouncementIds.indexOf(id);
             if (idx > -1) {
                 // 已选中，移除
@@ -721,6 +722,7 @@
         }
 
         function updateSelectionUI() {
+            console.log('updateSelectionUI called, cards found:', document.querySelectorAll('.announcement-card').length);
             // 只更新已选中卡片的样式，不重建整个列表
             const cards = document.querySelectorAll('.announcement-card');
             cards.forEach(card => {
@@ -739,6 +741,7 @@
         }
 
         function initChatForSelected() {
+            console.log('initChatForSelected called, selected:', selectedAnnouncements.length);
             if (selectedAnnouncements.length === 0) {
                 chatMessages = [];
                 renderChatMessages();
@@ -775,6 +778,7 @@
 
         // 更新聊天面板头部显示选中公告
         function updateChatPanelHeader() {
+            console.log('updateChatPanelHeader called, selected:', selectedAnnouncements.length);
             const header = document.getElementById('selected-announcements-header');
             const list = document.getElementById('selected-announcements-list');
             const emptyMsg = document.getElementById('selected-announcements-empty');
