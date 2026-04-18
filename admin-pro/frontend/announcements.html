@@ -275,8 +275,8 @@
         let displayCount = 100;
         let currentExchange = 'all';
         let isLoading = false;
-        let selectedAnnouncementId = null;
-        let selectedAnnouncementTitle = '';
+        let selectedAnnouncementIds = [];  // 改为数组，最多3个
+        let selectedAnnouncements = [];  // 存储选中公告的完整信息 {id, title, summary}
         let chatMessages = [];
         let isAiTyping = false;
 
@@ -625,7 +625,7 @@
                 const mainLink = hasPdf ? item.pdfUrl : (hasSource ? item.sourceUrl : null);
                 
                 return `
-                    <div class="card card-hover p-4 md:p-5 ${!item.isRead ? 'bg-blue-50/30 border-blue-100' : ''} ${selectedAnnouncementId === item.id ? 'ring-2 ring-blue-500 bg-blue-50' : ''}">
+                    <div class="card card-hover p-4 md:p-5 ${!item.isRead ? 'bg-blue-50/30 border-blue-100' : ''} ${selectedAnnouncementIds.includes(item.id) ? 'ring-2 ring-blue-500 bg-blue-50' : ''}">
                         <div class="flex flex-col md:flex-row md:items-start gap-4">
                             <div class="flex-1 min-w-0">
                                 <div class="flex flex-wrap items-center gap-2 mb-2">
@@ -635,7 +635,7 @@
                                     ${item.name ? `<span class="text-xs text-gray-700">${item.name}</span>` : ''}
                                 </div>
                                 <h3 class="text-base font-bold text-gray-900 mb-2 ${!item.isRead ? 'text-blue-900' : ''} ${mainLink ? 'cursor-pointer hover:text-blue-600' : ''}"
-                                    ${mainLink ? `onclick="selectAnnouncement(${item.id}, '${item.title.replace(/'/g, "\\'")}'); window.open('${mainLink}', '_blank'); markAsRead(${item.id});"` : `onclick="selectAnnouncement(${item.id}, '${item.title.replace(/'/g, "\\'")}')"`}>
+                                    ${mainLink ? `onclick="toggleSelection(${item.id}, '${item.title.replace(/'/g, "\\'")}', '${(item.summary || '').replace(/'/g, "\\'")}'); window.open('${mainLink}', '_blank'); markAsRead(${item.id});"` : `onclick="toggleSelection(${item.id}, '${item.title.replace(/'/g, "\\'")}', '${(item.summary || '').replace(/'/g, "\\'")}')"`}>
                                     ${item.title}
                                 </h3>
                                 ${item.status ? `<span class="ml-2 px-2 py-0.5 text-xs font-medium rounded-full ${STATUS_CONFIG[item.status]?.class || 'bg-gray-100 text-gray-600'}">${STATUS_CONFIG[item.status]?.label || item.status}</span>` : ''}
@@ -693,25 +693,62 @@
             }
         }
 
-        // 选择公告
-        function selectAnnouncement(id, title) {
-            selectedAnnouncementId = id;
-            selectedAnnouncementTitle = title;
-            const titleEl = document.getElementById('current-announcement-title');
-            if (titleEl) titleEl.textContent = '当前公告: ' + title;
+        // 选择公告（单选改多选）
+        function toggleSelection(id, title, summary) {
+            const idx = selectedAnnouncementIds.indexOf(id);
+            if (idx > -1) {
+                // 已选中，移除
+                selectedAnnouncementIds.splice(idx, 1);
+                selectedAnnouncements = selectedAnnouncements.filter(a => a.id !== id);
+            } else {
+                // 未选中
+                if (selectedAnnouncementIds.length >= 3) {
+                    showToast('最多选择3条公告', 'warning');
+                    return;
+                }
+                selectedAnnouncementIds.push(id);
+                selectedAnnouncements.push({ id, title, summary: summary || '' });
+            }
+            updateSelectionUI();
+            initChatForSelected();
+        }
 
-            // 清空聊天记录
+        function updateSelectionUI() {
+            // 更新所有卡片的复选框状态和样式
+            renderAnnouncements();
+        }
+
+        function initChatForSelected() {
+            if (selectedAnnouncements.length === 0) {
+                chatMessages = [];
+                renderChatMessages();
+                return;
+            }
+
             chatMessages = [];
             renderChatMessages();
 
-            // 如果有该公告的摘要，添加为第一条AI消息
-            const announcement = allAnnouncements.find(a => a.id === id);
-            if (announcement && announcement.summary) {
-                addChatMessage('assistant', `我正在查看公告: "${title}"。\n\n摘要: ${announcement.summary}\n\n有什么想讨论的吗?`);
+            if (selectedAnnouncements.length === 1) {
+                const a = selectedAnnouncements[0];
+                addChatMessage('assistant', `我正在查看公告: "${a.title}"。\n\n摘要: ${a.summary}\n\n有什么想讨论的吗?`);
+            } else {
+                const summaries = selectedAnnouncements.map((a, i) => `${i+1}. [${a.title}]\n   ${a.summary}`).join('\n');
+                addChatMessage('assistant', `我正在查看以下${selectedAnnouncements.length}条公告：\n${summaries}\n\n请告诉我您想讨论什么，我可以帮您分析这些公告。`);
             }
+        }
 
-            // 刷新列表以更新选中样式
-            renderAnnouncements();
+        function removeFromSelection(id) {
+            selectedAnnouncementIds = selectedAnnouncementIds.filter(i => i !== id);
+            selectedAnnouncements = selectedAnnouncements.filter(a => a.id !== id);
+            updateSelectionUI();
+            initChatForSelected();
+        }
+
+        function clearSelection() {
+            selectedAnnouncementIds = [];
+            selectedAnnouncements = [];
+            updateSelectionUI();
+            initChatForSelected();
         }
 
         function loadMore() {
