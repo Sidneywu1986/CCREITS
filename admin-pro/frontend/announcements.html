@@ -791,7 +791,7 @@
         async function sendChatMessage() {
             const input = document.getElementById('chat-input');
             const message = input.value.trim();
-            if (!message || !selectedAnnouncementId || isAiTyping) return;
+            if (!message || selectedAnnouncements.length === 0 || isAiTyping) return;
 
             // 添加用户消息
             addChatMessage('user', message);
@@ -811,7 +811,8 @@
                 // TODO: 调用真实AI接口（这里先用模拟响应）
                 await new Promise(resolve => setTimeout(resolve, 1000));
 
-                const response = `关于"${selectedAnnouncementTitle}"的问题: ${message}\n\n这是一个演示响应。在实际实现中，这里会调用AI接口来回答您关于该公告的问题。`;
+                const titles = selectedAnnouncements.map((a, i) => `${i+1}. ${a.title}`).join(', ');
+                const response = `关于您选择的公告 (${titles}) 的问题: ${message}\n\n这是一个演示响应。在实际实现中，这里会调用AI接口来回答您关于这些公告的问题。`;
 
                 document.getElementById(typingId).remove();
                 addChatMessage('assistant', response);
