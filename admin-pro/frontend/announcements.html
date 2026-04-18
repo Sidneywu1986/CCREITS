@@ -222,8 +222,8 @@
                     选择一条公告，然后在这里与AI讨论其内容
                 </div>
             </div>
-            <div class="border-t p-3 flex gap-2">
-                <input type="text" id="chat-input" placeholder="输入问题..." class="flex-1 border rounded-lg px-3 py-2 text-sm" onkeypress="if(event.key==='Enter') sendChatMessage()" style="background:yellow">
+            <div class="border-t p-3 flex gap-2 bg-red-100" style="border: 3px solid red;">
+                <input type="text" id="chat-input" placeholder="输入问题..." class="flex-1 border rounded-lg px-3 py-2 text-sm" onkeypress="if(event.key==='Enter') sendChatMessage()">
                 <button onclick="sendChatMessage()" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">发送</button>
             </div>
         </div>
