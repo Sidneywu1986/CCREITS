@@ -121,8 +121,8 @@
   "hotPaths": [
     {
       "path": "admin-pro\\frontend\\announcements.html",
-      "accessCount": 83,
-      "lastAccessed": 1776522602246,
+      "accessCount": 92,
+      "lastAccessed": 1776524236449,
       "type": "file"
     },
     {
@@ -316,6 +316,12 @@
       "accessCount": 1,
       "lastAccessed": 1776520509626,
       "type": "directory"
+    },
+    {
+      "path": "C:\\Users\\Administrator\\.claude\\image-cache\\ab973bfc-2ce7-4842-bbd5-2011effa99d1\\1.png",
+      "accessCount": 1,
+      "lastAccessed": 1776523152657,
+      "type": "file"
     }
   ],
   "userDirectives": []
