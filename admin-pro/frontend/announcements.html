@@ -258,6 +258,14 @@
             other: { name: '其他公告', tagClass: 'bg-gray-100 text-gray-700', aiLabel: '其他公告' }
         };
 
+        // 状态配置
+        const STATUS_CONFIG = {
+            'draft': { label: '草稿', class: 'bg-gray-100 text-gray-600' },
+            'pending': { label: '待审核', class: 'bg-yellow-100 text-yellow-700' },
+            'published': { label: '已发布', class: 'bg-green-100 text-green-700' },
+            'archived': { label: '归档', class: 'bg-blue-100 text-blue-700' }
+        };
+
         // 状态
         let allAnnouncements = [];
         let filteredAnnouncements = [];
@@ -267,6 +275,8 @@
         let displayCount = 100;
         let currentExchange = 'all';
         let isLoading = false;
+        let selectedAnnouncementId = null;
+        let selectedAnnouncementTitle = '';
 
         // 防抖函数
         function debounce(func, wait) {
@@ -613,7 +623,7 @@
                 const mainLink = hasPdf ? item.pdfUrl : (hasSource ? item.sourceUrl : null);
                 
                 return `
-                    <div class="card card-hover p-4 md:p-5 ${!item.isRead ? 'bg-blue-50/30 border-blue-100' : ''}">
+                    <div class="card card-hover p-4 md:p-5 ${!item.isRead ? 'bg-blue-50/30 border-blue-100' : ''} ${selectedAnnouncementId === item.id ? 'ring-2 ring-blue-500 bg-blue-50' : ''}">
                         <div class="flex flex-col md:flex-row md:items-start gap-4">
                             <div class="flex-1 min-w-0">
                                 <div class="flex flex-wrap items-center gap-2 mb-2">
@@ -623,9 +633,10 @@
                                     ${item.name ? `<span class="text-xs text-gray-700">${item.name}</span>` : ''}
                                 </div>
                                 <h3 class="text-base font-bold text-gray-900 mb-2 ${!item.isRead ? 'text-blue-900' : ''} ${mainLink ? 'cursor-pointer hover:text-blue-600' : ''}"
-                                    ${mainLink ? `onclick="window.open('${mainLink}', '_blank'); markAsRead(${item.id});"` : ''}>
+                                    ${mainLink ? `onclick="selectAnnouncement(${item.id}, '${item.title.replace(/'/g, "\\'")}'); window.open('${mainLink}', '_blank'); markAsRead(${item.id});"` : `onclick="selectAnnouncement(${item.id}, '${item.title.replace(/'/g, "\\'")}')"`}>
                                     ${item.title}
                                 </h3>
+                                ${item.status ? `<span class="ml-2 px-2 py-0.5 text-xs font-medium rounded-full ${STATUS_CONFIG[item.status]?.class || 'bg-gray-100 text-gray-600'}">${STATUS_CONFIG[item.status]?.label || item.status}</span>` : ''}
                                 <p class="text-sm text-gray-600 line-clamp-2 mb-3">
                                     ${item.summary || ''}
                                 </p>
@@ -672,6 +683,16 @@
                 item.isRead = true;
                 renderAnnouncements();
             }
+        }
+
+        // 选择公告
+        function selectAnnouncement(id, title) {
+            selectedAnnouncementId = id;
+            selectedAnnouncementTitle = title;
+            const titleEl = document.getElementById('current-announcement-title');
+            if (titleEl) titleEl.textContent = '当前公告: ' + title;
+            // 刷新列表以更新选中样式
+            renderAnnouncements();
         }
 
         function loadMore() {
