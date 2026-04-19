@@ -48,7 +48,7 @@ class MilvusClient:
         except Exception as e:
             logger.warning(f"Error disconnecting from Milvus: {e}")
 
-    def health_check(self) -> bool:
+    def is_healthy(self) -> bool:
         """Check Milvus health - returns True if healthy, False otherwise"""
         try:
             from pymilvus import connections
@@ -74,7 +74,8 @@ class MilvusClient:
             # Define schema
             fields = [
                 FieldSchema(name="id", dtype=DataType.INT64, is_primary=True, auto_id=True),
-                FieldSchema(name="vector", dtype=DataType.FLOAT_VECTOR, dim=dimension)
+                FieldSchema(name="content", dtype=DataType.VARCHAR, max_length=2000),
+                FieldSchema(name="embedding", dtype=DataType.FLOAT_VECTOR, dim=dimension)
             ]
             schema = CollectionSchema(fields=fields, description=f"Collection {collection_name}")
 
@@ -86,7 +87,7 @@ class MilvusClient:
                     "metric_type": "IP",
                     "params": {"nlist": 128}
                 }
-                collection.create_index(field_name="vector", index_params=index_params)
+                collection.create_index(field_name="embedding", index_params=index_params)
                 logger.info(f"Created collection: {collection_name}")
             else:
                 collection = Collection(name=collection_name)
@@ -98,8 +99,8 @@ class MilvusClient:
             logger.error(f"Failed to create collection: {e}")
             return False
 
-    def insert_vectors(self, collection_name: str, vectors: List[List[float]]) -> List[int]:
-        """Insert vectors into collection"""
+    def insert(self, collection_name: str, data: List[dict]) -> List[int]:
+        """Insert data into collection. Each dict should have 'content' and 'embedding' keys."""
         try:
             from pymilvus import Collection
 
@@ -107,17 +108,21 @@ class MilvusClient:
                 self.connect()
 
             collection = Collection(name=collection_name)
-            data = [[vec] for vec in vectors]  # Wrap each vector
-            result = collection.insert(data)
+            # Extract embeddings and contents
+            embeddings = [d["embedding"] for d in data]
+            contents = [d["content"] for d in data]
+            # pymilvus expects rows: list of lists with [[id, content, embedding], ...] or auto-id [[content, embedding], ...]
+            rows = [[content, embedding] for content, embedding in zip(contents, embeddings)]
+            result = collection.insert(rows)
             collection.flush()
-            logger.info(f"Inserted {len(vectors)} vectors into {collection_name}")
+            logger.info(f"Inserted {len(data)} records into {collection_name}")
             return result.primary_keys
         except Exception as e:
-            logger.error(f"Failed to insert vectors: {e}")
+            logger.error(f"Failed to insert: {e}")
             return []
 
-    def search_vectors(self, collection_name: str, query_vectors: List[List[float]], top_k: int = 10) -> List[List]:
-        """Search vectors using ANN search with IP metric"""
+    def search(self, collection_name: str, query_vector: List[float], top_k: int = 5) -> List[List]:
+        """Search vectors using ANN search with IP metric. Accepts a single query_vector."""
         try:
             from pymilvus import Collection
 
@@ -130,23 +135,23 @@ class MilvusClient:
             search_params = {"metric_type": "IP", "params": {"nprobe": 10}}
 
             results = collection.search(
-                data=query_vectors,
-                anns_field="vector",
+                data=[query_vector],
+                anns_field="embedding",
                 param=search_params,
                 limit=top_k,
-                output_fields=["id"]
+                output_fields=["id", "content"]
             )
 
             # Format results
             formatted = []
             for hits in results:
                 formatted.append([
-                    {"id": hit.id, "distance": hit.distance}
+                    {"id": hit.id, "distance": hit.distance, "content": hit.entity.get("content", "")}
                     for hit in hits
                 ])
             return formatted
         except Exception as e:
-            logger.error(f"Failed to search vectors: {e}")
+            logger.error(f"Failed to search: {e}")
             return []
 
     def __enter__(self):

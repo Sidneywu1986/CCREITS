@@ -27,7 +27,7 @@ def test_milvus_client_connect_disconnect():
     """Test connect and disconnect"""
     client = MilvusClient(host="localhost", port=19530)
     # Should not raise, just catch connection error gracefully
-    result = client.health_check()
+    result = client.is_healthy()
     assert result is False or result is True  # Either healthy or not
 
 
@@ -46,12 +46,15 @@ def test_milvus_client_insert_and_search():
     client = MilvusClient(host="localhost", port=19530)
     try:
         # Insert vectors
-        vectors = [[0.1] * 1536, [0.2] * 1536]
-        ids = client.insert_vectors("test_collection", vectors)
+        data = [
+            {"content": "test content 1", "embedding": [0.1] * 1536},
+            {"content": "test content 2", "embedding": [0.2] * 1536}
+        ]
+        ids = client.insert("test_collection", data)
         assert len(ids) == 2
 
         # Search vectors
-        results = client.search_vectors("test_collection", [[0.1] * 1536], top_k=1)
+        results = client.search("test_collection", [0.1] * 1536, top_k=1)
         assert isinstance(results, list)
     except Exception:
         pass  # Expected without real Milvus

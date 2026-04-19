@@ -11,7 +11,7 @@ services:
       - "19530:19530"   # Milvus service port
       - "9091:9091"     # Health check port
     volumes:
-      - milvus_data:/var/lib/milvus
+      - ./milvus/data:/var/lib/milvus/data
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
       interval: 30s
@@ -19,10 +19,6 @@ services:
       retries: 3
     networks:
       - milvus-network
-
-volumes:
-  milvus_data:
-    driver: local
 
 networks:
   milvus-network:
