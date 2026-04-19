@@ -1,6 +1,7 @@
 """
 Base scheduler with retry, error logging, and alert logic
 """
+import asyncio
 import logging
 from abc import ABC, abstractmethod
 from backend.ai_db.models import CrawlErrorLog
@@ -18,11 +19,11 @@ class BaseScheduler(ABC):
         self.consecutive_failures = 0
 
     @abstractmethod
-    async def crawl(self):
+    async def crawl(self) -> None:
         """Execute crawl logic - subclasses implement"""
         pass
 
-    async def run(self):
+    async def run(self) -> None:
         """Scheduler run entry point with retry logic"""
         for attempt in range(self.max_retries):
             try:
@@ -38,7 +39,7 @@ class BaseScheduler(ABC):
                     if self.consecutive_failures >= self.alert_threshold:
                         await self._send_alert()
 
-    async def _log_error(self, error_msg: str):
+    async def _log_error(self, error_msg: str) -> None:
         """Log error to database"""
         await CrawlErrorLog.create(
             crawler_name=self.name,
@@ -47,6 +48,6 @@ class BaseScheduler(ABC):
             retry_count=self.max_retries
         )
 
-    async def _send_alert(self):
+    async def _send_alert(self) -> None:
         """Send alert when consecutive failures exceed threshold"""
         logger.error(f"ALERT: {self.name} failed {self.consecutive_failures} times consecutively")
