@@ -71,6 +71,12 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="REITs Admin", lifespan=lifespan)
 templates = Jinja2Templates(directory="templates")
 
+# AI API 路由注册
+from api import chat_reits_router, chat_announcement_router, research_router
+
+app.include_router(chat_reits_router)
+app.include_router(chat_announcement_router)
+app.include_router(research_router)
 
 # ========== CORS 配置 ==========
 from fastapi.middleware.cors import CORSMiddleware
