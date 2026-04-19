@@ -145,10 +145,10 @@ class ResearchResult(Model):
 class AnnouncementContent(Model):
     """公告内容表（解析后的公告原文）"""
     id = fields.IntField(pk=True)
-    announcement_id = fields.IntField(unique=True)
-    title = fields.CharField(max_length=500, null=True)
-    content = fields.TextField(null=True)
-    summary = fields.TextField(null=True)
+    announcement_id = fields.IntField()
+    chunk_index = fields.IntField(default=0)
+    content_text = fields.TextField(null=True)
+    char_count = fields.IntField(default=0)
     fulltext_vector = fields.JSONField(null=True)
     created_at = fields.DatetimeField(auto_now_add=True)
     updated_at = fields.DatetimeField(auto_now=True)
@@ -160,14 +160,15 @@ class AnnouncementContent(Model):
 class SocialHotspot(Model):
     """社会热点表"""
     id = fields.IntField(pk=True)
+    source = fields.CharField(max_length=100, null=True)
     title = fields.CharField(max_length=255)
     content = fields.TextField(null=True)
-    source = fields.CharField(max_length=100, null=True)
     url = fields.CharField(max_length=500, null=True)
-    heat_score = fields.IntField(default=0)
-    keywords = fields.JSONField(null=True)
+    author = fields.CharField(max_length=100, null=True)
+    publish_time = fields.DatetimeField(null=True)
+    sentiment_score = fields.IntField(default=0)
+    entity_tags = fields.JSONField(null=True)
     fulltext_vector = fields.JSONField(null=True)
-    published_at = fields.DatetimeField(null=True)
     created_at = fields.DatetimeField(auto_now_add=True)
 
     class Meta:
@@ -181,9 +182,11 @@ class Article(Model):
     content = fields.TextField(null=True)
     author = fields.CharField(max_length=100, null=True)
     source = fields.CharField(max_length=100, null=True)
-    article_type = fields.CharField(max_length=50, null=True)
-    url = fields.CharField(max_length=500, null=True)
-    published_at = fields.DatetimeField(null=True)
+    source_url = fields.CharField(max_length=500, null=True)
+    publish_time = fields.DatetimeField(null=True)
+    category = fields.CharField(max_length=50, null=True)
+    related_funds = fields.JSONField(null=True)
+    content_hash = fields.CharField(max_length=64, null=True, unique=True)
     fulltext_vector = fields.JSONField(null=True)
     created_at = fields.DatetimeField(auto_now_add=True)
 

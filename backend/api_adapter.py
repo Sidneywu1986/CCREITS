@@ -38,6 +38,13 @@ adapter_app.add_middleware(
     allow_headers=["*"],
 )
 
+# AI API 路由注册
+from api import chat_reits_router, chat_announcement_router, research_router
+
+adapter_app.include_router(chat_reits_router)
+adapter_app.include_router(chat_announcement_router)
+adapter_app.include_router(research_router)
+
 # 数据库路径 - 绝对路径
 DB_PATH = r"D:\tools\消费看板5（前端）\backend\database\reits.db"
 

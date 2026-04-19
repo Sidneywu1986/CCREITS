@@ -160,34 +160,35 @@ CREATE INDEX IF NOT EXISTS idx_research_results_fulltext ON research_results USI
 -- 公告内容表（解析后的公告原文）
 CREATE TABLE IF NOT EXISTS announcement_contents (
     id SERIAL PRIMARY KEY,
-    announcement_id INTEGER NOT NULL UNIQUE,
-    title VARCHAR(500),
-    content TEXT,
-    summary TEXT,
+    announcement_id INTEGER NOT NULL,
+    chunk_index INTEGER DEFAULT 0,
+    content_text TEXT,
+    char_count INTEGER DEFAULT 0,
     fulltext_vector tsvector,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX IF NOT EXISTS idx_announcement_contents_announcement_id ON announcement_contents(announcement_id);
+CREATE INDEX IF NOT EXISTS idx_content_announcement ON announcement_contents(announcement_id);
 CREATE INDEX IF NOT EXISTS idx_announcement_contents_fulltext ON announcement_contents USING GIN(fulltext_vector);
 
 -- 社会热点表
 CREATE TABLE IF NOT EXISTS social_hotspots (
     id SERIAL PRIMARY KEY,
+    source VARCHAR(100),
     title VARCHAR(255) NOT NULL,
     content TEXT,
-    source VARCHAR(100),
     url VARCHAR(500),
-    heat_score INTEGER DEFAULT 0,
-    keywords JSONB,
+    author VARCHAR(100),
+    publish_time TIMESTAMP,
+    sentiment_score INTEGER DEFAULT 0,
+    entity_tags JSONB,
     fulltext_vector tsvector,
-    published_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX IF NOT EXISTS idx_social_hotspots_heat_score ON social_hotspots(heat_score DESC);
-CREATE INDEX IF NOT EXISTS idx_social_hotspots_published_at ON social_hotspots(published_at DESC);
+CREATE INDEX IF NOT EXISTS idx_social_hotspots_sentiment_score ON social_hotspots(sentiment_score DESC);
+CREATE INDEX IF NOT EXISTS idx_social_hotspots_publish_time ON social_hotspots(publish_time DESC);
 CREATE INDEX IF NOT EXISTS idx_social_hotspots_fulltext ON social_hotspots USING GIN(fulltext_vector);
 
 -- 公众号/研报文章表
@@ -197,16 +198,18 @@ CREATE TABLE IF NOT EXISTS articles (
     content TEXT,
     author VARCHAR(100),
     source VARCHAR(100),
-    article_type VARCHAR(50),
-    url VARCHAR(500),
-    published_at TIMESTAMP,
+    source_url VARCHAR(500),
+    publish_time TIMESTAMP,
+    category VARCHAR(50),
+    related_funds JSONB,
+    content_hash VARCHAR(64) UNIQUE,
     fulltext_vector tsvector,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_articles_title ON articles(title);
-CREATE INDEX IF NOT EXISTS idx_articles_article_type ON articles(article_type);
-CREATE INDEX IF NOT EXISTS idx_articles_published_at ON articles(published_at DESC);
+CREATE INDEX IF NOT EXISTS idx_article_category ON articles(category);
+CREATE INDEX IF NOT EXISTS idx_articles_publish_time ON articles(publish_time DESC);
 CREATE INDEX IF NOT EXISTS idx_articles_fulltext ON articles USING GIN(fulltext_vector);
 
 -- ============================================

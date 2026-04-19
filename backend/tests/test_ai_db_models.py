@@ -71,8 +71,8 @@ async def test_research_result_structured():
         session=session,
         analysis_type="financial",
         conclusion="结论测试",
-        supporting_data='[{"key": "value"}]',
-        references='[{"id": 1}]'
+        supporting_data=[{"key": "value"}],
+        references=[{"id": 1}]
     )
     assert result.id is not None
     assert result.conclusion == "结论测试"

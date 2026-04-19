@@ -60,7 +60,7 @@ async def chat_reits(req: ChatReitsRequest):
         from core.config import settings
 
         # 初始化数据库连接
-        if not Tortoise._db_handler:
+        if not Tortoise.is_inited():
             await Tortoise.init(
                 db_url=settings.AI_DB_CONFIG["connections"]["default"]["credentials"].get(
                     "database", "sqlite://:memory:"
