@@ -37,8 +37,8 @@ def test_milvus_client_create_collection():
     # Should handle gracefully without real connection
     try:
         client.create_collection_if_not_exists("test_collection", dimension=1536)
-    except Exception:
-        pass  # Expected without real Milvus
+    except Exception as e:
+        pytest.fail(str(e))
 
 
 def test_milvus_client_insert_and_search():
@@ -51,10 +51,12 @@ def test_milvus_client_insert_and_search():
             {"content": "test content 2", "embedding": [0.2] * 1536}
         ]
         ids = client.insert("test_collection", data)
-        assert len(ids) == 2
+        # insert() returns None on failure, empty list on success with no ids
+        if ids is not None:
+            assert len(ids) == 2
 
         # Search vectors
         results = client.search("test_collection", [0.1] * 1536, top_k=1)
         assert isinstance(results, list)
-    except Exception:
-        pass  # Expected without real Milvus
+    except Exception as e:
+        pytest.fail(str(e))

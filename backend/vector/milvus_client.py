@@ -119,7 +119,7 @@ class MilvusClient:
             return result.primary_keys
         except Exception as e:
             logger.error(f"Failed to insert: {e}")
-            return []
+            return None
 
     def search(self, collection_name: str, query_vector: List[float], top_k: int = 5) -> List[List]:
         """Search vectors using ANN search with IP metric. Accepts a single query_vector."""

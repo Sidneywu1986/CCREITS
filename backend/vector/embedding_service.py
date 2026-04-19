@@ -81,11 +81,13 @@ class EmbeddingService:
             logger.error(f"Embedding failed for provider {self.provider}: {e}")
             raise
 
+    def _mock_embedding(self) -> List[float]:
+        return [0.01 * i for i in range(self.dimension)]
+
     def _embed_baidu(self, text: str) -> List[float]:
         """Baidu embedding"""
         if self._client is None:
-            # Return mock embedding for testing
-            return [0.01 * i for i in range(self.dimension)]
+            return self._mock_embedding()
 
         try:
             result = self._client.embedding(text)
@@ -99,7 +101,7 @@ class EmbeddingService:
     def _embed_qianfan(self, text: str) -> List[float]:
         """Qianfan embedding"""
         if self._client is None:
-            return [0.01 * i for i in range(self.dimension)]
+            return self._mock_embedding()
 
         try:
             resp = self._client.do(model=self.model, input=text)
@@ -111,7 +113,7 @@ class EmbeddingService:
     def _embed_openai(self, text: str) -> List[float]:
         """OpenAI embedding"""
         if self._client is None:
-            return [0.01 * i for i in range(self.dimension)]
+            return self._mock_embedding()
 
         try:
             resp = self._client.Embedding.create(

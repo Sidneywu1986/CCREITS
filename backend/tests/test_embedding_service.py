@@ -31,8 +31,8 @@ def test_embedding_service_embed_text():
         result = service.embed_text("测试文本")
         assert isinstance(result, list)
         assert len(result) == 1536
-    except Exception:
-        pass  # Expected without real API
+    except Exception as e:
+        pytest.fail(str(e))
 
 
 def test_embedding_service_provider_validation():
@@ -50,5 +50,5 @@ def test_embedding_service_batch_embed():
         assert isinstance(results, list)
         assert len(results) == 2
         assert len(results[0]) == 1536
-    except Exception:
-        pass  # Expected without real API
+    except Exception as e:
+        pytest.fail(str(e))
