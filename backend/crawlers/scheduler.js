@@ -137,7 +137,22 @@ cron.schedule('0 * * * *', async () => {
     }
 });
 
-// 6. 告警历史清理 - 每天凌晨3点
+// 6. 收盘后更新日线数据 - 交易日 15:05
+cron.schedule('5 15 * * 1-5', async () => {
+    await runWithRetry(
+        '收盘日线更新',
+        async () => {
+            const crawler = new SinaCrawler();
+            const results = await crawler.fetchData();
+            await crawler.saveToDatabase(results);
+            console.log(`📊 收盘数据获取完成: ${results.length} 只基金`);
+        }
+    );
+}, {
+    timezone: 'Asia/Shanghai'
+});
+
+// 7. 告警历史清理 - 每天凌晨3点
 cron.schedule('0 3 * * *', async () => {
     try {
         AlertManager.cleanup(7); // 保留7天
@@ -150,6 +165,7 @@ console.log('📋 已配置定时任务:');
 console.log('  • 实时行情: 每5分钟 (交易日 9:00-15:00)');
 console.log('  • 东财深度: 每30分钟 (交易日 9:00-15:00)');
 console.log('  • 基金详情: 每日凌晨 2:00');
+console.log('  • 收盘日线: 交易日 15:05');
 console.log('  • 公告更新: 每小时');
 console.log('  • 数据完整性检查: 每小时');
 console.log('  • 告警历史清理: 每日凌晨 3:00');

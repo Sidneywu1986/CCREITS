@@ -19,7 +19,7 @@ def get_db_funds():
     """从数据库获取81只基金列表"""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute('SELECT code, name FROM funds ORDER BY code')
+    cursor.execute('SELECT fund_code, fund_name FROM funds ORDER BY fund_code')
     funds = [{'code': row[0], 'name': row[1]} for row in cursor.fetchall()]
     conn.close()
     return funds

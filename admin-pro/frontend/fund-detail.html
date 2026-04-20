@@ -669,9 +669,10 @@
                 return;
             }
             
-            // 前端兜底：如果后端没有返回 sector，根据 code 前缀映射
+            // 前端兜底：如果后端没有返回 sector，从ALL_FUNDS中查找
             if (!currentFund.sector && currentCode) {
-                currentFund.sector = SECTOR_MAP[currentCode] || 'other';
+                const fundFromMock = ALL_FUNDS.find(f => f.code === currentCode);
+                currentFund.sector = fundFromMock?.sector || 'other';
             }
             if (!currentFund.sector_name && currentFund.sector) {
                 currentFund.sector_name = SECTOR_CONFIG[currentFund.sector]?.name || '其他';
@@ -1036,7 +1037,7 @@
         async function loadKlineChart(type) {
             try {
                 const period = type === 'weekly' ? 'weekly' : 'daily';
-                const response = await fetch(`http://localhost:5076/api/funds/price-history?code=${currentCode}&time_range=${period}`);
+                const response = await fetch(`http://localhost:5074/api/funds/price-history?code=${currentCode}&time_range=${period}`);
                 const result = await response.json();
                 
                 let data = [];
@@ -1225,6 +1226,16 @@
             updateCompareBar();
         }
         
+        // 对比栏存储函数
+        function getCompareList() {
+            try {
+                return JSON.parse(localStorage.getItem('reits_compare') || '[]');
+            } catch (e) { return []; }
+        }
+        function saveCompareList(list) {
+            localStorage.setItem('reits_compare', JSON.stringify(list));
+        }
+
         // 重写底部对比栏更新
         function updateCompareBar() {
             const list = getCompareList();

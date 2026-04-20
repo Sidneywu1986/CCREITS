@@ -35,15 +35,15 @@ class SinaCrawler {
     async getFundCodes() {
         return new Promise((resolve, reject) => {
             db.all(
-                "SELECT code FROM funds WHERE status = 'listed' OR status IS NULL",
+                "SELECT fund_code FROM funds WHERE status = 'active'",
                 [],
                 (err, rows) => {
                     if (err) {
                         reject(err);
                     } else {
                         const codes = rows.map(row => {
-                            const prefix = row.code.startsWith('5') ? 'sh' : 'sz';
-                            return prefix + row.code;
+                            const prefix = row.fund_code.startsWith('5') ? 'sh' : 'sz';
+                            return prefix + row.fund_code;
                         });
                         resolve(codes);
                     }
@@ -70,6 +70,32 @@ class SinaCrawler {
             console.error(`[${SOURCE_NAME}] 请求失败:`, error.message);
             return [];
         }
+    }
+
+    async saveToDatabase(quotes) {
+        const today = new Date().toISOString().split('T')[0];
+        let saved = 0;
+        for (const q of quotes) {
+            await new Promise((resolve, reject) => {
+                db.run(`
+                    INSERT OR REPLACE INTO fund_prices
+                    (fund_code, trade_date, open_price, close_price, high_price, low_price, volume, amount, change_pct, update_time)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+                `, [q.fund_code, today, q.open, q.price, q.high, q.low, q.volume, 0, q.change_percent],
+                function(err) {
+                    if (err) {
+                        // 忽略重复插入错误
+                        if (!err.message.includes('UNIQUE')) {
+                            console.error(`[${SOURCE_NAME}] 保存失败 ${q.fund_code}:`, err.message);
+                        }
+                    } else {
+                        saved++;
+                    }
+                    resolve();
+                });
+            });
+        }
+        console.log(`[${SOURCE_NAME}] 保存 ${saved} 条日线数据`);
     }
 
     parseData(data, codes) {

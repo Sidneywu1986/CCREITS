@@ -6,6 +6,8 @@ API适配层 - 统一前后端路径格式
 
 import os
 import sys
+import re
+from typing import Optional
 from pathlib import Path
 from fastapi import FastAPI, Query, Body
 from fastapi.middleware.cors import CORSMiddleware
@@ -548,82 +550,112 @@ async def dividend_upcoming(days: int = Query(30, description="未来天数")):
 
 # ==================== 市场指数端点 ====================
 
-def get_sh_index_from_sina():
-    """从新浪获取上证指数"""
+def parse_sina_index(data: str) -> Optional[dict]:
+    """解析新浪指数数据"""
+    try:
+        match = re.search(r'"([^"]+)"', data)
+        if not match:
+            return None
+        parts = match.group(1).split(',')
+        if len(parts) < 4:
+            return None
+        price = float(parts[3]) if parts[3] else 0
+        prev = float(parts[2]) if parts[2] else 0
+        change = price - prev
+        change_pct = (change / prev * 100) if prev > 0 else 0
+        return {
+            "value": round(price, 2),
+            "change": round(change, 3),
+            "changePercent": round(change_pct, 2)
+        }
+    except:
+        return None
+
+
+def get_all_indices_from_sina() -> dict:
+    """从新浪获取所有市场指数实时数据"""
     try:
         import requests
-        headers = {'Referer': 'https://finance.sina.com.cn'}
-        r = requests.get('https://hq.sinajs.cn/list=sh000001', headers=headers, timeout=5)
+        headers = {'Referer': 'https://finance.sina.com.cn', 'User-Agent': 'Mozilla/5.0'}
+        # 新浪指数代码:
+        # sh000001=上证指数, sz399001=深证指数
+        # sz399639=中证REITs全收益, sz399638=中证红利(等权)
+        codes = 'sh000001,sz399001,sz399639,sz399638'
+        r = requests.get(f'https://hq.sinajs.cn/list={codes}', headers=headers, timeout=5)
         r.encoding = 'gbk'
-        data = r.text
-        if '"' in data:
-            parts = data.split('"')[1].split(',')
-            if len(parts) > 3:
-                price = float(parts[3])
-                prev = float(parts[2])
-                change_pct = ((price - prev) / prev * 100) if prev > 0 else 0
-                return {
-                    "value": round(price, 2),
-                    "change": round(price - prev, 3),
-                    "changePercent": round(change_pct, 2)
-                }
+
+        indices = {}
+        for line in r.text.split('\n'):
+            if '=' in line:
+                code_match = re.search(r'hq_str_(\w+)="', line)
+                if code_match:
+                    code = code_match.group(1)
+                    data = parse_sina_index(line)
+                    if data:
+                        indices[code] = data
+        return indices
     except Exception as e:
-        print(f"获取上证指数失败: {e}")
-    return None
+        print(f"获取新浪指数失败: {e}")
+        return {}
 
 
 @adapter_app.get("/api/market-indices/list")
 async def market_indices_list():
     """获取市场指数列表"""
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
+        # 从新浪获取实时数据
+        sina_indices = get_all_indices_from_sina()
+        now = datetime.datetime.now().isoformat()
 
-        # 从market_indices表读取数据（由Node爬虫写入）
-        cursor.execute("SELECT code, name, value, change, change_percent, source, updated_at FROM market_indices")
-        rows = cursor.fetchall()
-        conn.close()
+        # 定义指数映射: code -> (sina_code, name)
+        INDEX_MAPPING = {
+            'sh_index': ('sh000001', '上证指数'),
+            'sz_index': ('sz399001', '深证指数'),
+            'reits_total': ('sz399639', '中证REITs全收益'),
+            'dividend': ('sz399638', '中证红利'),
+        }
 
-        if rows and len(rows) > 0:
-            indices = []
-            now = datetime.datetime.now().isoformat()
-            for row in rows:
-                code, name, value, change, change_percent, source, updated_at = row
-                # 补充上证指数实时数据
-                if code == 'sh_index':
-                    sh_data = get_sh_index_from_sina()
-                    if sh_data:
-                        value = sh_data["value"]
-                        change = sh_data["change"]
-                        change_percent = sh_data["changePercent"]
-                        source = "sina"
-                        updated_at = now
+        # 构建返回数据
+        indices = []
+        for code, (sina_code, name) in INDEX_MAPPING.items():
+            if sina_code in sina_indices:
+                data = sina_indices[sina_code]
                 indices.append({
                     "code": code,
                     "name": name,
-                    "value": value,
-                    "change": change,
-                    "changePercent": change_percent,
-                    "source": source,
-                    "updateTime": updated_at or now
+                    "value": data["value"],
+                    "change": data["change"],
+                    "changePercent": data["changePercent"],
+                    "source": "sina",
+                    "updateTime": now
+                })
+            else:
+                # 新浪获取失败时返回默认值
+                indices.append({
+                    "code": code,
+                    "name": name,
+                    "value": None,
+                    "change": 0,
+                    "changePercent": 0,
+                    "source": "sina",
+                    "updateTime": now
                 })
 
-            return {
-                "success": True,
-                "data": indices,
-                "message": "获取市场指数成功"
-            }
+        # 国债收益率暂时保留模拟数据（需要专门的数据源）
+        indices.append({
+            "code": "bond_yield",
+            "name": "10年期国债收益率",
+            "value": 1.83,
+            "change": -0.02,
+            "changePercent": -0.24,
+            "source": "模拟",
+            "updateTime": now
+        })
 
-        # 如果表为空，返回默认占位值
         return {
             "success": True,
-            "data": [
-                {"code": "reits_total", "name": "中证REITs全收益", "value": 1013.78, "change": 0, "changePercent": 0, "source": "待更新", "updateTime": datetime.datetime.now().isoformat()},
-                {"code": "bond_yield", "name": "10年期国债收益率", "value": 1.83, "change": 0, "changePercent": 0, "source": "待更新", "updateTime": datetime.datetime.now().isoformat()},
-                {"code": "sh_index", "name": "上证指数", "value": 4051.43, "change": 0, "changePercent": 0, "source": "sina", "updateTime": datetime.datetime.now().isoformat()},
-                {"code": "dividend", "name": "中证红利", "value": 5712.79, "change": 0, "changePercent": 0, "source": "待更新", "updateTime": datetime.datetime.now().isoformat()}
-            ],
-            "message": "使用默认占位值"
+            "data": indices,
+            "message": f"获取市场指数成功 ({len(indices)}个)"
         }
 
     except Exception as e:

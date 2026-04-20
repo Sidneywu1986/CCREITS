@@ -89,8 +89,9 @@ class FundDetailCrawler {
     async fetchFromSinaBatch(funds) {
         // 构建新浪代码格式
         const codes = funds.map(f => {
-            const prefix = f.code.startsWith('5') ? 'sh' : 'sz';
-            return `${prefix}${f.code}`;
+            const code = f.fund_code;
+            const prefix = code.startsWith('5') ? 'sh' : 'sz';
+            return `${prefix}${code}`;
         }).join(',');
         
         const url = `https://hq.sinajs.cn/list=${codes}`;
@@ -110,8 +111,9 @@ class FundDetailCrawler {
         // 解析数据
         const results = [];
         for (const fund of funds) {
-            const prefix = fund.code.startsWith('5') ? 'sh' : 'sz';
-            const varName = `hq_str_${prefix}${fund.code}`;
+            const code = fund.fund_code;
+            const prefix = code.startsWith('5') ? 'sh' : 'sz';
+            const varName = `hq_str_${prefix}${code}`;
             const match = text.match(new RegExp(`${varName}="([^"]*)"`));
             
             if (match && match[1]) {
@@ -121,10 +123,10 @@ class FundDetailCrawler {
                 const volume = parseFloat(fields[8]) || null;
                 
                 // 获取流通份额（优先从默认值，数据库中已存在的则不覆盖）
-                const circulatingShares = DEFAULT_SHARES[fund.code] || null;
+                const circulatingShares = DEFAULT_SHARES[code] || null;
                 
                 results.push({
-                    fund_code: fund.code,
+                    fund_code: fund.fund_code,
                     nav: price,
                     circulating_shares: circulatingShares,
                     volume: volume,
@@ -142,7 +144,7 @@ class FundDetailCrawler {
     async getFundCodes() {
         return new Promise((resolve, reject) => {
             db.all(
-                "SELECT code, name FROM funds WHERE status = 'listed' OR status IS NULL",
+                "SELECT fund_code, fund_name FROM funds WHERE status = 'active'",
                 [],
                 (err, rows) => {
                     if (err) reject(err);
@@ -158,21 +160,20 @@ class FundDetailCrawler {
     async saveToDatabase(detail) {
         return new Promise((resolve, reject) => {
             db.run(
-                `UPDATE funds SET 
+                `UPDATE funds SET
                     nav = ?,
-                    circulating_shares = ?,
                     updated_at = datetime('now')
-                 WHERE code = ?`,
+                 WHERE fund_code = ?`,
                 [
                     detail.nav,
-                    detail.circulating_shares,
                     detail.fund_code
                 ],
                 function(err) {
                     if (err) {
-                        console.error(`[${SOURCE_NAME}] 更新基金 ${detail.fund_code} 失败:`, err);
+                        console.error(`[${SOURCE_NAME}] 更新基金 ${detail.fund_code} 失败:`, err.message, 'changes:', this.changes);
                         reject(err);
                     } else {
+                        if (this.changes === 0) console.warn(`[${SOURCE_NAME}] 警告: ${detail.fund_code} 未更新到任何行`);
                         resolve();
                     }
                 }

@@ -129,33 +129,40 @@
             </div>
             
             <!-- 市场指标卡片 -->
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-                    <div class="text-sm text-gray-500 mb-1.5">中证REITs全收益</div>
-                    <div class="flex items-baseline gap-2">
-                        <div id="index-reits_total" class="text-2xl font-bold text-gray-900 mono">--</div>
-                        <div id="change-reits_total" class="text-sm font-medium">--</div>
+            <div class="flex justify-between gap-3 overflow-x-auto pb-2">
+                <div class="bg-white rounded-xl border border-gray-200 p-3 shadow-sm flex-1 min-w-0">
+                    <div class="text-sm text-gray-500 mb-1">上证指数</div>
+                    <div class="flex items-baseline gap-1">
+                        <div id="index-sh_index" class="text-xl font-bold text-gray-900 mono truncate">--</div>
+                        <div id="change-sh_index" class="text-xs font-medium shrink-0">--</div>
                     </div>
                 </div>
-                <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-                    <div class="text-sm text-gray-500 mb-1.5">10年期国债收益率</div>
-                    <div class="flex items-baseline gap-2">
-                        <div id="index-bond_yield" class="text-2xl font-bold text-gray-900 mono">--</div>
-                        <div id="change-bond_yield" class="text-sm font-medium">--</div>
+                <div class="bg-white rounded-xl border border-gray-200 p-3 shadow-sm flex-1 min-w-0">
+                    <div class="text-sm text-gray-500 mb-1">深证指数</div>
+                    <div class="flex items-baseline gap-1">
+                        <div id="index-sz_index" class="text-xl font-bold text-gray-900 mono truncate">--</div>
+                        <div id="change-sz_index" class="text-xs font-medium shrink-0">--</div>
                     </div>
                 </div>
-                <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-                    <div class="text-sm text-gray-500 mb-1.5">上证指数</div>
-                    <div class="flex items-baseline gap-2">
-                        <div id="index-sh_index" class="text-2xl font-bold text-gray-900 mono">--</div>
-                        <div id="change-sh_index" class="text-sm font-medium">--</div>
+                <div class="bg-white rounded-xl border border-gray-200 p-3 shadow-sm flex-1 min-w-0">
+                    <div class="text-sm text-gray-500 mb-1">中证REITs</div>
+                    <div class="flex items-baseline gap-1">
+                        <div id="index-reits_total" class="text-xl font-bold text-gray-900 mono truncate">--</div>
+                        <div id="change-reits_total" class="text-xs font-medium shrink-0">--</div>
                     </div>
                 </div>
-                <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-                    <div class="text-sm text-gray-500 mb-1.5">中证红利</div>
-                    <div class="flex items-baseline gap-2">
-                        <div id="index-dividend" class="text-2xl font-bold text-gray-900 mono">--</div>
-                        <div id="change-dividend" class="text-sm font-medium">--</div>
+                <div class="bg-white rounded-xl border border-gray-200 p-3 shadow-sm flex-1 min-w-0">
+                    <div class="text-sm text-gray-500 mb-1">中证红利</div>
+                    <div class="flex items-baseline gap-1">
+                        <div id="index-dividend" class="text-xl font-bold text-gray-900 mono truncate">--</div>
+                        <div id="change-dividend" class="text-xs font-medium shrink-0">--</div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl border border-gray-200 p-3 shadow-sm flex-1 min-w-0">
+                    <div class="text-sm text-gray-500 mb-1">10年期国债</div>
+                    <div class="flex items-baseline gap-1">
+                        <div id="index-bond_yield" class="text-xl font-bold text-gray-900 mono truncate">--</div>
+                        <div id="change-bond_yield" class="text-xs font-medium shrink-0">--</div>
                     </div>
                 </div>
             </div>
@@ -768,7 +775,7 @@
         // 加载大盘指数数据
         async function loadMarketIndices() {
             try {
-                const response = await fetch('http://localhost:5076/api/market-indices/list');
+                const response = await fetch('http://localhost:5074/api/market-indices/list');
                 if (!response.ok) throw new Error('Network error');
                 const result = await response.json();
                 if (result.success && result.data) {
@@ -853,7 +860,7 @@
                 // 如果是 API 数据，使用实时行情API更新
                 if (currentDataSource === 'api') {
                     try {
-                        const quotesResponse = await fetch('http://localhost:5076/api/quotes/realtime');
+                        const quotesResponse = await fetch('http://localhost:5074/api/quotes/realtime');
                         const quotesResult = await quotesResponse.json();
                         if (quotesResult.success && quotesResult.data && quotesResult.data.length > 0) {
                             // 更新现有数据
@@ -1095,7 +1102,7 @@
                 console.log('🔄 正在从实时行情API加载数据...');
 
                 // 优先使用实时行情API
-                const quotesResponse = await fetch('http://localhost:5076/api/quotes/realtime');
+                const quotesResponse = await fetch('http://localhost:5074/api/quotes/realtime');
                 const quotesResult = await quotesResponse.json();
 
                 if (quotesResult.success && quotesResult.data && quotesResult.data.length > 0) {
@@ -1159,24 +1166,25 @@
                 indicator.style.opacity = '0.5';
             }, 3000);
         }
-        
+
         // 初始化
         window.onload = function() {
             loadData();
             updateTime();
             setInterval(updateTime, 1000);
-            
+
             // 交易状态显示
             showTradingStatus();
             setInterval(showTradingStatus, 60000); // 每分钟更新一次状态
-            
+
+            // 每30秒刷新指数数据（交易时间实时更新，收盘后显示最后数据）
+            setInterval(loadMarketIndices, 30000);
             startLiveUpdate();
-            
             // 检查公告未读（模拟）
             if (Math.random() > 0.5) {
                 document.getElementById('nav-badge').classList.remove('hidden');
             }
-            
+
             // 处理 URL search 参数
             const params = new URLSearchParams(window.location.search);
             const searchQuery = params.get('search');

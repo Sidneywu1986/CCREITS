@@ -8,7 +8,7 @@ const USE_MOCK = false;
 
 async function request(url, options = {}) {
     const fullUrl = url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
-    
+
     const response = await fetch(fullUrl, {
         ...options,
         headers: {
@@ -16,17 +16,17 @@ async function request(url, options = {}) {
             ...options.headers
         }
     });
-    
+
     if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
     }
-    
+
     const data = await response.json();
-    
+
     if (!data.success) {
         throw new Error(data.error || '请求失败');
     }
-    
+
     return data;
 }
 
@@ -35,9 +35,9 @@ async function getFunds() {
     if (USE_MOCK) {
         return { data: ALL_FUNDS || [] };
     }
-    
+
     try {
-        return await request('/funds');
+        return await request('/funds/list');
     } catch (error) {
         console.warn('API失败，使用Mock:', error.message);
         return { data: ALL_FUNDS || [] };
@@ -50,9 +50,9 @@ async function getFundDetail(code) {
         const fund = ALL_FUNDS.find(f => f.code === code);
         return { data: fund };
     }
-    
+
     try {
-        return await request(`/funds/${code}`);
+        return await request(`/funds/detail?code=${code}`);
     } catch (error) {
         const fund = ALL_FUNDS.find(f => f.code === code);
         return { data: fund };
