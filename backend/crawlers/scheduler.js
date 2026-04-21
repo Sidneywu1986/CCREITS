@@ -10,6 +10,7 @@ const FundDetailCrawler = require('./fund-detail');
 const AnnouncementCrawler = require('./announcement_v2');
 const DataIntegrityChecker = require('./data-integrity-checker');
 const AlertManager = require('./alert-manager');
+const YieldCrawler = require('./yield_crawler');
 
 const config = {
     // 自动重试配置
@@ -152,7 +153,20 @@ cron.schedule('5 15 * * 1-5', async () => {
     timezone: 'Asia/Shanghai'
 });
 
-// 7. 告警历史清理 - 每天凌晨3点
+// 7. 派息率更新 - 交易日 15:10
+cron.schedule('10 15 * * 1-5', async () => {
+    await runWithRetry(
+        '派息率',
+        async () => {
+            const crawler = new YieldCrawler();
+            await crawler.fetchData();
+        }
+    );
+}, {
+    timezone: 'Asia/Shanghai'
+});
+
+// 8. 告警历史清理 - 每天凌晨3点
 cron.schedule('0 3 * * *', async () => {
     try {
         AlertManager.cleanup(7); // 保留7天
@@ -166,6 +180,7 @@ console.log('  • 实时行情: 每5分钟 (交易日 9:00-15:00)');
 console.log('  • 东财深度: 每30分钟 (交易日 9:00-15:00)');
 console.log('  • 基金详情: 每日凌晨 2:00');
 console.log('  • 收盘日线: 交易日 15:05');
+console.log('  • 派息率: 交易日 15:10');
 console.log('  • 公告更新: 每小时');
 console.log('  • 数据完整性检查: 每小时');
 console.log('  • 告警历史清理: 每日凌晨 3:00');

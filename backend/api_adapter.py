@@ -24,6 +24,31 @@ sys.path.insert(0, str(BASE_DIR / 'services'))
 from core.config import settings
 from services import realtime_quotes, announcements
 
+# 十年期国债收益率
+def get_bond_yield():
+    """从AKShare获取十年期国债收益率"""
+    try:
+        import akshare as ak
+        df = ak.bond_zh_us_rate()
+        latest = df.iloc[-1]
+        date_str = str(latest.iloc[0])
+        # 找中国10年期国债收益率列
+        col = [c for c in df.columns if '10' in str(c) and '中国' in str(c) and '-' not in str(c)][0]
+        value = float(latest[col])
+        # 用前一行计算涨跌
+        prev = df.iloc[-2]
+        prev_value = float(prev[col])
+        change = round(value - prev_value, 4)
+        change_pct = round((change / prev_value) * 100, 2) if prev_value else 0
+        return {
+            'date': date_str,
+            'value': value,
+            'change': change,
+            'changePercent': change_pct
+        }
+    except Exception:
+        return None
+
 # 创建API适配层应用
 adapter_app = FastAPI(
     title="REITs API Adapter",
@@ -75,7 +100,7 @@ async def get_funds_list():
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute("""
-            SELECT fund_code, fund_name, exchange, ipo_date, nav, status
+            SELECT fund_code, fund_name, exchange, ipo_date, nav, dividend_yield, status
             FROM funds
             ORDER BY exchange, fund_code
         """)
@@ -90,7 +115,8 @@ async def get_funds_list():
                 "exchange": row[2],
                 "listing_date": row[3],
                 "nav": row[4] or 0,
-                "status": row[5] or "listed"
+                "dividend_yield": row[5] or 0,
+                "status": row[6] or "listed"
             })
 
         return {
@@ -117,7 +143,7 @@ async def funds_detail_adapter(code: str = Query(..., description="基金代码"
         # 获取基金基本信息
         cursor.execute("""
             SELECT fund_code, fund_name, full_name, exchange, ipo_date,
-                   ipo_price, total_shares, nav, manager, asset_type
+                   ipo_price, total_shares, nav, dividend_yield, manager, asset_type
             FROM funds WHERE fund_code = ?
         """, (code,))
         row = cursor.fetchone()
@@ -155,9 +181,10 @@ async def funds_detail_adapter(code: str = Query(..., description="基金代码"
                 "volume": price_row[3] if price_row else 0,
                 "premium_rate": price_row[4] if price_row else 0,
                 "nav": row[7],
+                "dividend_yield": row[8] or 0,
                 "scale": (row[5] * row[6] / 100000000) if row[5] and row[6] else 0,
-                "manager": row[8],
-                "asset_type": row[9],
+                "manager": row[9],
+                "asset_type": row[10],
             },
             "message": "获取基金详情成功"
         }
@@ -641,16 +668,28 @@ async def market_indices_list():
                     "updateTime": now
                 })
 
-        # 国债收益率暂时保留模拟数据（需要专门的数据源）
-        indices.append({
-            "code": "bond_yield",
-            "name": "10年期国债收益率",
-            "value": 1.83,
-            "change": -0.02,
-            "changePercent": -0.24,
-            "source": "模拟",
-            "updateTime": now
-        })
+        # 十年期国债收益率
+        bond = get_bond_yield()
+        if bond:
+            indices.append({
+                "code": "bond_yield",
+                "name": "10年期国债收益率",
+                "value": bond['value'],
+                "change": bond['change'],
+                "changePercent": bond['changePercent'],
+                "source": f"中债信息({bond['date']})",
+                "updateTime": now
+            })
+        else:
+            indices.append({
+                "code": "bond_yield",
+                "name": "10年期国债收益率",
+                "value": None,
+                "change": 0,
+                "changePercent": 0,
+                "source": "获取失败",
+                "updateTime": now
+            })
 
         return {
             "success": True,
