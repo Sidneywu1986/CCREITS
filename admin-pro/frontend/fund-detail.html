@@ -839,7 +839,7 @@
         function initChart() {
             // 使用 ECharts 初始化
             priceChart = echarts.init(document.getElementById('price-chart'));
-            loadMinuteChart();
+            loadOrderBookChart();
             window.addEventListener('resize', () => priceChart.resize());
         }
         
@@ -866,7 +866,7 @@
             
             // 加载对应图表
             if (type === 'minute') {
-                loadMinuteChart();
+                loadOrderBookChart();
             } else if (type === 'daily') {
                 loadKlineChart('daily');
             } else if (type === 'weekly') {
@@ -874,160 +874,110 @@
             }
         }
         
-        // 分时图 - 使用 ECharts 折线图（更稳定）
-        function loadMinuteChart() {
-            const open = parseFloat(currentFund?.open) || parseFloat(currentFund?.price);
-            const close = parseFloat(currentFund?.price);
-            const high = parseFloat(currentFund?.high) || Math.max(open, close);
-            const low = parseFloat(currentFund?.low) || Math.min(open, close);
-            const prevClose = parseFloat(currentFund?.prev_close) || close * 0.99;
-            
-            // 获取当前时间
-            const now = new Date();
-            const currentHour = now.getHours();
-            const currentMinute = now.getMinutes();
-            
-            // 计算当前交易分钟索引（0-239，不含午休）
-            let currentTradingIndex = 0;
-            const startMinutes = 9 * 60 + 30; // 9:30
-            const morningEnd = 11 * 60 + 30;  // 11:30
-            const afternoonStart = 13 * 60;   // 13:00
-            const currentTotalMinutes = currentHour * 60 + currentMinute;
-            
-            if (currentHour < 9 || (currentHour === 9 && currentMinute < 30)) {
-                currentTradingIndex = 0;
-            } else if (currentTotalMinutes <= morningEnd) {
-                // 上午：9:30-11:30
-                currentTradingIndex = currentTotalMinutes - startMinutes;
-            } else if (currentTotalMinutes < afternoonStart) {
-                // 午休：11:30-13:00，显示到上午收盘
-                currentTradingIndex = 120;
-            } else if (currentTotalMinutes < 15 * 60) {
-                // 下午：13:00-15:00
-                currentTradingIndex = 120 + (currentTotalMinutes - afternoonStart);
-            } else {
-                // 收盘后，显示完整日线
-                currentTradingIndex = 240;
-            }
-            
-            // 生成时间轴（交易时间9:30-11:30, 13:00-15:00）
-            const times = [];
-            const prices = [];
-            
-            // 上午 9:30-11:30
-            for (let i = 0; i < 120 && i < currentTradingIndex; i++) {
-                const totalMinutes = startMinutes + i;
-                const hour = Math.floor(totalMinutes / 60);
-                const min = totalMinutes % 60;
-                times.push(`${hour}:${String(min).padStart(2, '0')}`);
-                
-                // 生成价格
-                generatePrice(i, currentTradingIndex);
-            }
-            
-            // 下午 13:00-15:00
-            for (let i = 0; i < 120 && (120 + i) < currentTradingIndex; i++) {
-                const totalMinutes = afternoonStart + i;
-                const hour = Math.floor(totalMinutes / 60);
-                const min = totalMinutes % 60;
-                times.push(`${hour}:${String(min).padStart(2, '0')}`);
-                
-                // 生成价格（索引从120开始）
-                generatePrice(120 + i, currentTradingIndex > 240 ? 240 : currentTradingIndex);
-            }
-            
-            function generatePrice(idx, totalIdx) {
-                const progress = idx / (totalIdx || 1);
-                
-                // 使用基于索引的伪随机，确保一致性
-                const seed = Math.sin(idx * 12.9898 + 78.233) * 43758.5453;
-                const random = Math.abs(seed - Math.floor(seed));
-                
-                // 基础价格：从开盘到当前价的插值
-                let basePrice = open + (close - open) * progress;
-                
-                // 添加正弦波趋势 + 随机波动
-                const trend = Math.sin(progress * Math.PI * 2) * (high - low) * 0.3;
-                const noise = (random - 0.5) * (high - low) * 0.4;
-                
-                let price = basePrice + trend + noise;
-                
-                // 限制在高低范围内
-                price = Math.max(low, Math.min(high, price));
-                prices.push(parseFloat(price.toFixed(3)));
-            }
-            
-            // 确保首尾正确
-            if (prices.length > 0) prices[0] = open;
-            if (prices.length > 1) prices[prices.length - 1] = close;
-            
-            // 使用 ECharts 渲染
-            const isUp = close >= prevClose;
-            const color = isUp ? '#dc2626' : '#16a34a';
-            
-            // 初始化 ECharts 实例
-            if (!priceChart) {
-                priceChart = echarts.init(document.getElementById('price-chart'));
-            }
-            
+        // 实时档口盘 - 从新浪获取5档买卖盘数据
+        let orderBookTimer = null;
+
+        function loadOrderBookChart() {
+            // 停止旧的轮询
+            if (orderBookTimer) clearInterval(orderBookTimer);
+            // 立即加载一次
+            fetchOrderBook();
+            // 每15秒实时刷新（交易时间内）
+            if (orderBookTimer) clearInterval(orderBookTimer);
+            orderBookTimer = setInterval(fetchOrderBook, 15000);
+        }
+
+        async function fetchOrderBook() {
+            const prefix = currentCode.startsWith('5') ? 'sh' : 'sz';
+            try {
+                const response = await fetch(
+                    `https://hq.sinajs.cn/list=${prefix}${currentCode}`,
+                    { headers: { 'Referer': 'https://finance.sina.com.cn/' } }
+                );
+                const text = await response.text();
+                const raw = text.split('"')[1];
+                if (!raw) return;
+                const fields = raw.split(',');
+                const currentPrice = parseFloat(fields[3]);
+                const prevClose = parseFloat(fields[2]);
+                // 解析5档买卖盘: Bid价格[11,13,15,17,19]量[10,12,14,16,18]; Ask价格[21,23,25,27,29]量[22,24,26,28,30]
+                const bids = [], asks = [];
+                for (let i = 0; i < 5; i++) {
+                    const bp = parseFloat(fields[11 + i * 2]), bv = parseInt(fields[10 + i * 2]) * 100;
+                    const ap = parseFloat(fields[21 + i * 2]), av = parseInt(fields[22 + i * 2]) * 100;
+                    if (bp > 0) bids.push({ price: bp, vol: bv });
+                    if (ap > 0) asks.push({ price: ap, vol: av });
+                }
+                renderOrderBook(currentPrice, prevClose, bids, asks);
+            } catch (e) { console.error('获取档口数据失败:', e); }
+        }
+
+        function renderOrderBook(currentPrice, prevClose, bids, asks) {
+            const isUp = currentPrice >= prevClose;
+            const priceColor = isUp ? '#dc2626' : '#16a34a';
+            const changeAmt = currentPrice - prevClose;
+            const changePct = ((changeAmt / prevClose) * 100).toFixed(2);
+            const sortedBids = [...bids].sort((a, b) => b.price - a.price);
+            const sortedAsks = [...asks].sort((a, b) => a.price - b.price);
+            const maxVol = Math.max(...sortedBids.map(b => b.vol), ...sortedAsks.map(a => a.vol), 1);
+            const fmtVol = v => v >= 10000 ? (v / 10000).toFixed(1) + '万' : v.toString();
+            const priceLabels = sortedBids.map(b => b.price.toFixed(3)).reverse();
+            priceLabels.push(`<span style="color:${priceColor};font-weight:bold;font-size:13px">${currentPrice.toFixed(3)}</span>`);
+            sortedAsks.forEach(a => priceLabels.push(a.price.toFixed(3)));
+            const volData = [...sortedBids.map(b => -b.vol).reverse(), 0, ...sortedAsks.map(a => a.vol)];
+            if (!priceChart) priceChart = echarts.init(document.getElementById('price-chart'));
             priceChart.setOption({
-                grid: { top: 10, right: 50, bottom: 30, left: 50 },
+                title: {
+                    text: `现价 ${currentPrice.toFixed(3)}  ${isUp ? '+' : ''}${changeAmt.toFixed(3)} (${isUp ? '+' : ''}${changePct}%)`,
+                    subtext: `昨收 ${prevClose.toFixed(3)}  |  买${bids.length}档 卖${asks.length}档`,
+                    left: 'center', textStyle: { fontSize: 13, color: priceColor },
+                    subtextStyle: { fontSize: 10, color: '#999' }
+                },
                 tooltip: {
-                    trigger: 'axis',
                     formatter: function(params) {
-                        const price = params[0].data;
-                        const change = ((price - prevClose) / prevClose * 100).toFixed(2);
-                        return `${params[0].axisValue}<br/>价格: ${price}<br/>涨跌: ${change}%`;
+                        const idx = params[0].dataIndex;
+                        const side = idx < sortedBids.length ? '买' : idx > sortedBids.length ? '卖' : '当前';
+                        if (side === '当前') return `当前价: ${currentPrice.toFixed(3)}`;
+                        return `${side}价: ${priceLabels[idx]}<br/>成交量: ${fmtVol(Math.abs(params[0].value))}股`;
                     }
                 },
+                grid: { top: 60, right: 65, bottom: 28, left: 58 },
                 xAxis: {
-                    type: 'category',
-                    data: times,
-                    axisLine: { lineStyle: { color: '#e5e7eb' } },
-                    axisLabel: { 
-                        color: '#9ca3af', 
-                        fontSize: 10, 
-                        interval: (index, value) => {
-                            // 只显示整点和半点: 9:30, 10:00, 10:30, 11:00, 11:30, 13:00, 13:30, 14:00, 14:30, 15:00
-                            const showTimes = ['9:30', '10:00', '10:30', '11:00', '11:30', '13:00', '13:30', '14:00', '14:30', '15:00'];
-                            return !showTimes.includes(value);
-                        }
-                    }
+                    type: 'value', min: -maxVol * 1.15, max: maxVol * 1.15,
+                    axisLine: { show: false },
+                    axisLabel: { formatter: v => v === 0 ? '' : fmtVol(Math.abs(v)), color: '#9ca3af', fontSize: 9 },
+                    splitLine: { lineStyle: { color: '#f3f4f6' } }
                 },
                 yAxis: {
-                    type: 'value',
-                    min: (value) => Math.min(prevClose, low) - 0.01,
-                    max: (value) => Math.max(prevClose, high) + 0.01,
-                    splitLine: { lineStyle: { color: '#f3f4f6' } },
-                    axisLabel: { color: '#6b7280', fontSize: 10 }
+                    type: 'category', data: priceLabels,
+                    axisLine: { lineStyle: { color: '#e5e7eb' } },
+                    axisLabel: {
+                        formatter: v => typeof v === 'string' && v.includes('span') ? '' : v,
+                        color: function(_, idx) {
+                            if (idx === sortedBids.length) return priceColor;
+                            return idx < sortedBids.length ? '#16a34a' : '#dc2626';
+                        }, fontSize: 10
+                    }
                 },
                 series: [{
-                    type: 'line',
-                    data: prices,
-                    smooth: false,
-                    symbol: 'none',
-                    lineStyle: { color: color, width: 1.5 },
-                    areaStyle: {
-                        color: {
-                            type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
-                            colorStops: [
-                                { offset: 0, color: isUp ? 'rgba(220,38,38,0.2)' : 'rgba(22,163,74,0.2)' }, 
-                                { offset: 1, color: isUp ? 'rgba(220,38,38,0.02)' : 'rgba(22,163,74,0.02)' }
-                            ]
+                    type: 'bar', data: volData.map((v, i) => ({
+                        value: v,
+                        itemStyle: {
+                            color: i < sortedBids.length ? 'rgba(22,163,74,0.65)' :
+                                   i > sortedBids.length ? 'rgba(220,38,38,0.65)' : 'transparent',
+                            borderRadius: i < sortedBids.length ? [0, 3, 3, 0] : [3, 0, 0, 3]
                         }
-                    },
-                    markLine: {
-                        silent: true,
-                        data: [{
-                            yAxis: prevClose,
-                            lineStyle: { color: '#999', type: 'dashed', width: 1 },
-                            label: { 
-                                formatter: `昨收 ${prevClose.toFixed(3)}`, 
-                                position: 'right',
-                                fontSize: 10,
-                                color: '#999'
-                            }
-                        }]
+                    })),
+                    barWidth: '55%',
+                    label: {
+                        show: true,
+                        position: 'side',
+                        formatter: function(p) {
+                            if (p.dataIndex === sortedBids.length) return '';
+                            const vol = Math.abs(p.value);
+                            return fmtVol(vol);
+                        },
+                        color: '#666', fontSize: 8
                     }
                 }]
             });
