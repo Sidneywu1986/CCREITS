@@ -18,11 +18,9 @@
         
         .fund-row { transition: all 0.15s ease; }
         .fund-row:hover { background-color: #fefce8; }
-        .fund-row:hover .quick-actions { opacity: 1; visibility: visible; }
-        
         .quick-actions { 
-            opacity: 0; 
-            visibility: hidden; 
+            opacity: 1; 
+            visibility: visible; 
             transition: all 0.2s ease;
         }
         
@@ -223,6 +221,29 @@
                 portfolioFundsData = ALL_FUNDS || [];
                 showDataSource('Mock');
             }
+            // 合并实时行情（价格、涨跌幅），让自选列表显示实时数据
+            try {
+                const quoteResp = await fetch('http://localhost:5074/api/quotes/realtime');
+                const quoteResult = await quoteResp.json();
+                if (quoteResult.success && quoteResult.data) {
+                    const quoteMap = new Map(quoteResult.data.map(q => [q.fund_code, q]));
+                    portfolioFundsData = portfolioFundsData.map(f => {
+                        const q = quoteMap.get(f.code);
+                        if (q) {
+                            return { ...f, price: q.current_price, current_price: q.current_price, change_percent: q.change_pct, change: q.change, market_cap: q.market_cap };
+                        }
+                        return f;
+                    });
+                }
+            } catch (e) { /* 实时行情可选 */ }
+            // 补齐 sector / sectorName（API 数据可能缺失）
+            portfolioFundsData = portfolioFundsData.map(f => {
+                if (f.sectorName) return f;
+                const mock = ALL_FUNDS.find(m => m.code === f.code);
+                const sector = f.sector || (mock && mock.sector);
+                const sectorName = (mock && mock.sectorName) || (sector && SECTOR_CONFIG[sector]?.name) || '';
+                return { ...f, sector, sectorName };
+            });
         }
         
         // 显示数据来源
@@ -240,8 +261,16 @@
         // 加载自选股
         function loadWatchlist() {
             const stored = localStorage.getItem('watchlist');
+            console.log('[loadWatchlist] stored raw:', stored);
             if (stored) {
-                watchlist = JSON.parse(stored);
+                try {
+                    const parsed = JSON.parse(stored);
+                    watchlist = Array.isArray(parsed) ? parsed : [];
+                    console.log('[loadWatchlist] parsed count:', watchlist.length, 'items:', watchlist.map(w => w.code));
+                } catch (e) {
+                    console.error('[loadWatchlist] parse error:', e);
+                    watchlist = [];
+                }
             } else {
                 watchlist = [
                     { code: '508056', name: '中金普洛斯REIT', addTime: new Date().toISOString() },
@@ -362,7 +391,7 @@
                         <td class="px-3 md:px-4 py-3 text-right mono text-sm text-red-600 hidden lg:table-cell">${fund.yield.toFixed(2)}%</td>
                         <td class="px-3 md:px-4 py-3 text-center">
                             <div class="quick-actions flex items-center justify-center gap-1">
-                                <button onclick="toggleCompare('${fund.code}', '${fund.name?.replace(/'/g, '\\\'')}')" 
+                                <button onclick="toggleCompare('${fund.code}')" 
                                     class="p-1.5 rounded transition-all ${inCompare ? 'text-blue-600 bg-blue-50' : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'}" title="加入对比">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                 </button>
@@ -548,7 +577,25 @@
         }
 
         // 对比功能
-        function toggleCompare(code, name) {
+        function getCompareList() {
+            try {
+                return JSON.parse(localStorage.getItem('reits_compare') || '[]');
+            } catch (e) { return []; }
+        }
+        function addToCompare(code, name) {
+            const list = getCompareList();
+            if (!list.find(item => item.code === code)) {
+                list.push({ code, name });
+                localStorage.setItem('reits_compare', JSON.stringify(list));
+            }
+        }
+        function removeFromCompare(code) {
+            const list = getCompareList();
+            localStorage.setItem('reits_compare', JSON.stringify(list.filter(item => item.code !== code)));
+        }
+        function toggleCompare(code) {
+            const fund = portfolioFundsData.find(f => f.code === code);
+            const name = fund ? fund.name : code;
             const list = getCompareList();
             if (list.find(item => item.code === code)) {
                 removeFromCompare(code);
@@ -594,6 +641,15 @@
 
         // 事件绑定
         document.getElementById('batch-select-btn')?.addEventListener('click', toggleBatchMode);
+        // 防抖工具函数
+        function debounce(fn, delay) {
+            let timer = null;
+            return function (...args) {
+                if (timer) clearTimeout(timer);
+                timer = setTimeout(() => fn.apply(this, args), delay);
+            };
+        }
+
         document.getElementById('batch-delete-btn')?.addEventListener('click', batchDelete);
         document.getElementById('cancel-select-btn')?.addEventListener('click', toggleBatchMode);
         document.getElementById('export-btn')?.addEventListener('click', exportCSV);

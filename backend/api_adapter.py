@@ -24,9 +24,18 @@ sys.path.insert(0, str(BASE_DIR / 'services'))
 from core.config import settings
 from services import realtime_quotes, announcements
 
-# 十年期国债收益率
+# 十年期国债收益率缓存
+_BOND_CACHE = None
+_BOND_CACHE_TIME = 0
+_BOND_CACHE_TTL = 300  # 5分钟缓存
+
 def get_bond_yield():
-    """从AKShare获取十年期国债收益率"""
+    """从AKShare获取十年期国债收益率（带缓存）"""
+    global _BOND_CACHE, _BOND_CACHE_TIME
+    import time
+    now = time.time()
+    if _BOND_CACHE is not None and (now - _BOND_CACHE_TIME) < _BOND_CACHE_TTL:
+        return _BOND_CACHE
     try:
         import akshare as ak
         df = ak.bond_zh_us_rate()
@@ -40,13 +49,19 @@ def get_bond_yield():
         prev_value = float(prev[col])
         change = round(value - prev_value, 4)
         change_pct = round((change / prev_value) * 100, 2) if prev_value else 0
-        return {
+        result = {
             'date': date_str,
             'value': value,
             'change': change,
             'changePercent': change_pct
         }
+        _BOND_CACHE = result
+        _BOND_CACHE_TIME = now
+        return result
     except Exception:
+        # 缓存失效时返回旧缓存（如果有）
+        if _BOND_CACHE is not None:
+            return _BOND_CACHE
         return None
 
 # 创建API适配层应用
@@ -72,8 +87,8 @@ adapter_app.include_router(chat_reits_router)
 adapter_app.include_router(chat_announcement_router)
 adapter_app.include_router(research_router)
 
-# 数据库路径 - 绝对路径
-DB_PATH = r"D:\tools\消费看板5（前端）\backend\database\reits.db"
+# 数据库路径 - 基于项目根目录的动态路径
+DB_PATH = str(BASE_DIR / 'backend' / 'database' / 'reits.db')
 
 
 def get_db_connection():
@@ -115,6 +130,7 @@ async def get_funds_list():
                 "exchange": row[2],
                 "listing_date": row[3],
                 "nav": row[4] or 0,
+                "yield": row[5] or 0,
                 "dividend_yield": row[5] or 0,
                 "status": row[6] or "listed"
             })
@@ -181,6 +197,7 @@ async def funds_detail_adapter(code: str = Query(..., description="基金代码"
                 "volume": price_row[3] if price_row else 0,
                 "premium_rate": price_row[4] if price_row else 0,
                 "nav": row[7],
+                "yield": row[8] or 0,
                 "dividend_yield": row[8] or 0,
                 "scale": (row[5] * row[6] / 100000000) if row[5] and row[6] else 0,
                 "manager": row[9],
@@ -206,31 +223,33 @@ async def price_history_adapter(
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        # 根据range确定日期范围
-        today = datetime.date.today()
+        # daily 返回全部历史记录；weekly 也查询全部，然后在 Python 中做周K聚合
         if time_range == "minute":
-            days = 1
-        elif time_range == "weekly":
-            days = 90
+            start_date = (datetime.date.today() - datetime.timedelta(days=1)).strftime('%Y-%m-%d')
+            cursor.execute("""
+                SELECT trade_date, open_price, high_price, low_price,
+                       close_price, volume, amount, change_pct
+                FROM fund_prices
+                WHERE fund_code = ? AND trade_date >= ?
+                ORDER BY trade_date ASC
+            """, (code, start_date))
         else:
-            days = 30
-
-        start_date = (today - datetime.timedelta(days=days)).strftime('%Y-%m-%d')
-
-        cursor.execute("""
-            SELECT trade_date, open_price, high_price, low_price,
-                   close_price, volume, amount, change_pct
-            FROM fund_prices
-            WHERE fund_code = ? AND trade_date >= ?
-            ORDER BY trade_date ASC
-        """, (code, start_date))
+            # daily/weekly 均查询全部历史，由前端或下方聚合逻辑处理
+            cursor.execute("""
+                SELECT trade_date, open_price, high_price, low_price,
+                       close_price, volume, amount, change_pct
+                FROM fund_prices
+                WHERE fund_code = ?
+                ORDER BY trade_date ASC
+            """, (code,))
 
         rows = cursor.fetchall()
         conn.close()
 
-        history = []
+        # 构建日K原始数据
+        daily = []
         for row in rows:
-            history.append({
+            daily.append({
                 "date": row[0],
                 "open": row[1] or 0,
                 "high": row[2] or 0,
@@ -240,6 +259,54 @@ async def price_history_adapter(
                 "amount": row[6] or 0,
                 "change": row[7] or 0
             })
+
+        # weekly：对日K做周K聚合
+        if time_range == "weekly" and daily:
+            from collections import OrderedDict
+            weeks = OrderedDict()
+            for item in daily:
+                dt = datetime.datetime.strptime(item["date"], "%Y-%m-%d").date()
+                iso_year, iso_week, _ = dt.isocalendar()
+                key = f"{iso_year}-W{iso_week:02d}"
+                if key not in weeks:
+                    weeks[key] = {
+                        "dates": [],
+                        "open": item["open"],
+                        "high": item["high"],
+                        "low": item["low"],
+                        "close": item["price"],
+                        "volume": 0,
+                        "amount": 0,
+                    }
+                w = weeks[key]
+                w["dates"].append(item["date"])
+                w["high"] = max(w["high"], item["high"])
+                w["low"] = min(w["low"], item["low"])
+                w["close"] = item["price"]  # 最后一天的收盘价
+                w["volume"] += item["volume"] or 0
+                w["amount"] += item["amount"] or 0
+
+            history = []
+            prev_close = None
+            for key, w in weeks.items():
+                week_end = max(w["dates"])
+                if prev_close is not None and prev_close > 0:
+                    change = round((w["close"] - prev_close) / prev_close * 100, 2)
+                else:
+                    change = 0
+                history.append({
+                    "date": week_end,
+                    "open": w["open"],
+                    "high": w["high"],
+                    "low": w["low"],
+                    "price": w["close"],
+                    "volume": w["volume"],
+                    "amount": w["amount"],
+                    "change": change,
+                })
+                prev_close = w["close"]
+        else:
+            history = daily
 
         return {
             "success": True,
@@ -600,14 +667,15 @@ def parse_sina_index(data: str) -> Optional[dict]:
 
 
 def get_all_indices_from_sina() -> dict:
-    """从新浪获取所有市场指数实时数据"""
+    """从新浪获取市场指数实时数据（不含中证REITs和中证红利，需从其他源获取）"""
     try:
         import requests
         headers = {'Referer': 'https://finance.sina.com.cn', 'User-Agent': 'Mozilla/5.0'}
         # 新浪指数代码:
         # sh000001=上证指数, sz399001=深证指数
-        # sz399639=中证REITs全收益, sz399638=中证红利(等权)
-        codes = 'sh000001,sz399001,sz399639,sz399638'
+        # 注: sz399639不是中证REITs，sz399638是中证小盘不是中证红利
+        # 中证红利(000922)新浪不支持，需从东方财富获取
+        codes = 'sh000001,sz399001'
         r = requests.get(f'https://hq.sinajs.cn/list={codes}', headers=headers, timeout=5)
         r.encoding = 'gbk'
 
@@ -626,6 +694,77 @@ def get_all_indices_from_sina() -> dict:
         return {}
 
 
+def get_dividend_index_from_eastmoney() -> dict:
+    """从东方财富获取中证红利指数实时数据"""
+    try:
+        import requests
+        url = 'https://push2.eastmoney.com/api/qt/stock/get'
+        params = {
+            'secid': '1.000922',
+            'fields': 'f43,f44,f45,f57,f58,f60,f170'
+        }
+        r = requests.get(url, params=params, headers={'User-Agent': 'Mozilla/5.0'}, timeout=5)
+        data = r.json()
+        if data.get('data'):
+            d = data['data']
+            price = (d.get('f43') or 0) / 100
+            prev = (d.get('f60') or 0) / 100
+            change_pct = (d.get('f170') or 0) / 100
+            if price > 0:
+                change = price - prev
+                return {
+                    "value": round(price, 2),
+                    "change": round(change, 3),
+                    "changePercent": round(change_pct, 2)
+                }
+        return None
+    except Exception as e:
+        print(f"获取东方财富中证红利失败: {e}")
+        return None
+
+
+def calculate_reits_index() -> dict:
+    """基于成分股实时行情计算中证REITs模拟指数"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        # 获取所有REITs最新行情（fund_prices表中最新记录）
+        cursor.execute("""
+            SELECT fp.fund_code, fp.close_price, fp.change_pct
+            FROM fund_prices fp
+            INNER JOIN (
+                SELECT fund_code, MAX(update_time) as max_time
+                FROM fund_prices
+                GROUP BY fund_code
+            ) latest ON fp.fund_code = latest.fund_code AND fp.update_time = latest.max_time
+        """)
+        quotes = cursor.fetchall()
+        conn.close()
+
+        if not quotes:
+            return None
+
+        # 简单平均涨跌幅作为指数涨跌幅
+        valid_changes = [q[2] for q in quotes if q[2] is not None]
+        if not valid_changes:
+            return None
+
+        avg_change = sum(valid_changes) / len(valid_changes)
+        base_value = 1028.21  # 中证REITs全收益指数最新收盘基准值
+        current_value = base_value * (1 + avg_change / 100)
+        change = current_value - base_value
+        change_pct = avg_change
+
+        return {
+            "value": round(current_value, 2),
+            "change": round(change, 3),
+            "changePercent": round(change_pct, 2)
+        }
+    except Exception as e:
+        print(f"计算REITs指数失败: {e}")
+        return None
+
+
 @adapter_app.get("/api/market-indices/list")
 async def market_indices_list():
     """获取市场指数列表"""
@@ -638,8 +777,6 @@ async def market_indices_list():
         INDEX_MAPPING = {
             'sh_index': ('sh000001', '上证指数'),
             'sz_index': ('sz399001', '深证指数'),
-            'reits_total': ('sz399639', '中证REITs全收益'),
-            'dividend': ('sz399638', '中证红利'),
         }
 
         # 构建返回数据
@@ -667,6 +804,52 @@ async def market_indices_list():
                     "source": "sina",
                     "updateTime": now
                 })
+
+        # 中证红利指数（从东方财富获取）
+        dividend_data = get_dividend_index_from_eastmoney()
+        if dividend_data:
+            indices.append({
+                "code": "dividend",
+                "name": "中证红利",
+                "value": dividend_data["value"],
+                "change": dividend_data["change"],
+                "changePercent": dividend_data["changePercent"],
+                "source": "eastmoney",
+                "updateTime": now
+            })
+        else:
+            indices.append({
+                "code": "dividend",
+                "name": "中证红利",
+                "value": None,
+                "change": 0,
+                "changePercent": 0,
+                "source": "获取失败",
+                "updateTime": now
+            })
+
+        # 中证REITs全收益指数（基于成分股计算）
+        reits_data = calculate_reits_index()
+        if reits_data:
+            indices.append({
+                "code": "reits_total",
+                "name": "中证REITs全收益",
+                "value": reits_data["value"],
+                "change": reits_data["change"],
+                "changePercent": reits_data["changePercent"],
+                "source": "成分股计算",
+                "updateTime": now
+            })
+        else:
+            indices.append({
+                "code": "reits_total",
+                "name": "中证REITs全收益",
+                "value": 1028.21,
+                "change": 0,
+                "changePercent": 0,
+                "source": "基准值",
+                "updateTime": now
+            })
 
         # 十年期国债收益率
         bond = get_bond_yield()
@@ -831,9 +1014,25 @@ async def market_indices_overview():
 
 @adapter_app.get("/api/quotes/realtime")
 async def get_realtime_quotes():
-    """获取所有REITs实时行情（从新浪财经API）"""
+    """获取所有REITs实时行情（从新浪财经API），合并数据库派息率"""
     try:
         quotes = realtime_quotes.fetch_all_reits_quotes()
+
+        # 从数据库获取派息率并合并
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("SELECT fund_code, dividend_yield FROM funds WHERE dividend_yield IS NOT NULL")
+            yield_map = {row[0]: row[1] for row in cursor.fetchall()}
+            conn.close()
+
+            for q in quotes:
+                code = q.get('fund_code')
+                if code in yield_map:
+                    q['dividend_yield'] = yield_map[code]
+                    q['yield'] = yield_map[code]
+        except Exception as e:
+            print(f"合并派息率失败: {e}")
 
         return {
             "success": True,
@@ -879,7 +1078,7 @@ async def get_single_quote(code: str = Query(..., description="基金代码")):
 
 @adapter_app.get("/api/announcements")
 async def announcements_list(
-    limit: int = Query(100, description="返回条数"),
+    limit: int = Query(3000, description="返回条数"),
     category: str = Query(None, description="分类筛选"),
     code: str = Query(None, description="基金代码筛选"),
     days: int = Query(None, description="最近天数筛选")
@@ -1037,6 +1236,68 @@ async def update_announcement_status(
             "success": False,
             "message": f"更新失败: {str(e)}"
         }
+
+
+# ==================== 实时档口数据代理 ====================
+
+@adapter_app.get("/api/quotes/orderbook")
+async def get_orderbook(code: str = Query(..., description="基金代码")):
+    """代理新浪5档买卖盘数据（解决CORS跨域）"""
+    try:
+        import requests
+        prefix = 'sh' if code.startswith('5') else 'sz'
+        url = f'https://hq.sinajs.cn/list={prefix}{code}'
+        headers = {
+            'Referer': 'https://finance.sina.com.cn/',
+            'User-Agent': 'Mozilla/5.0'
+        }
+        r = requests.get(url, headers=headers, timeout=10)
+        r.encoding = 'gbk'
+        text = r.text
+
+        raw = text.split('"')[1] if '"' in text else ''
+        if not raw:
+            return {'success': False, 'data': None, 'message': '获取数据失败'}
+
+        fields = raw.split(',')
+        currentPrice = float(fields[3])
+        prevClose = float(fields[2])
+
+        # 解析5档买卖盘（Sina格式：量,价,量,价...）
+        # Bid: 价格[11,13,15,17,19] 量[10,12,14,16,18] (股)
+        # Ask: 价格[21,23,25,27,29] 量[20,22,24,26,28]
+        def safe_float(val):
+            try: return float(val)
+            except: return 0
+        def safe_int(val):
+            try: return int(float(val))
+            except: return 0
+
+        bids, asks = [], []
+        for i in range(5):
+            bp = safe_float(fields[11 + i * 2])
+            bv = safe_int(fields[10 + i * 2])
+            ap = safe_float(fields[21 + i * 2])
+            av = safe_int(fields[20 + i * 2])
+            if bp > 0: bids.append({'price': bp, 'vol': bv})
+            if ap > 0: asks.append({'price': ap, 'vol': av})
+
+        return {
+            'success': True,
+            'data': {
+                'code': code,
+                'currentPrice': currentPrice,
+                'prevClose': prevClose,
+                'change': round(currentPrice - prevClose, 3),
+                'changePercent': round((currentPrice - prevClose) / prevClose * 100, 2),
+                'bids': bids,
+                'asks': asks,
+                'time': fields[31] + ' ' + fields[32] if len(fields) > 32 else ''
+            },
+            'message': '获取档口数据成功'
+        }
+    except Exception as e:
+        return {'success': False, 'data': None, 'message': f'获取档口数据失败: {str(e)}'}
 
 
 # ==================== 健康检查 ====================

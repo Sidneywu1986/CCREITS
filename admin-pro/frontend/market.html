@@ -131,35 +131,35 @@
             <!-- 市场指标卡片 -->
             <div class="flex justify-between gap-3 overflow-x-auto pb-2">
                 <div class="bg-white rounded-xl border border-gray-200 p-3 shadow-sm flex-1 min-w-0">
-                    <div class="text-sm text-gray-500 mb-1">上证指数</div>
+                    <div id="name-sh_index" class="text-sm text-gray-500 mb-1">上证指数</div>
                     <div class="flex items-baseline gap-1">
                         <div id="index-sh_index" class="text-xl font-bold text-gray-900 mono truncate">--</div>
                         <div id="change-sh_index" class="text-xs font-medium shrink-0">--</div>
                     </div>
                 </div>
                 <div class="bg-white rounded-xl border border-gray-200 p-3 shadow-sm flex-1 min-w-0">
-                    <div class="text-sm text-gray-500 mb-1">深证指数</div>
+                    <div id="name-sz_index" class="text-sm text-gray-500 mb-1">深证指数</div>
                     <div class="flex items-baseline gap-1">
                         <div id="index-sz_index" class="text-xl font-bold text-gray-900 mono truncate">--</div>
                         <div id="change-sz_index" class="text-xs font-medium shrink-0">--</div>
                     </div>
                 </div>
                 <div class="bg-white rounded-xl border border-gray-200 p-3 shadow-sm flex-1 min-w-0">
-                    <div class="text-sm text-gray-500 mb-1">中证REITs</div>
+                    <div id="name-reits_total" class="text-sm text-gray-500 mb-1">中证REITs全收益</div>
                     <div class="flex items-baseline gap-1">
                         <div id="index-reits_total" class="text-xl font-bold text-gray-900 mono truncate">--</div>
                         <div id="change-reits_total" class="text-xs font-medium shrink-0">--</div>
                     </div>
                 </div>
                 <div class="bg-white rounded-xl border border-gray-200 p-3 shadow-sm flex-1 min-w-0">
-                    <div class="text-sm text-gray-500 mb-1">中证红利</div>
+                    <div id="name-dividend" class="text-sm text-gray-500 mb-1">中证红利</div>
                     <div class="flex items-baseline gap-1">
                         <div id="index-dividend" class="text-xl font-bold text-gray-900 mono truncate">--</div>
                         <div id="change-dividend" class="text-xs font-medium shrink-0">--</div>
                     </div>
                 </div>
                 <div class="bg-white rounded-xl border border-gray-200 p-3 shadow-sm flex-1 min-w-0">
-                    <div class="text-sm text-gray-500 mb-1">10年期国债</div>
+                    <div id="name-bond_yield" class="text-sm text-gray-500 mb-1">10年期国债</div>
                     <div class="flex items-baseline gap-1">
                         <div id="index-bond_yield" class="text-xl font-bold text-gray-900 mono truncate">--</div>
                         <div id="change-bond_yield" class="text-xs font-medium shrink-0">--</div>
@@ -194,7 +194,7 @@
                             <option value="change-asc">涨跌幅 ▲</option>
                             <option value="volume-desc">成交量 ▼</option>
                             <option value="price-desc">最新价 ▼</option>
-                            <option value="yield-desc">派息率 ▼</option>
+                            <option value="yield-desc">年化派息率 ▼</option>
                         </select>
                         <select id="page-size" onchange="handlePageSize()" class="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-600 focus:outline-none focus:border-blue-500">
                             <option value="15">15条</option>
@@ -216,7 +216,7 @@
                             <th class="px-3 md:px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">最新价</th>
                             <th class="px-3 md:px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">涨跌幅</th>
                             <th class="px-3 md:px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">成交量</th>
-                            <th class="px-3 md:px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">派息率</th>
+                            <th class="px-3 md:px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">年化派息率</th>
                             <th class="px-3 md:px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">操作</th>
                         </tr>
                     </thead>
@@ -287,7 +287,7 @@
                         <div id="preview-premium" class="text-xl font-bold mono">--</div>
                     </div>
                     <div class="bg-gray-50 rounded-xl p-4">
-                        <div class="text-sm text-gray-500 mb-1">派息率</div>
+                        <div class="text-sm text-gray-500 mb-1">年化派息率</div>
                         <div id="preview-yield" class="text-xl font-bold text-red-600 mono">--</div>
                     </div>
                     <div class="bg-gray-50 rounded-xl p-4">
@@ -324,6 +324,44 @@
     <script src="./js/common.js"></script>
     <script src="./js/api.js"></script>
     <script>
+        // 各板块年分红次数估算（用于计算年化派息率）
+        const DIVIDEND_FREQUENCY = {
+            'transport': 2,      // 交通基础设施：每半年
+            'logistics': 4,      // 仓储物流：每季度
+            'industrial': 4,     // 产业园区：每季度
+            'consumer': 4,       // 消费基础设施：每季度
+            'energy': 4,         // 能源基础设施：每季度
+            'housing': 2,        // 租赁住房：每半年
+            'eco': 2,            // 生态环保：每半年
+            'water': 2,          // 水利设施：每半年
+            'municipal': 2,      // 市政设施：每半年
+            'datacenter': 4,     // 数据中心：每季度
+            'commercial': 4,     // 商业办公：每季度
+            'elderly': 2,        // 养老设施：每半年
+            'other': 4           // 其他：默认每季度
+        };
+        
+        // 计算年化派息率（基于单次分红率智能估算年分红次数）
+        function getAnnualDividendYield(fund) {
+            const singleYield = fund.dividend_yield ?? fund.yield ?? 0;
+            if (!singleYield) return null;
+            
+            // 智能估算分红频率：
+            // 单次率 > 5%：通常是每年1-2次的高收益资产（能源、高速等）
+            // 单次率 2-5%：通常是每半年1次
+            // 单次率 < 2%：通常是每季度1次
+            let freq;
+            if (singleYield >= 5) {
+                freq = 1;  // 每年约1次
+            } else if (singleYield >= 2) {
+                freq = 2;  // 每年约2次
+            } else {
+                freq = DIVIDEND_FREQUENCY[fund.sector] || 4;  // 按板块默认
+            }
+            
+            return singleYield * freq;
+        }
+        
         // 防抖函数
         function debounce(fn, delay) {
             let timer = null;
@@ -385,7 +423,7 @@
                     }
                     
                     // 根据周期计算涨跌幅
-                    let changePercent = fund.change_percent || fund.change || 0;
+                    let changePercent = fund.change_percent ?? 0;
                     
                     // 使用真实的历史涨跌幅数据（如果有）
                     if (currentTreemapPeriod === 5 && fund.change_5d !== undefined) {
@@ -468,7 +506,8 @@
         }
 
         // 筛选和排序
-        function applyFilters() {
+        // resetPage: 是否重置到第1页（定时刷新时不重置，保持用户当前页）
+        function applyFilters(resetPage = true) {
             let data = [...allFundsData];
             
             if (currentSector !== 'all') {
@@ -491,7 +530,9 @@
             });
             
             filteredData = data;
-            currentPage = 1;
+            if (resetPage) {
+                currentPage = 1;
+            }
             renderTable();
             renderPagination();
             updateStats();
@@ -558,8 +599,10 @@
             tbody.innerHTML = pageData.map(fund => {
                 try {
                 const inCompare = compareList.find(c => c.code === fund.code);
+                const watchlist = JSON.parse(localStorage.getItem('watchlist') || '[]');
+                const isWatched = Array.isArray(watchlist) && watchlist.find(w => w.code === fund.code);
                 const sectorClass = SECTOR_CONFIG[fund.sector]?.tagClass || 'bg-gray-100 text-gray-600';
-                const alertFlag = Math.abs(fund.change || fund.changePercent || 0) > 1.0;
+                const alertFlag = Math.abs(fund.change_percent ?? 0) > 1.0;
                 
                 return `
                     <tr class="fund-row cursor-pointer" onclick="window.location.href='./fund-detail.html?code=${fund.code}'" data-code="${fund.code}">
@@ -576,18 +619,18 @@
                             <span class="sector-tag ${sectorClass}">${SECTOR_CONFIG[fund.sector]?.name || fund.sector_name || fund.sectorName || '--'}</span>
                         </td>
                         <td class="px-3 md:px-4 py-3 text-right mono text-sm text-gray-900" id="price-${fund.code}">${fund.price ? fund.price.toFixed(3) : '--'}</td>
-                        <td class="px-3 md:px-4 py-3 text-right mono text-sm ${(fund.change || fund.changePercent || 0) >= 0 ? 'text-red-600' : 'text-green-600'}" id="change-${fund.code}">
-                            ${(fund.change || fund.changePercent) ? ((fund.change || fund.changePercent) >= 0 ? '+' : '') + (fund.change || fund.changePercent).toFixed(2) + '%' : '--'}
+                        <td class="px-3 md:px-4 py-3 text-right mono text-sm ${(fund.change_percent ?? 0) >= 0 ? 'text-red-600' : 'text-green-600'}" id="change-${fund.code}">
+                            ${fund.change_percent !== undefined && fund.change_percent !== null ? ((fund.change_percent >= 0 ? '+' : '') + fund.change_percent.toFixed(2) + '%') : '--'}
                         </td>
                         <td class="px-3 md:px-4 py-3 text-right mono text-sm text-gray-600 hidden md:table-cell" id="volume-${fund.code}">${fund.volume ? fund.volume.toLocaleString() : '--'}</td>
-                        <td class="px-3 md:px-4 py-3 text-right mono text-sm text-red-600 hidden lg:table-cell">${fund.yield ? (fund.yield/100).toFixed(2) + '%' : '--'}</td>
+                        <td class="px-3 md:px-4 py-3 text-right mono text-sm text-red-600 hidden lg:table-cell">${(f => { const y = getAnnualDividendYield(f); return y ? y.toFixed(2) + '%' : '--'; })(fund)}</td>
                         <td class="px-3 md:px-4 py-3 text-center">
                             <div class="quick-actions flex items-center justify-center gap-1">
-                                <button onclick="event.stopPropagation(); toggleCompare('${fund.code}', '${fund.name?.replace(/'/g, '\\\'')}')" 
+                                <button onclick="event.stopPropagation(); toggleCompare('${fund.code}')" 
                                     class="p-1.5 rounded transition-all ${inCompare ? 'text-blue-600 bg-blue-50' : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'}" title="加入对比">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                 </button>
-                                <button onclick="event.stopPropagation(); addToWatchlist('${fund.code}', '${fund.name?.replace(/'/g, '\\\'')}')" class="p-1.5 text-gray-400 hover:text-yellow-600 hover:bg-yellow-50 rounded transition-all" title="加入自选">
+                                <button onclick="event.stopPropagation(); addToWatchlist('${fund.code}')" class="p-1.5 rounded transition-all ${isWatched ? 'text-yellow-500 bg-yellow-50' : 'text-gray-400 hover:text-yellow-600 hover:bg-yellow-50'}" title="加入自选">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
                                 </button>
                                 <button onclick="event.stopPropagation(); quickPreview('${fund.code}')" class="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded transition-all" title="快速预览">
@@ -632,7 +675,9 @@
             localStorage.setItem('reits_compare', JSON.stringify(newList));
         }
         
-        function toggleCompare(code, name) {
+        function toggleCompare(code) {
+            const fund = allFundsData.find(f => f.code === code);
+            const name = fund ? fund.name : code;
             console.log('🔄 toggleCompare 调用:', code, name);
             const list = getCompareList();
             if (list.find(item => item.code === code)) {
@@ -735,8 +780,8 @@
         // 统计
         function updateStats() {
             const data = filteredData;
-            const upCount = data.filter(f => (f.change_percent || f.change || 0) > 0).length;
-            const downCount = data.filter(f => (f.change_percent || f.change || 0) < 0).length;
+            const upCount = data.filter(f => (f.change_percent ?? 0) > 0).length;
+            const downCount = data.filter(f => (f.change_percent ?? 0) < 0).length;
             
             const statUp = document.getElementById('stat-up');
             const statDown = document.getElementById('stat-down');
@@ -782,13 +827,23 @@
                     result.data.forEach(index => {
                         const valueEl = document.getElementById(`index-${index.code}`);
                         const changeEl = document.getElementById(`change-${index.code}`);
+                        const nameEl = document.getElementById(`name-${index.code}`);
+                        if (nameEl && index.name) {
+                            nameEl.textContent = index.name;
+                        }
                         if (valueEl && changeEl) {
-                            const value = parseFloat(index.value || 0);
                             const changePercent = parseFloat(index.changePercent || 0);
-                            valueEl.textContent = value.toFixed(2);
-                            const sign = changePercent >= 0 ? '+' : '';
-                            changeEl.textContent = `${sign}${changePercent.toFixed(2)}%`;
-                            changeEl.className = `text-sm font-medium ${changePercent >= 0 ? 'text-red-600' : 'text-green-600'}`;
+                            if (index.value == null || index.value === undefined) {
+                                valueEl.textContent = '--';
+                                changeEl.textContent = '--';
+                                changeEl.className = 'text-sm font-medium text-gray-400';
+                            } else {
+                                const value = parseFloat(index.value);
+                                valueEl.textContent = value.toFixed(2);
+                                const sign = changePercent >= 0 ? '+' : '';
+                                changeEl.textContent = `${sign}${changePercent.toFixed(2)}%`;
+                                changeEl.className = `text-sm font-medium ${changePercent >= 0 ? 'text-red-600' : 'text-green-600'}`;
+                            }
                         }
                     });
                 }
@@ -796,9 +851,10 @@
                 console.log('大盘指数加载失败:', error);
                 // 显示默认值
                 const defaultIndices = {
-                    'reits_total': { value: 1013.78, change: 0.17 },
+                    'reits_total': { value: 1028.21, change: 0.17 },
                     'bond_yield': { value: 1.83, change: -0.24 },
                     'sh_index': { value: 3881.28, change: 1.78 },
+                    'sz_index': { value: 10400.00, change: 0.50 },
                     'dividend': { value: 5712.79, change: 1.54 }
                 };
                 Object.entries(defaultIndices).forEach(([code, data]) => {
@@ -889,7 +945,7 @@
                     });
                 }
 
-                applyFilters();
+                applyFilters(false);  // 定时刷新不重置页码，保持用户当前页
 
                 // 闪烁动画
                 filteredData.slice((currentPage-1)*pageSize, currentPage*pageSize).forEach(fund => {
@@ -931,78 +987,12 @@
             event.target.classList.remove('bg-gray-100', 'text-gray-600');
             event.target.classList.add('bg-blue-600', 'text-white');
             
-            // 重新渲染热力图 - 使用真实的5日、20日数据
+            // 重新渲染热力图 - 复用 getTreemapData() 消除重复代码
             const chart = echarts.getInstanceByDom(document.getElementById('treemap'));
             if (chart) {
-                const sectorData = {};
-                allFundsData.forEach(fund => {
-                    try {
-                        const sector = fund.sector || 'other';
-                        const sectorName = SECTOR_CONFIG[sector]?.name || fund.sector_name || fund.sectorName || sector;
-                        
-                        // 根据模式选择板块大小计算方式
-                        let sizeValue = 0;
-                        if (treemapSizeMode === 'turnover') {
-                            // 按成交额：价格 × 成交量
-                            const price = fund.price || 0;
-                            const volume = fund.volume || 0;
-                            sizeValue = fund.turnover || (price * volume) || 0;
-                        } else {
-                            // 按市值
-                            sizeValue = fund.market_cap || fund.marketCap || 0;
-                        }
-                        
-                        // 根据周期选择对应的涨跌幅数据
-                        let changePercent = fund.change_percent || fund.change || 0;
-                        if (days === 5 && fund.change_5d !== undefined) {
-                            changePercent = fund.change_5d;
-                        } else if (days === 20 && fund.change_20d !== undefined) {
-                            changePercent = fund.change_20d;
-                        }
-                        
-                        if (!sectorData[sector]) {
-                            sectorData[sector] = { name: sectorName, value: 0, changeSum: 0, count: 0 };
-                        }
-                        sectorData[sector].value += sizeValue;
-                        sectorData[sector].changeSum += changePercent;
-                        sectorData[sector].count++;
-                    } catch (e) {
-                        console.error('热力图数据处理出错:', fund, e);
-                    }
-                });
-                
-                const data = Object.values(sectorData).map(s => ({
-                    name: s.name,
-                    value: s.value || 1,
-                    change: parseFloat((s.changeSum / s.count).toFixed(2)),
-                    itemStyle: {
-                        color: s.changeSum / s.count >= 0 ? 
-                            (s.changeSum / s.count > 0.3 ? '#dc2626' : '#f97316') : 
-                            (s.changeSum / s.count < -0.3 ? '#16a34a' : '#22c55e')
-                    }
-                }));
-                
                 chart.setOption({
-                    tooltip: {
-                        formatter: function(info) {
-                            const valueLabel = treemapSizeMode === 'turnover' ? '成交额' : '市值';
-                            return `<div class="font-medium">${info.name}</div>
-                                    <div class="text-sm">涨跌幅: ${formatChange(info.data.change)}</div>
-                                    <div class="text-sm">${valueLabel}: ${formatValueText(info.value)}</div>`;
-                        }
-                    },
                     series: [{
-                        data: data,
-                        label: {
-                            show: true,
-                            formatter: function(params) {
-                                return `{name|${params.name}}\n{value|${formatChange(params.data.change)}}`;
-                            },
-                            rich: {
-                                name: { fontSize: 13, fontWeight: 600, color: '#fff' },
-                                value: { fontSize: 15, fontWeight: 700, color: '#fff', lineHeight: 22 }
-                            }
-                        }
+                        data: getTreemapData()
                     }]
                 });
             }
@@ -1042,12 +1032,18 @@
         }
 
         // 加入自选
-        function addToWatchlist(code, name) {
+        function addToWatchlist(code) {
+            const fund = allFundsData.find(f => f.code === code);
+            const name = fund ? fund.name : code;
             let list = JSON.parse(localStorage.getItem('watchlist') || '[]');
+            if (!Array.isArray(list)) list = [];  // 防御localStorage被污染为非数组
+            console.log('[addToWatchlist] code=', code, 'name=', name, 'currentList=', list);
             if (!list.find(w => w.code === code)) {
                 list.push({ code, name, addTime: new Date().toISOString() });
                 localStorage.setItem('watchlist', JSON.stringify(list));
+                console.log('[addToWatchlist] saved:', localStorage.getItem('watchlist'));
                 showToast(`已添加 ${name} 到自选`, 'success');
+                renderTable();
             } else {
                 showToast(`${name} 已在自选`, 'info');
             }
@@ -1064,13 +1060,14 @@
             document.getElementById('preview-sector').className = `sector-tag ${sectorInfo?.tagClass || 'bg-gray-100 text-gray-600'}`;
             document.getElementById('preview-code').textContent = fund.code;
             document.getElementById('preview-price').textContent = fund.price.toFixed(3);
-            const previewChange = fund.change_percent || fund.change || 0;
+            const previewChange = fund.change_percent ?? 0;
             document.getElementById('preview-change').textContent = (previewChange >= 0 ? '+' : '') + previewChange.toFixed(2) + '%';
             document.getElementById('preview-change').className = `text-2xl font-bold mono ${previewChange >= 0 ? 'text-red-600' : 'text-green-600'};`
             document.getElementById('preview-nav').textContent = fund.nav ? (fund.nav/100).toFixed(2) : '--';
             document.getElementById('preview-premium').textContent = fund.premium ? (fund.premium > 0 ? '+' : '') + fund.premium.toFixed(2) + '%' : '--';
             document.getElementById('preview-premium').className = `text-xl font-bold mono ${fund.premium >= 0 ? 'text-red-600' : 'text-green-600'}`;
-            document.getElementById('preview-yield').textContent = fund.yield ? (fund.yield/100).toFixed(2) + '%' : '--';
+            const yieldVal = getAnnualDividendYield(fund);
+            document.getElementById('preview-yield').textContent = yieldVal ? yieldVal.toFixed(2) + '%' : '--';
             document.getElementById('preview-debt').textContent = fund.debt.toFixed(1) + '%';
             const previewMarketCap = fund.market_cap || fund.marketCap || 0;
             document.getElementById('preview-market-cap').textContent = previewMarketCap ? previewMarketCap.toFixed(1) + '亿' : '--';
@@ -1124,6 +1121,8 @@
                         prev_close: q.prev_close,
                         high: q.high_price,
                         low: q.low_price,
+                        dividend_yield: q.dividend_yield,
+                        yield: q.yield,
                         updateTime: q.timestamp
                     }));
                     filteredData = [...allFundsData];
@@ -1146,7 +1145,7 @@
             // 数据加载完成后初始化页面
             initTreemap();
             applyFilters();
-            updateCompareBar();
+            updateCompareBar();  // 初始化对比栏（恢复localStorage中的状态）
             loadMarketIndices(); // 加载大盘指数
         }
         
@@ -1180,6 +1179,7 @@
             // 每30秒刷新指数数据（交易时间实时更新，收盘后显示最后数据）
             setInterval(loadMarketIndices, 30000);
             startLiveUpdate();
+            updateCompareBar();  // 页面加载时恢复对比栏状态
             // 检查公告未读（模拟）
             if (Math.random() > 0.5) {
                 document.getElementById('nav-badge').classList.remove('hidden');

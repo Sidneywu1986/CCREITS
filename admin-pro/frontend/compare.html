@@ -186,6 +186,24 @@
                 fundsData = ALL_FUNDS || [];
                 showDataSource('Mock');
             }
+            // 用 ALL_FUNDS 补齐 API 数据缺失的字段（price/change/sector 等）
+            fundsData = fundsData.map(f => {
+                const mock = ALL_FUNDS.find(m => m.code === f.code);
+                if (!mock) return f;
+                return {
+                    ...mock,
+                    ...f,
+                    price: f.price !== undefined ? f.price : mock.price,
+                    change: f.change !== undefined ? f.change : mock.change,
+                    sector: f.sector || mock.sector,
+                    sectorName: f.sectorName || mock.sectorName,
+                    remainingYears: f.remainingYears || mock.remainingYears,
+                    yield: f.yield !== undefined ? f.yield : mock.yield,
+                    nav: f.nav !== undefined ? f.nav : mock.nav,
+                    debt: f.debt !== undefined ? f.debt : mock.debt,
+                    marketCap: f.marketCap !== undefined ? f.marketCap : mock.marketCap
+                };
+            });
         }
         
         // 显示数据来源
@@ -211,8 +229,8 @@
             const isTransport = fund.sector === 'transport';
             const isEco = ['eco', 'water', 'energy'].includes(fund.sector);
             
-            const pNav = (fund.price / fund.nav).toFixed(2);
-            const capRate = (fund.yield / pNav).toFixed(2);
+            const pNav = fund.nav ? (fund.price / fund.nav).toFixed(2) : '1.00';
+            const capRate = (parseFloat(pNav) && fund.yield) ? (fund.yield / parseFloat(pNav)).toFixed(2) : '0.00';
             
             const occupancy = isProperty ? (85 + Math.random() * 12).toFixed(1) : null;
             const traffic = isTransport ? (10000 + Math.random() * 50000).toFixed(0) : null;
@@ -278,13 +296,19 @@
                     loadCompareList();
                 }
             } else {
-                // 强制加载默认示例基金（如果没有数据或数据为空）
                 const stored = sessionStorage.getItem('compareList');
-                if (!stored || stored === '[]') {
+                const marketCompare = localStorage.getItem('reits_compare');
+                if (marketCompare && marketCompare !== '[]') {
+                    // 从市场页跳转，优先使用市场带来的对比数据
+                    compareList = JSON.parse(marketCompare);
+                    saveCompareList();
+                    showToast(`已从市场导入 ${compareList.length} 只基金`, 'success');
+                    renderPage();
+                } else if (!stored || stored === '[]') {
                     // 默认加载2只热门基金做示例
                     compareList = [
-                        { code: '508056', name: '中金普洛斯REIT' },
-                        { code: '508008', name: '华夏中国交建REIT' }
+                        { code: '508056', name: '中金普洛斯REIT', isDefault: true },
+                        { code: '508008', name: '华夏中国交建REIT', isDefault: true }
                     ];
                     saveCompareList();
                     showToast('已默认加载2只热门基金示例', 'success');
@@ -338,8 +362,8 @@
                 } else {
                     // 默认加载2只热门基金做示例
                     compareList = [
-                        { code: '508056', name: '中金普洛斯REIT' },
-                        { code: '508008', name: '华夏中国交建REIT' }
+                        { code: '508056', name: '中金普洛斯REIT', isDefault: true },
+                        { code: '508008', name: '华夏中国交建REIT', isDefault: true }
                     ];
                     saveCompareList();
                     showToast('已默认加载2只热门基金，您可以添加或替换', 'info');
@@ -510,15 +534,15 @@
                         <div class="grid grid-cols-2 gap-3 text-sm">
                             <div>
                                 <div class="text-xs text-gray-400">最新价</div>
-                                <div class="mono font-semibold text-gray-900">${fund.price.toFixed(3)}</div>
+                                <div class="mono font-semibold text-gray-900">${(fund.price || 0).toFixed(3)}</div>
                             </div>
                             <div>
                                 <div class="text-xs text-gray-400">涨跌幅</div>
-                                <div class="mono ${changeClass}">${fund.change >= 0 ? '+' : ''}${fund.change.toFixed(2)}%</div>
+                                <div class="mono ${changeClass}">${(fund.change || 0) >= 0 ? '+' : ''}${(fund.change || 0).toFixed(2)}%</div>
                             </div>
                             <div>
                                 <div class="text-xs text-gray-400">派息率</div>
-                                <div class="mono text-red-600 font-semibold">${fund.yield.toFixed(2)}%</div>
+                                <div class="mono text-red-600 font-semibold">${(fund.yield || 0).toFixed(2)}%</div>
                             </div>
                             <div>
                                 <div class="text-xs text-gray-400">债务率</div>
@@ -568,25 +592,36 @@
         function renderRadarChart() {
             const dom = document.getElementById('radar-chart');
             if (!dom) return;
-            if (radarChartInstance) {
-                radarChartInstance.dispose();
+            if (typeof echarts === 'undefined') {
+                dom.innerHTML = '<div class="flex items-center justify-center h-full text-gray-400 text-sm">图表库加载中，请刷新重试</div>';
+                return;
             }
-            radarChartInstance = echarts.init(dom);
+            try {
+                if (radarChartInstance) {
+                    radarChartInstance.dispose();
+                }
+                radarChartInstance = echarts.init(dom);
 
-            const colors = ['#3b82f6', '#22c55e', '#8b5cf6', '#f97316'];
-            const seriesData = compareList.map((item, idx) => {
-                const fund = getFundData(item.code);
-                const dims = calculateDimensions(fund);
-                return {
-                    name: fund.name,
-                    value: [dims.valuationReturn, dims.operationQuality, dims.financialHealth, dims.assetQuality, dims.growthPotential, dims.marketLiquidity],
-                    areaStyle: { opacity: 0.15 },
-                    lineStyle: { color: colors[idx % colors.length], width: 2 },
-                    itemStyle: { color: colors[idx % colors.length] }
-                };
-            });
+                const colors = ['#3b82f6', '#22c55e', '#8b5cf6', '#f97316'];
+                const seriesData = compareList.map((item, idx) => {
+                    const fund = getFundData(item.code);
+                    if (!fund) return null;
+                    const dims = calculateDimensions(fund);
+                    return {
+                        name: fund.name,
+                        value: [dims.valuationReturn, dims.operationQuality, dims.financialHealth, dims.assetQuality, dims.growthPotential, dims.marketLiquidity],
+                        areaStyle: { opacity: 0.15 },
+                        lineStyle: { color: colors[idx % colors.length], width: 2 },
+                        itemStyle: { color: colors[idx % colors.length] }
+                    };
+                }).filter(Boolean);
 
-            radarChartInstance.setOption({
+                if (seriesData.length === 0) {
+                    dom.innerHTML = '<div class="flex items-center justify-center h-full text-gray-400 text-sm">暂无有效对比数据</div>';
+                    return;
+                }
+
+                radarChartInstance.setOption({
                 radar: {
                     indicator: [
                         { name: '估值与回报', max: 100 },
@@ -608,7 +643,11 @@
                 series: [{ type: 'radar', data: seriesData }]
             });
 
-            window.addEventListener('resize', () => radarChartInstance && radarChartInstance.resize());
+                window.addEventListener('resize', () => radarChartInstance && radarChartInstance.resize());
+            } catch (err) {
+                console.error('雷达图渲染失败:', err);
+                dom.innerHTML = '<div class="flex items-center justify-center h-full text-gray-400 text-sm">图表渲染失败</div>';
+            }
         }
 
         // 渲染对比表格
@@ -747,6 +786,12 @@
                 showToast('最多只能对比4只基金', 'warning');
                 clearSearch();
                 return;
+            }
+            // 如果当前只有默认示例基金，自动清除它们
+            const hasDefaults = compareList.some(i => i.isDefault);
+            const hasUserAdded = compareList.some(i => !i.isDefault);
+            if (hasDefaults && !hasUserAdded) {
+                compareList = [];
             }
             compareList.push({ code, name });
             saveCompareList();

@@ -99,21 +99,30 @@
                         <h2 class="text-base font-semibold text-gray-900">AI 智能分类 · 公告追踪</h2>
                         <span id="data-source-badge" class="ml-auto text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-500">加载中...</span>
                     </div>
-                    <div class="flex flex-wrap gap-3" id="category-filters">
-                        <button onclick="filterCategory('all')" class="cat-btn px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg transition-all flex items-center gap-2">
-                            全部 <span class="cat-count text-xs bg-white/20 px-1.5 py-0.5 rounded">0</span>
+                    <div class="flex flex-wrap gap-1" id="category-filters">
+                        <button onclick="filterCategory('all')" class="cat-btn px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-md transition-all flex items-center gap-1.5">
+                            全部 <span class="cat-count text-xs bg-white/20 px-1 py-0.5 rounded">0</span>
                         </button>
-                        <button onclick="filterCategory('operation')" class="cat-btn px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition-all flex items-center gap-2">
-                            运营公告 <span class="cat-count text-xs bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded">0</span>
+                        <button onclick="filterCategory('financial')" class="cat-btn px-3 py-1.5 bg-gray-100 text-gray-700 text-xs font-medium rounded-md hover:bg-gray-200 transition-all flex items-center gap-1.5">
+                            财务报告 <span class="cat-count text-xs bg-gray-200 text-gray-600 px-1 py-0.5 rounded">0</span>
                         </button>
-                        <button onclick="filterCategory('dividend')" class="cat-btn px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition-all flex items-center gap-2">
-                            分红公告 <span class="cat-count text-xs bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded">0</span>
+                        <button onclick="filterCategory('operation')" class="cat-btn px-3 py-1.5 bg-gray-100 text-gray-700 text-xs font-medium rounded-md hover:bg-gray-200 transition-all flex items-center gap-1.5">
+                            运营公告 <span class="cat-count text-xs bg-gray-200 text-gray-600 px-1 py-0.5 rounded">0</span>
                         </button>
-                        <button onclick="filterCategory('inquiry')" class="cat-btn px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition-all flex items-center gap-2">
-                            问询函件 <span class="cat-count text-xs bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded">0</span>
+                        <button onclick="filterCategory('dividend')" class="cat-btn px-3 py-1.5 bg-gray-100 text-gray-700 text-xs font-medium rounded-md hover:bg-gray-200 transition-all flex items-center gap-1.5">
+                            分红公告 <span class="cat-count text-xs bg-gray-200 text-gray-600 px-1 py-0.5 rounded">0</span>
                         </button>
-                        <button onclick="filterCategory('financial')" class="cat-btn px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition-all flex items-center gap-2">
-                            财务报告 <span class="cat-count text-xs bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded">0</span>
+                        <button onclick="filterCategory('inquiry')" class="cat-btn px-3 py-1.5 bg-gray-100 text-gray-700 text-xs font-medium rounded-md hover:bg-gray-200 transition-all flex items-center gap-1.5">
+                            问询函件 <span class="cat-count text-xs bg-gray-200 text-gray-600 px-1 py-0.5 rounded">0</span>
+                        </button>
+                        <button onclick="filterCategory('listing')" class="cat-btn px-3 py-1.5 bg-gray-100 text-gray-700 text-xs font-medium rounded-md hover:bg-gray-200 transition-all flex items-center gap-1.5">
+                            上市公告 <span class="cat-count text-xs bg-gray-200 text-gray-600 px-1 py-0.5 rounded">0</span>
+                        </button>
+                        <button onclick="filterCategory('disclosure')" class="cat-btn px-3 py-1.5 bg-gray-100 text-gray-700 text-xs font-medium rounded-md hover:bg-gray-200 transition-all flex items-center gap-1.5">
+                            信息披露 <span class="cat-count text-xs bg-gray-200 text-gray-600 px-1 py-0.5 rounded">0</span>
+                        </button>
+                        <button onclick="filterCategory('other')" class="cat-btn px-3 py-1.5 bg-gray-100 text-gray-700 text-xs font-medium rounded-md hover:bg-gray-200 transition-all flex items-center gap-1.5">
+                            其他公告 <span class="cat-count text-xs bg-gray-200 text-gray-600 px-1 py-0.5 rounded">0</span>
                         </button>
                     </div>
                 </div>
@@ -172,6 +181,10 @@
                             <label class="flex items-center gap-1.5 cursor-pointer">
                                 <input type="checkbox" id="only-favorite" onchange="applyFilters()" class="rounded text-blue-600 focus:ring-blue-500">
                                 <span>仅看自选基金</span>
+                            </label>
+                            <label class="flex items-center gap-1.5 cursor-pointer">
+                                <input type="checkbox" id="hide-suspicious" onchange="applyFilters()" checked class="rounded text-blue-600 focus:ring-blue-500">
+                                <span>隐藏非REITs</span>
                             </label>
                         </div>
                     </div>
@@ -253,11 +266,13 @@
     <script>
         // 公告分类配置
         const CATEGORY_CONFIG = {
-            operation: { name: '运营公告', tagClass: 'bg-emerald-100 text-emerald-700', aiLabel: '运营公告' },
-            dividend: { name: '分红公告', tagClass: 'bg-rose-100 text-rose-700', aiLabel: '分红公告' },
-            inquiry: { name: '问询函件', tagClass: 'bg-amber-100 text-amber-700', aiLabel: '问询函件' },
-            financial: { name: '财务报告', tagClass: 'bg-blue-100 text-blue-700', aiLabel: '财务报告' },
-            other: { name: '其他公告', tagClass: 'bg-gray-100 text-gray-700', aiLabel: '其他公告' }
+            financial:  { name: '财务报告', tagClass: 'bg-blue-100 text-blue-700',   aiLabel: '财务报告' },
+            operation:  { name: '运营公告', tagClass: 'bg-emerald-100 text-emerald-700', aiLabel: '运营公告' },
+            dividend:   { name: '分红公告', tagClass: 'bg-rose-100 text-rose-700',    aiLabel: '分红公告' },
+            inquiry:    { name: '问询函件', tagClass: 'bg-amber-100 text-amber-700',  aiLabel: '问询函件' },
+            listing:    { name: '上市公告', tagClass: 'bg-purple-100 text-purple-700', aiLabel: '上市公告' },
+            disclosure: { name: '信息披露', tagClass: 'bg-cyan-100 text-cyan-700',    aiLabel: '信息披露' },
+            other:      { name: '其他公告', tagClass: 'bg-gray-100 text-gray-700',    aiLabel: '其他公告' }
         };
 
         // 状态配置
@@ -318,9 +333,8 @@
             
             try {
                 console.log('🔄 正在从API加载公告...');
-                const response = await REITS_API.getAnnouncements({ 
-                    limit: 100,
-                    days: 30
+                const response = await REITS_API.getAnnouncements({
+                    limit: 3000
                 });
                 
                 if (response.success && response.data && response.data.length > 0) {
@@ -346,7 +360,8 @@
                         pdfUrl: item.pdf_url || '',
                         cninfoUrl: item.cninfo_url || '',
                         confidence: item.confidence || 85,
-                        isRead: false
+                        isRead: false,
+                        is_suspicious: item.is_suspicious ?? 0
                     }));
                     showDataSource('API', allAnnouncements.length);
                 } else {
@@ -472,6 +487,12 @@
                 data = data.filter(a => a.category === currentCategory);
             }
 
+            // 默认隐藏可疑公告（非REITs）
+            const hideSuspicious = document.getElementById('hide-suspicious')?.checked !== false;
+            if (hideSuspicious) {
+                data = data.filter(a => a.is_suspicious !== 1);
+            }
+
             // 交易所筛选
             currentExchange = document.getElementById('exchange-filter')?.value || 'all';
             if (currentExchange !== 'all') {
@@ -584,11 +605,13 @@
             applyFilters();
         }
 
-        // 更新分类计数
+        // 更新分类计数（只统计过滤后的数据，排除可疑公告）
         function updateCategoryCounts() {
-            const counts = { all: allAnnouncements.length };
+            const hideSuspicious = document.getElementById('hide-suspicious')?.checked !== false;
+            const baseData = hideSuspicious ? allAnnouncements.filter(a => a.is_suspicious !== 1) : allAnnouncements;
+            const counts = { all: baseData.length };
             Object.keys(CATEGORY_CONFIG).forEach(cat => {
-                counts[cat] = allAnnouncements.filter(a => a.category === cat).length;
+                counts[cat] = baseData.filter(a => a.category === cat).length;
             });
 
             document.querySelectorAll('.cat-btn').forEach(btn => {

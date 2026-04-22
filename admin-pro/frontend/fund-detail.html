@@ -250,7 +250,7 @@
                             <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-gray-400">
                                 <span>成立: <span id="listing-date">--</span></span>
                                 <span class="hidden sm:inline">|</span>
-                                <span>规模: <span id="fund-scale">--</span>亿</span>
+                                <span>规模: <span id="fund-scale">--</span></span>
                                 <span class="hidden sm:inline">|</span>
                                 <span>期限: <span id="remaining-years">--</span></span>
                             </div>
@@ -320,7 +320,7 @@
                             <div class="text-base md:text-lg font-semibold mono" id="premium-rate">--</div>
                         </div>
                         <div class="text-center md:border-l border-gray-100">
-                            <div class="text-xs text-gray-500 mb-1.5">派息率</div>
+                            <div class="text-xs text-gray-500 mb-1.5">年化派息率</div>
                             <div class="text-base md:text-lg font-semibold text-red-600 mono" id="dividend-yield">--</div>
                         </div>
                         <div class="text-center md:border-l border-gray-100">
@@ -566,7 +566,7 @@
                                     <span class="font-bold mono" id="sector-today-change">--</span>
                                 </div>
                                 <div class="flex justify-between items-center p-3 bg-white/50 rounded-lg">
-                                    <span>板块平均派息率</span>
+                                    <span>板块平均年化派息率</span>
                                     <span class="font-bold mono" id="sector-avg-yield">--</span>
                                 </div>
                                 <div class="flex justify-between items-center p-3 bg-white/50 rounded-lg">
@@ -611,6 +611,44 @@
     <script src="./js/fund-calculator.js"></script>
     <script src="./js/api.js"></script>
     <script>
+        // 各板块年分红次数估算（用于计算年化派息率）
+        const DIVIDEND_FREQUENCY = {
+            'transport': 2,      // 交通基础设施：每半年
+            'logistics': 4,      // 仓储物流：每季度
+            'industrial': 4,     // 产业园区：每季度
+            'consumer': 4,       // 消费基础设施：每季度
+            'energy': 4,         // 能源基础设施：每季度
+            'housing': 2,        // 租赁住房：每半年
+            'eco': 2,            // 生态环保：每半年
+            'water': 2,          // 水利设施：每半年
+            'municipal': 2,      // 市政设施：每半年
+            'datacenter': 4,     // 数据中心：每季度
+            'commercial': 4,     // 商业办公：每季度
+            'elderly': 2,        // 养老设施：每半年
+            'other': 4           // 其他：默认每季度
+        };
+        
+        // 计算年化派息率（基于单次分红率智能估算年分红次数）
+        function getAnnualDividendYield(fund) {
+            const singleYield = fund.dividend_yield ?? fund.yield ?? 0;
+            if (!singleYield) return null;
+            
+            // 智能估算分红频率：
+            // 单次率 > 5%：通常是每年1-2次的高收益资产（能源、高速等）
+            // 单次率 2-5%：通常是每半年1次
+            // 单次率 < 2%：通常是每季度1次
+            let freq;
+            if (singleYield >= 5) {
+                freq = 1;  // 每年约1次
+            } else if (singleYield >= 2) {
+                freq = 2;  // 每年约2次
+            } else {
+                freq = DIVIDEND_FREQUENCY[fund.sector] || 4;  // 按板块默认
+            }
+            
+            return singleYield * freq;
+        }
+        
         let currentCode = '';
         let currentFund = null;
 
@@ -663,6 +701,22 @@
                 allFundsData = ALL_FUNDS || [];
             }
             
+            // 合并实时行情数据（价格、涨跌幅）到 allFundsData，让同板块基金显示实时价格
+            try {
+                const quoteResp = await fetch('http://localhost:5074/api/quotes/realtime');
+                const quoteResult = await quoteResp.json();
+                if (quoteResult.success && quoteResult.data) {
+                    const quoteMap = new Map(quoteResult.data.map(q => [q.fund_code, q]));
+                    allFundsData = allFundsData.map(f => {
+                        const q = quoteMap.get(f.code);
+                        if (q) {
+                            return { ...f, price: q.current_price, current_price: q.current_price, change_percent: q.change_pct, change: q.change };
+                        }
+                        return f;
+                    });
+                }
+            } catch (e) { /* 实时行情可选，失败不影响 */ }
+            
             if (!currentFund) {
                 showToast('基金不存在', 'error');
                 window.location.href = './market.html';
@@ -691,16 +745,34 @@
             document.getElementById('fund-name').textContent = currentFund.name;
             document.getElementById('fund-code').textContent = currentCode;
             document.getElementById('fund-manager').textContent = '基金管理人：' + getManager(currentFund.name);
-            document.getElementById('listing-date').textContent = currentFund.listingDate;
-            document.getElementById('fund-scale').textContent = currentFund.scale;
-            document.getElementById('remaining-years').textContent = currentFund.remainingYears;
+            // API返回下划线命名(listing_date/remaining_years)，前端Mock用驼峰(listingDate/remainingYears)，统一做fallback
+            const listingDate = currentFund.listingDate || currentFund.listing_date;
+            document.getElementById('listing-date').textContent = listingDate || '--';
+            const scale = currentFund.scale || currentFund.market_cap;
+            document.getElementById('fund-scale').textContent = (scale > 0) ? scale + '亿' : '--';
+            const remainingYears = currentFund.remainingYears || currentFund.remaining_years;
+            document.getElementById('remaining-years').textContent = remainingYears || '--';
             
             const sectorInfo = SECTOR_CONFIG[currentFund.sector];
             const sectorBadge = document.getElementById('sector-badge');
+            // 加载后立即显示静态字段（派息率、净值等），不依赖交易时间
+            function showStaticFields() {
+                if (!currentFund) {
+                    console.warn('[showStaticFields] currentFund is null!');
+                    return;
+                }
+                console.log('[showStaticFields] currentFund:', JSON.stringify(currentFund));
+                const annualYield = getAnnualDividendYield(currentFund);
+                document.getElementById('dividend-yield').textContent = annualYield ? annualYield.toFixed(2) + '%' : '--';
+                const navValue = currentFund.nav || currentFund.nav_unit || 0;
+                document.getElementById('nav').textContent = navValue > 0 ? navValue.toFixed(3) : '--';
+            }
+
             sectorBadge.textContent = currentFund.sector_name || currentFund.sectorName;
             sectorBadge.className = `sector-tag ${sectorInfo?.tagClass || 'bg-gray-100 text-gray-600'}`;
             
             updatePriceDisplay();
+            showStaticFields();
             initChart();
             loadRelatedFunds();
             loadSectorNav();
@@ -813,9 +885,9 @@
                 premiumEl.className = 'text-base md:text-lg font-semibold mono text-gray-400';
             }
             
-            // 派息率（支持多种字段名）
-            const yieldValue = currentFund.dividend_yield || currentFund.yield;
-            document.getElementById('dividend-yield').textContent = yieldValue ? yieldValue.toFixed(2) + '%' : '--';
+            // 年化派息率
+            const annualYield = getAnnualDividendYield(currentFund);
+            document.getElementById('dividend-yield').textContent = annualYield ? annualYield.toFixed(2) + '%' : '--';
             
             // 净值（格式化显示）
             document.getElementById('nav').textContent = navValue ? navValue.toFixed(3) : '--';
@@ -888,27 +960,19 @@
         }
 
         async function fetchOrderBook() {
-            const prefix = currentCode.startsWith('5') ? 'sh' : 'sz';
+            // 只有当前是分时图模式才刷新五档数据，避免覆盖日K/周K
+            if (currentChartType !== 'minute') return;
             try {
                 const response = await fetch(
-                    `https://hq.sinajs.cn/list=${prefix}${currentCode}`,
-                    { headers: { 'Referer': 'https://finance.sina.com.cn/' } }
+                    `http://localhost:5074/api/quotes/orderbook?code=${currentCode}`
                 );
-                const text = await response.text();
-                const raw = text.split('"')[1];
-                if (!raw) return;
-                const fields = raw.split(',');
-                const currentPrice = parseFloat(fields[3]);
-                const prevClose = parseFloat(fields[2]);
-                // 解析5档买卖盘: Bid价格[11,13,15,17,19]量[10,12,14,16,18]; Ask价格[21,23,25,27,29]量[22,24,26,28,30]
-                const bids = [], asks = [];
-                for (let i = 0; i < 5; i++) {
-                    const bp = parseFloat(fields[11 + i * 2]), bv = parseInt(fields[10 + i * 2]) * 100;
-                    const ap = parseFloat(fields[21 + i * 2]), av = parseInt(fields[22 + i * 2]) * 100;
-                    if (bp > 0) bids.push({ price: bp, vol: bv });
-                    if (ap > 0) asks.push({ price: ap, vol: av });
+                const result = await response.json();
+                if (!result.success || !result.data) {
+                    console.error('获取档口数据失败:', result.message);
+                    return;
                 }
-                renderOrderBook(currentPrice, prevClose, bids, asks);
+                const d = result.data;
+                renderOrderBook(d.currentPrice, d.prevClose, d.bids, d.asks);
             } catch (e) { console.error('获取档口数据失败:', e); }
         }
 
@@ -917,14 +981,28 @@
             const priceColor = isUp ? '#dc2626' : '#16a34a';
             const changeAmt = currentPrice - prevClose;
             const changePct = ((changeAmt / prevClose) * 100).toFixed(2);
+
+            // 排序：买盘从高到低，卖盘从低到高
             const sortedBids = [...bids].sort((a, b) => b.price - a.price);
             const sortedAsks = [...asks].sort((a, b) => a.price - b.price);
             const maxVol = Math.max(...sortedBids.map(b => b.vol), ...sortedAsks.map(a => a.vol), 1);
-            const fmtVol = v => v >= 10000 ? (v / 10000).toFixed(1) + '万' : v.toString();
-            const priceLabels = sortedBids.map(b => b.price.toFixed(3)).reverse();
-            priceLabels.push(`<span style="color:${priceColor};font-weight:bold;font-size:13px">${currentPrice.toFixed(3)}</span>`);
-            sortedAsks.forEach(a => priceLabels.push(a.price.toFixed(3)));
-            const volData = [...sortedBids.map(b => -b.vol).reverse(), 0, ...sortedAsks.map(a => a.vol)];
+            const fmtVol = v => v >= 10000 ? (v / 10000).toFixed(1) + '万' : String(v);
+
+            // Y轴数据：买盘价格（倒序），当前价，卖盘价格（正序）
+            // 用特殊字符串标识类型，渲染时还原
+            const buyPrices = sortedBids.map(b => b.price).reverse();
+            const sellPrices = sortedAsks.map(a => a.price);
+            const yLabels = [...buyPrices, currentPrice, ...sellPrices];
+            const buyCount = buyPrices.length;
+            const midIdx = buyCount; // 当前价索引
+
+            // X轴（成交量）：买盘为负（向左），卖盘为正（向右），当前价位置为0
+            const volData = [
+                ...sortedBids.map(b => -b.vol).reverse(),
+                0,
+                ...sortedAsks.map(a => a.vol)
+            ];
+
             if (!priceChart) priceChart = echarts.init(document.getElementById('price-chart'));
             priceChart.setOption({
                 title: {
@@ -936,12 +1014,13 @@
                 tooltip: {
                     formatter: function(params) {
                         const idx = params[0].dataIndex;
-                        const side = idx < sortedBids.length ? '买' : idx > sortedBids.length ? '卖' : '当前';
-                        if (side === '当前') return `当前价: ${currentPrice.toFixed(3)}`;
-                        return `${side}价: ${priceLabels[idx]}<br/>成交量: ${fmtVol(Math.abs(params[0].value))}股`;
+                        const price = yLabels[idx];
+                        if (idx === midIdx) return `当前价: ${price.toFixed(3)}`;
+                        const side = idx < midIdx ? '买' : '卖';
+                        return `${side}价: ${price.toFixed(3)}<br/>成交量: ${fmtVol(Math.abs(params[0].value))}股`;
                     }
                 },
-                grid: { top: 60, right: 65, bottom: 28, left: 58 },
+                grid: { top: 60, right: 65, bottom: 28, left: 65 },
                 xAxis: {
                     type: 'value', min: -maxVol * 1.15, max: maxVol * 1.15,
                     axisLine: { show: false },
@@ -949,33 +1028,33 @@
                     splitLine: { lineStyle: { color: '#f3f4f6' } }
                 },
                 yAxis: {
-                    type: 'category', data: priceLabels,
+                    type: 'category',
+                    data: yLabels.map((p, i) => i === midIdx ? `【当前价 ${p.toFixed(3)}】` : p.toFixed(3)),
                     axisLine: { lineStyle: { color: '#e5e7eb' } },
                     axisLabel: {
-                        formatter: v => typeof v === 'string' && v.includes('span') ? '' : v,
+                        formatter: v => v,
                         color: function(_, idx) {
-                            if (idx === sortedBids.length) return priceColor;
-                            return idx < sortedBids.length ? '#16a34a' : '#dc2626';
+                            if (idx === midIdx) return priceColor;
+                            return idx < midIdx ? '#16a34a' : '#dc2626';
                         }, fontSize: 10
                     }
                 },
                 series: [{
-                    type: 'bar', data: volData.map((v, i) => ({
+                    type: 'bar',
+                    data: volData.map((v, i) => ({
                         value: v,
                         itemStyle: {
-                            color: i < sortedBids.length ? 'rgba(22,163,74,0.65)' :
-                                   i > sortedBids.length ? 'rgba(220,38,38,0.65)' : 'transparent',
-                            borderRadius: i < sortedBids.length ? [0, 3, 3, 0] : [3, 0, 0, 3]
+                            color: i < midIdx ? 'rgba(22,163,74,0.65)' :
+                                   i > midIdx ? 'rgba(220,38,38,0.65)' : 'transparent',
+                            borderRadius: i < midIdx ? [0, 3, 3, 0] : i > midIdx ? [3, 0, 0, 3] : 0
                         }
                     })),
                     barWidth: '55%',
                     label: {
-                        show: true,
-                        position: 'side',
+                        show: true, position: 'side',
                         formatter: function(p) {
-                            if (p.dataIndex === sortedBids.length) return '';
-                            const vol = Math.abs(p.value);
-                            return fmtVol(vol);
+                            if (p.dataIndex === midIdx) return '';
+                            return fmtVol(Math.abs(p.value));
                         },
                         color: '#666', fontSize: 8
                     }
@@ -1013,8 +1092,9 @@
                 priceChart.clear();
                 
                 // 准备数据：ECharts candlestick 需要 [open, close, low, high]
+                // API 返回收盘价字段名为 price，Mock 数据可能用 close，统一做 fallback
                 const dates = data.map(item => item.date);
-                const klineData = data.map(item => [item.open, item.close, item.low, item.high]);
+                const klineData = data.map(item => [item.open, item.price || item.close, item.low, item.high]);
                 
                 priceChart.setOption({
                     grid: { top: 10, right: 50, bottom: 30, left: 50 },
@@ -1082,8 +1162,13 @@
             // 使用全局 allFundsData（可能已从API加载）
             const currentSector = currentFund.sector;
             const related = allFundsData.filter(f => {
-                // 板块匹配（考虑字符串和可能的空值）
-                const match = f.sector && currentSector && f.sector.toString() === currentSector.toString();
+                // API返回的数据常缺少sector字段，先从自身取，缺失时从ALL_FUNDS兜底
+                let fundSector = f.sector;
+                if (!fundSector && f.code) {
+                    const mockFund = ALL_FUNDS.find(m => m.code === f.code);
+                    fundSector = mockFund?.sector;
+                }
+                const match = fundSector && currentSector && fundSector.toString() === currentSector.toString();
                 return match && f.code !== currentCode;
             });
             
@@ -1099,7 +1184,7 @@
             // 安全获取字段（API用 change_percent，Mock用 change）
             const getChange = (f) => f.change_percent || f.change || 0;
             const getPrice = (f) => f.price || f.current_price || 0;
-            const getYield = (f) => f.yield || f.dividend_yield || 0;
+            const getYield = (f) => getAnnualDividendYield(f) || 0;
             
             const currentChange = getChange(currentFund);
             const currentYield = getYield(currentFund);
@@ -1385,40 +1470,60 @@
             document.getElementById('avg-lease').textContent = avgLease;
         }
         
-        // 加载公告数据
-        function loadAnnouncementData() {
-            const announcements = [
-                { date: '2024-10-25', title: '2024年第三季度报告', type: 'report' },
-                { date: '2024-09-30', title: `收益分配公告（每10份派${(Math.random() * 0.5 + 0.2).toFixed(2)}元）`, type: 'dividend' },
-                { date: '2024-08-15', title: '关于运营管理机构变更的公告', type: 'operation' },
-                { date: '2024-07-20', title: '2024年半年度报告', type: 'report' },
-                { date: '2024-06-28', title: '关于基金经理变更的公告', type: 'operation' }
-            ];
-            
-            const typeIcons = {
-                'report': { icon: '📊', color: 'bg-blue-100 text-blue-600' },
-                'dividend': { icon: '💰', color: 'bg-red-100 text-red-600' },
-                'operation': { icon: '🔄', color: 'bg-green-100 text-green-600' }
-            };
-            
+        // 加载公告数据（从API）
+        async function loadAnnouncementData() {
             const container = document.getElementById('announcement-list');
-            container.innerHTML = announcements.map(item => {
-                const typeInfo = typeIcons[item.type];
-                return `
-                    <div class="flex items-start gap-3 p-4 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors group">
-                        <div class="flex-none w-10 h-10 ${typeInfo.color} rounded-lg flex items-center justify-center text-base">
-                            ${typeInfo.icon}
+            if (!currentFund) return;
+
+            try {
+                const response = await REITS_API.getAnnouncements({
+                    code: currentFund.code,
+                    limit: 100
+                });
+
+                if (!response.success || !response.data || response.data.length === 0) {
+                    container.innerHTML = '<div class="text-center text-gray-400 py-8">暂无公告数据</div>';
+                    return;
+                }
+
+                const announcements = response.data;
+                const categoryConfig = {
+                    'financial': { icon: '📊', label: '财报', color: 'bg-blue-100 text-blue-600', textColor: 'text-blue-600' },
+                    'dividend':  { icon: '💰', label: '分红', color: 'bg-red-100 text-red-600', textColor: 'text-red-600' },
+                    'operation': { icon: '🔄', label: '运营', color: 'bg-green-100 text-green-600', textColor: 'text-green-600' },
+                    'inquiry':   { icon: '🔍', label: '询价', color: 'bg-purple-100 text-purple-600', textColor: 'text-purple-600' },
+                    'listing':   { icon: '🏛️', label: '上市', color: 'bg-orange-100 text-orange-600', textColor: 'text-orange-600' },
+                    'other':     { icon: '📋', label: '其他', color: 'bg-gray-100 text-gray-600', textColor: 'text-gray-600' }
+                };
+
+                container.innerHTML = announcements.map(item => {
+                    const cfg = categoryConfig[item.category] || categoryConfig['other'];
+                    return `
+                        <div class="flex items-start gap-3 p-4 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors group"
+                             onclick="window.open('${item.pdf_url || item.source_url || '#'}', '_blank')">
+                            <div class="flex-none w-10 h-10 ${cfg.color} rounded-lg flex flex-col items-center justify-center text-xs">
+                                <span>${cfg.icon}</span>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="text-sm font-medium text-gray-900 group-hover:text-blue-600 transition-colors leading-snug">${item.title}</div>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <span class="text-xs ${cfg.textColor} font-medium">${cfg.label}</span>
+                                    <span class="text-xs text-gray-300">|</span>
+                                    <span class="text-xs text-gray-400">${item.publish_date || ''}</span>
+                                    ${item.is_suspicious === 1 ? '<span class="text-xs text-yellow-500 font-medium ml-1">⚠️待核实</span>' : ''}
+                                </div>
+                            </div>
+                            <svg class="w-5 h-5 text-gray-300 group-hover:text-gray-400 flex-none mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                            </svg>
                         </div>
-                        <div class="flex-1 min-w-0">
-                            <div class="text-sm font-medium text-gray-900 truncate group-hover:text-blue-600 transition-colors">${item.title}</div>
-                            <div class="text-xs text-gray-400 mt-1">${item.date}</div>
-                        </div>
-                        <svg class="w-5 h-5 text-gray-300 group-hover:text-gray-400 flex-none mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                        </svg>
-                    </div>
-                `;
-            }).join('');
+                    `;
+                }).join('');
+
+            } catch (error) {
+                console.error('加载公告失败:', error);
+                container.innerHTML = '<div class="text-center text-red-400 py-8">加载失败，请重试</div>';
+            }
         }
         
         // 时间选择器监听
