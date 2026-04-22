@@ -115,7 +115,9 @@ async def get_funds_list():
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute("""
-            SELECT fund_code, fund_name, exchange, ipo_date, nav, dividend_yield, status
+            SELECT fund_code, fund_name, exchange, ipo_date, nav, dividend_yield, status,
+                   sector, sector_name, scale, market_cap, property_type, remaining_years,
+                   debt_ratio, premium_rate, listing_date
             FROM funds
             ORDER BY exchange, fund_code
         """)
@@ -132,7 +134,16 @@ async def get_funds_list():
                 "nav": row[4] or 0,
                 "yield": row[5] or 0,
                 "dividend_yield": row[5] or 0,
-                "status": row[6] or "listed"
+                "status": row[6] or "listed",
+                "sector": row[7] or "",
+                "sectorName": row[8] or "",
+                "scale": row[9] or 0,
+                "marketCap": row[10] or 0,
+                "propertyType": row[11] or "",
+                "remainingYears": row[12] or "",
+                "debt": row[13] or 0,
+                "premium": row[14] or 0,
+                "listing_date": row[15] or row[3] or ""
             })
 
         return {
