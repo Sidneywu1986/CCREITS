@@ -18,3 +18,7 @@
 {"t":0,"agent":"ad8529a","agent_type":"general-purpose","event":"agent_start","parent_mode":"none"}
 {"t":0,"agent":"a5ae134","agent_type":"general-purpose","event":"agent_stop","success":true}
 {"t":0,"agent":"afa79fe","agent_type":"general-purpose","event":"agent_start","parent_mode":"none"}
+{"t":0,"agent":"system","event":"skill_invoked","skill_name":"browse"}
+{"t":0,"agent":"system","event":"skill_invoked","skill_name":"superpowers:writing-plans"}
+{"t":0,"agent":"a80cbf8","agent_type":"general-purpose","event":"agent_start","parent_mode":"none"}
+{"t":0,"agent":"a80cbf8","agent_type":"general-purpose","event":"agent_stop","success":true,"duration_ms":506828}

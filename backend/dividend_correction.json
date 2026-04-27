@@ -1,0 +1,50 @@
+[
+  {
+    "code": "180101",
+    "name": "博时蛇口产园 REIT",
+    "current_price": 1.862,
+    "nav": 1.9,
+    "stored_dividend_yield": 1.22,
+    "calculated_market_yield": 7.46,
+    "calculated_nav_yield": 7.31,
+    "annual_dividend_estimate": 0.139,
+    "total_dividend_from_pdfs": 0.083,
+    "dividend_count": 3,
+    "first_date": "20250909",
+    "last_date": "20260415",
+    "dividends": [
+      {
+        "date": "20250909",
+        "amount": 0.0399
+      },
+      {
+        "date": "20251204",
+        "amount": 0.02
+      },
+      {
+        "date": "20260415",
+        "amount": 0.0231
+      }
+    ]
+  },
+  {
+    "code": "180401",
+    "name": "鹏华深圳能源 REIT",
+    "current_price": 5.501,
+    "nav": 5.566,
+    "stored_dividend_yield": 2.14,
+    "calculated_market_yield": 2.82,
+    "calculated_nav_yield": 2.78,
+    "annual_dividend_estimate": 0.155,
+    "total_dividend_from_pdfs": 0.155,
+    "dividend_count": 1,
+    "first_date": "20250828",
+    "last_date": "20250828",
+    "dividends": [
+      {
+        "date": "20250828",
+        "amount": 0.155
+      }
+    ]
+  }
+]

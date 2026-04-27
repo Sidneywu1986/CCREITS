@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "lastScanned": 1776409270057,
+  "lastScanned": 1776674653918,
   "projectRoot": "D:\\tools\\消费看板5（前端）\\backend",
   "techStack": {
     "languages": [
@@ -49,20 +49,44 @@
   },
   "customNotes": [],
   "directoryMap": {
+    "ai_db": {
+      "path": "ai_db",
+      "purpose": null,
+      "fileCount": 2,
+      "lastAccessed": 1776674652864,
+      "keyFiles": [
+        "models.py",
+        "__init__.py"
+      ]
+    },
     "api": {
       "path": "api",
       "purpose": "API routes",
-      "fileCount": 1,
-      "lastAccessed": 1776409269477,
+      "fileCount": 5,
+      "lastAccessed": 1776674652865,
       "keyFiles": [
-        "dividend_calendar.py"
+        "chat_announcement.py",
+        "chat_reits.py",
+        "dividend_calendar.py",
+        "research.py",
+        "__init__.py"
+      ]
+    },
+    "cleaners": {
+      "path": "cleaners",
+      "purpose": null,
+      "fileCount": 2,
+      "lastAccessed": 1776674653704,
+      "keyFiles": [
+        "pdf_parser.py",
+        "__init__.py"
       ]
     },
     "core": {
       "path": "core",
       "purpose": null,
       "fileCount": 1,
-      "lastAccessed": 1776409269478,
+      "lastAccessed": 1776674653706,
       "keyFiles": [
         "config.py"
       ]
@@ -70,21 +94,21 @@
     "crawlers": {
       "path": "crawlers",
       "purpose": null,
-      "fileCount": 31,
-      "lastAccessed": 1776409270007,
+      "fileCount": 38,
+      "lastAccessed": 1776674653707,
       "keyFiles": [
         "akshare.js",
         "akshare_crawler.py",
         "akshare_crawler_v2.py",
-        "announcement.js",
-        "announcement_akshare.py"
+        "alert-manager.js",
+        "announcement.js"
       ]
     },
     "database": {
       "path": "database",
       "purpose": null,
-      "fileCount": 9,
-      "lastAccessed": 1776409270008,
+      "fileCount": 11,
+      "lastAccessed": 1776674653707,
       "keyFiles": [
         "ai_chat_schema.sql",
         "db.js",
@@ -97,7 +121,7 @@
       "path": "logs",
       "purpose": null,
       "fileCount": 1,
-      "lastAccessed": 1776409270009,
+      "lastAccessed": 1776674653707,
       "keyFiles": [
         "app.log"
       ]
@@ -106,22 +130,23 @@
       "path": "modules",
       "purpose": null,
       "fileCount": 0,
-      "lastAccessed": 1776409270010,
+      "lastAccessed": 1776674653708,
       "keyFiles": []
     },
     "scripts": {
       "path": "scripts",
       "purpose": "Build/utility scripts",
       "fileCount": 0,
-      "lastAccessed": 1776409270010,
+      "lastAccessed": 1776674653708,
       "keyFiles": []
     },
     "services": {
       "path": "services",
       "purpose": "Business logic services",
-      "fileCount": 2,
-      "lastAccessed": 1776409270011,
+      "fileCount": 3,
+      "lastAccessed": 1776674653708,
       "keyFiles": [
+        "announcements.py",
         "realtime_quotes.py",
         "__init__.py"
       ]
@@ -129,35 +154,63 @@
     "tests": {
       "path": "tests",
       "purpose": "Test files",
-      "fileCount": 0,
-      "lastAccessed": 1776409270011,
-      "keyFiles": []
+      "fileCount": 10,
+      "lastAccessed": 1776674653709,
+      "keyFiles": [
+        "conftest.py",
+        "test_ai_db_models.py",
+        "test_chat_announcement.py",
+        "test_chat_reits.py",
+        "test_crawlers.py"
+      ]
+    },
+    "vector": {
+      "path": "vector",
+      "purpose": null,
+      "fileCount": 5,
+      "lastAccessed": 1776674653709,
+      "keyFiles": [
+        "embedding_service.py",
+        "fulltext_index.py",
+        "milvus_client.py",
+        "vector_queue.py",
+        "__init__.py"
+      ]
     },
     "__pycache__": {
       "path": "__pycache__",
       "purpose": null,
       "fileCount": 8,
-      "lastAccessed": 1776409270012,
+      "lastAccessed": 1776674653710,
       "keyFiles": [
         "admin_app.cpython-311.pyc",
-        "admin_main.cpython-311.pyc",
         "admin_models.cpython-311.pyc",
-        "admin_sqladmin.cpython-311.pyc",
-        "api_adapter.cpython-311.pyc"
+        "api_adapter.cpython-311.pyc",
+        "test_api.cpython-311-pytest-7.4.3.pyc",
+        "test_api_adapter.cpython-311-pytest-7.4.3.pyc"
+      ]
+    },
+    "ai_db\\migrations": {
+      "path": "ai_db\\migrations",
+      "purpose": "Database migrations",
+      "fileCount": 1,
+      "lastAccessed": 1776674653710,
+      "keyFiles": [
+        "001_initial_ai_schema.sql"
       ]
     }
   },
   "hotPaths": [
     {
-      "path": "services\\announcements.py",
-      "accessCount": 47,
-      "lastAccessed": 1776492075616,
+      "path": "api_adapter.py",
+      "accessCount": 67,
+      "lastAccessed": 1776820004856,
       "type": "file"
     },
     {
-      "path": "api_adapter.py",
-      "accessCount": 42,
-      "lastAccessed": 1776479782420,
+      "path": "services\\announcements.py",
+      "accessCount": 49,
+      "lastAccessed": 1776790052451,
       "type": "file"
     },
     {
@@ -167,15 +220,87 @@
       "type": "file"
     },
     {
-      "path": "",
-      "accessCount": 4,
-      "lastAccessed": 1776489975665,
+      "path": "crawlers\\cninfo_crawler.py",
+      "accessCount": 10,
+      "lastAccessed": 1776817267249,
+      "type": "file"
+    },
+    {
+      "path": "crawlers\\scheduler.js",
+      "accessCount": 9,
+      "lastAccessed": 1776679281399,
+      "type": "file"
+    },
+    {
+      "path": "crawlers\\fund-detail.js",
+      "accessCount": 8,
+      "lastAccessed": 1776675426532,
       "type": "directory"
     },
     {
-      "path": "crawlers\\cninfo_crawler.py",
+      "path": "admin_app.py",
+      "accessCount": 6,
+      "lastAccessed": 1776583517586,
+      "type": "directory"
+    },
+    {
+      "path": "",
+      "accessCount": 6,
+      "lastAccessed": 1776789969460,
+      "type": "directory"
+    },
+    {
+      "path": "crawlers\\sina.js",
+      "accessCount": 5,
+      "lastAccessed": 1776675577379,
+      "type": "file"
+    },
+    {
+      "path": "crawl_all_reits.py",
+      "accessCount": 5,
+      "lastAccessed": 1776793349464,
+      "type": "file"
+    },
+    {
+      "path": "crawlers\\akshare_crawler_v2.py",
+      "accessCount": 4,
+      "lastAccessed": 1776675213500,
+      "type": "file"
+    },
+    {
+      "path": "crawlers\\cninfo_db_sync.py",
+      "accessCount": 4,
+      "lastAccessed": 1776817754297,
+      "type": "file"
+    },
+    {
+      "path": "api\\chat_reits.py",
+      "accessCount": 3,
+      "lastAccessed": 1776584440602,
+      "type": "directory"
+    },
+    {
+      "path": "crawlers\\test_akshare.py",
+      "accessCount": 3,
+      "lastAccessed": 1776679004794,
+      "type": "file"
+    },
+    {
+      "path": "tests\\test_research.py",
       "accessCount": 2,
-      "lastAccessed": 1776368762067,
+      "lastAccessed": 1776613899737,
+      "type": "file"
+    },
+    {
+      "path": "api\\research.py",
+      "accessCount": 2,
+      "lastAccessed": 1776613949492,
+      "type": "directory"
+    },
+    {
+      "path": "core\\config.py",
+      "accessCount": 2,
+      "lastAccessed": 1776754846632,
       "type": "file"
     },
     {
@@ -272,6 +397,96 @@
       "path": "test_sse_network.py",
       "accessCount": 1,
       "lastAccessed": 1776477147358,
+      "type": "file"
+    },
+    {
+      "path": "api\\__init__.py",
+      "accessCount": 1,
+      "lastAccessed": 1776583114266,
+      "type": "file"
+    },
+    {
+      "path": "api",
+      "accessCount": 1,
+      "lastAccessed": 1776583487190,
+      "type": "directory"
+    },
+    {
+      "path": "crawlers\\batch_crawl_all_reits.py",
+      "accessCount": 1,
+      "lastAccessed": 1776675123379,
+      "type": "file"
+    },
+    {
+      "path": "crawlers",
+      "accessCount": 1,
+      "lastAccessed": 1776675129783,
+      "type": "directory"
+    },
+    {
+      "path": "crawlers\\yield_crawler.js",
+      "accessCount": 1,
+      "lastAccessed": 1776679159727,
+      "type": "file"
+    },
+    {
+      "path": "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\claude\\D--tools-----5----\\01544d4c-90bf-4562-b106-4227e79c438e\\tasks\\b2prd4tla.output",
+      "accessCount": 1,
+      "lastAccessed": 1776680577297,
+      "type": "file"
+    },
+    {
+      "path": "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\claude\\D--tools-----5----\\01544d4c-90bf-4562-b106-4227e79c438e\\tasks\\byrjqqxon.output",
+      "accessCount": 1,
+      "lastAccessed": 1776690581498,
+      "type": "file"
+    },
+    {
+      "path": "test_page.html",
+      "accessCount": 1,
+      "lastAccessed": 1776692956319,
+      "type": "file"
+    },
+    {
+      "path": "test_orderbook_parse.py",
+      "accessCount": 1,
+      "lastAccessed": 1776754349385,
+      "type": "file"
+    },
+    {
+      "path": "test_orderbook_direct.py",
+      "accessCount": 1,
+      "lastAccessed": 1776754464251,
+      "type": "file"
+    },
+    {
+      "path": "test_api_direct.py",
+      "accessCount": 1,
+      "lastAccessed": 1776754889640,
+      "type": "file"
+    },
+    {
+      "path": "C:\\Users\\Administrator\\.claude\\image-cache\\dfb1491e-73c9-40ea-82bb-93de5d2bea37\\2.png",
+      "accessCount": 1,
+      "lastAccessed": 1776755904771,
+      "type": "file"
+    },
+    {
+      "path": "crawlers\\announcement_scheduler.py",
+      "accessCount": 1,
+      "lastAccessed": 1776791210522,
+      "type": "file"
+    },
+    {
+      "path": "crawlers\\__init__.py",
+      "accessCount": 1,
+      "lastAccessed": 1776792239707,
+      "type": "file"
+    },
+    {
+      "path": "C:\\Users\\Administrator\\.claude\\image-cache\\dfb1491e-73c9-40ea-82bb-93de5d2bea37\\5.png",
+      "accessCount": 1,
+      "lastAccessed": 1776819046103,
       "type": "file"
     }
   ],

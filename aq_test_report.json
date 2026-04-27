@@ -1,0 +1,253 @@
+{
+  "frontend": [
+    {
+      "name": "首页",
+      "url": "http://localhost:5176/index.html",
+      "status": 200,
+      "elapsed_ms": 30.04,
+      "passed": true,
+      "json_ok": null
+    },
+    {
+      "name": "基金详情",
+      "url": "http://localhost:5176/fund-detail.html",
+      "status": 200,
+      "elapsed_ms": 19.52,
+      "passed": true,
+      "json_ok": null
+    },
+    {
+      "name": "市场行情",
+      "url": "http://localhost:5176/market.html",
+      "status": 200,
+      "elapsed_ms": 10.52,
+      "passed": true,
+      "json_ok": null
+    },
+    {
+      "name": "分红日历",
+      "url": "http://localhost:5176/dividend-calendar.html",
+      "status": 200,
+      "elapsed_ms": 17.53,
+      "passed": true,
+      "json_ok": null
+    },
+    {
+      "name": "基金对比",
+      "url": "http://localhost:5176/compare.html",
+      "status": 200,
+      "elapsed_ms": 12.51,
+      "passed": true,
+      "json_ok": null
+    },
+    {
+      "name": "投资组合",
+      "url": "http://localhost:5176/portfolio.html",
+      "status": 200,
+      "elapsed_ms": 15.03,
+      "passed": true,
+      "json_ok": null
+    },
+    {
+      "name": "公告列表",
+      "url": "http://localhost:5176/announcements.html",
+      "status": 200,
+      "elapsed_ms": 15.02,
+      "passed": true,
+      "json_ok": null
+    },
+    {
+      "name": "AI助手",
+      "url": "http://localhost:5176/ai-chat.html",
+      "status": 200,
+      "elapsed_ms": 0.0,
+      "passed": true,
+      "json_ok": null
+    },
+    {
+      "name": "工具箱",
+      "url": "http://localhost:5176/tools.html",
+      "status": 200,
+      "elapsed_ms": 15.03,
+      "passed": true,
+      "json_ok": null
+    },
+    {
+      "name": "文章搜索",
+      "url": "http://localhost:5176/article-search.html",
+      "status": 200,
+      "elapsed_ms": 0.0,
+      "passed": true,
+      "json_ok": null
+    },
+    {
+      "name": "基金档案",
+      "url": "http://localhost:5176/fund-archive.html",
+      "status": 200,
+      "elapsed_ms": 0.0,
+      "passed": true,
+      "json_ok": null
+    },
+    {
+      "name": "分红日历页",
+      "url": "http://localhost:5176/dividend-calendar.html",
+      "status": 200,
+      "elapsed_ms": 15.02,
+      "passed": true,
+      "json_ok": null
+    }
+  ],
+  "api": [
+    {
+      "name": "基金列表",
+      "url": "http://localhost:5074/api/funds/list",
+      "status": 200,
+      "elapsed_ms": 2058.94,
+      "passed": true,
+      "json_ok": true
+    },
+    {
+      "name": "分红日历列表",
+      "url": "http://localhost:5074/api/dividend-calendar/list",
+      "status": 200,
+      "elapsed_ms": 2444.54,
+      "passed": true,
+      "json_ok": true
+    },
+    {
+      "name": "分红日历统计",
+      "url": "http://localhost:5074/api/dividend-calendar/stats/summary",
+      "status": 200,
+      "elapsed_ms": 2035.52,
+      "passed": true,
+      "json_ok": true
+    },
+    {
+      "name": "即将分红",
+      "url": "http://localhost:5074/api/dividend-calendar/upcoming",
+      "status": 200,
+      "elapsed_ms": 2066.17,
+      "passed": true,
+      "json_ok": true
+    },
+    {
+      "name": "基金详情",
+      "url": "http://localhost:5074/api/funds/detail?code=508000",
+      "status": 200,
+      "elapsed_ms": 2049.95,
+      "passed": true,
+      "json_ok": true
+    },
+    {
+      "name": "价格历史",
+      "url": "http://localhost:5074/api/funds/price-history?code=508000",
+      "status": 200,
+      "elapsed_ms": 2615.78,
+      "passed": true,
+      "json_ok": true
+    },
+    {
+      "name": "相关基金",
+      "url": "http://localhost:5074/api/funds/related?code=508000",
+      "status": 200,
+      "elapsed_ms": 2042.98,
+      "passed": true,
+      "json_ok": true
+    },
+    {
+      "name": "财务数据",
+      "url": "http://localhost:5074/api/funds/financial?code=508000",
+      "status": 200,
+      "elapsed_ms": 2057.93,
+      "passed": true,
+      "json_ok": true
+    },
+    {
+      "name": "运营数据",
+      "url": "http://localhost:5074/api/funds/operation?code=508000",
+      "status": 200,
+      "elapsed_ms": 2065.89,
+      "passed": true,
+      "json_ok": true
+    },
+    {
+      "name": "分红记录",
+      "url": "http://localhost:5074/api/funds/dividends?code=508000",
+      "status": 200,
+      "elapsed_ms": 2452.59,
+      "passed": true,
+      "json_ok": true
+    },
+    {
+      "name": "实时行情",
+      "url": "http://localhost:5074/api/market/realtime",
+      "status": 404,
+      "elapsed_ms": 2065.49,
+      "passed": false,
+      "error": "Not Found"
+    },
+    {
+      "name": "市场概览",
+      "url": "http://localhost:5074/api/market/overview",
+      "status": 404,
+      "elapsed_ms": 2133.1,
+      "passed": false,
+      "error": "Not Found"
+    },
+    {
+      "name": "公告列表",
+      "url": "http://localhost:5074/api/announcements/list",
+      "status": 404,
+      "elapsed_ms": 2058.35,
+      "passed": false,
+      "error": "Not Found"
+    },
+    {
+      "name": "搜索基金",
+      "url": "http://localhost:5074/api/search/funds?keyword=REIT",
+      "status": 404,
+      "elapsed_ms": 2045.14,
+      "passed": false,
+      "error": "Not Found"
+    }
+  ],
+  "admin": [
+    {
+      "name": "登录页面",
+      "url": "http://localhost:5075/admin/login",
+      "status": 200,
+      "elapsed_ms": 2058.76,
+      "passed": true,
+      "json_ok": null
+    },
+    {
+      "name": "后台首页",
+      "url": "http://localhost:5075/admin/",
+      "status": 200,
+      "elapsed_ms": 4073.36,
+      "passed": true,
+      "json_ok": null
+    },
+    {
+      "name": "基金列表管理",
+      "url": "http://localhost:5075/admin/funds",
+      "status": 200,
+      "elapsed_ms": 6143.55,
+      "passed": true,
+      "json_ok": null
+    },
+    {
+      "name": "公告管理",
+      "url": "http://localhost:5075/admin/announcements",
+      "status": 200,
+      "elapsed_ms": 6159.7,
+      "passed": true,
+      "json_ok": null
+    }
+  ],
+  "summary": {
+    "total": 30,
+    "passed": 26,
+    "failed": 4
+  }
+}

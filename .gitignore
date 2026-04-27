@@ -1,3 +1,13 @@
+venv/
+node_modules/
+__pycache__/
+*.pyc
+.env
+.DS_Store
+dist/
+build/
+*.egg-info/
+
 # Dependencies
 backend/node_modules/
 
@@ -70,3 +80,27 @@ PROJECT_ANALYSIS.md
 
 # Announcement PDFs (generated data)
 announcements/
+
+# Log & error files
+*.err
+
+# Generated text files
+*.txt
+
+# Zip archives
+*.zip
+
+# Windows system files
+desktop.ini
+
+# Root-level database copies
+*.db
+!/backend/database/schema*.db
+
+# Misc scripts
+check_*.py
+check_*.js
+fix_js.py
+update_key.py
+screenshot_*.py
+get-docker.sh

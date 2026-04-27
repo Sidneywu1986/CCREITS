@@ -15,14 +15,17 @@ logger = logging.getLogger("scheduler")
 def run_sync_pipeline():
     """完整的同步流水线"""
     logger.info("[Scheduler] Starting sync pipeline...")
+    sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+
+    # 1. 同步新文章
     try:
-        sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
         from sync_from_wemprss_api import main as sync_main
         sync_main()
         logger.info("[Scheduler] Article sync completed")
     except Exception as e:
         logger.error(f"[Scheduler] Article sync failed: {e}")
 
+    # 2. 基金标签匹配
     try:
         from migrate_fund_tags import main as tag_main
         tag_main()
@@ -30,6 +33,16 @@ def run_sync_pipeline():
     except Exception as e:
         logger.error(f"[Scheduler] Fund tags failed: {e}")
 
+    # 3. LLM 增量标签（新文章自动打 asset/event 标签）
+    try:
+        from engine.llm_tagger import BatchRetagJob
+        job = BatchRetagJob()
+        stats = job.run(only_untagged=True, limit=20)
+        logger.info(f"[Scheduler] LLM incremental tagging: {stats}")
+    except Exception as e:
+        logger.error(f"[Scheduler] LLM tagging failed: {e}")
+
+    # 4. 向量导入（TF-IDF 旧版，BGE-M3 切换后替换为 migrate_vectors_bge）
     try:
         from migrate_vectors_to_milvus import main as vec_main
         vec_main()

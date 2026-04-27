@@ -1,7 +1,7 @@
 {
   "tool_name": "Bash",
-  "tool_input_preview": "{\"command\":\"cd /d \\\"D:/tools/消费看板5（前端）/backend\\\" && python -m uvicorn api_adapter:adapter_app --host 0.0.0.0 --port 5074 &\\nsleep 5\\ncurl -s \\\"http://localhost:5074/api/announcements?limit=2\\\" | pytho...",
-  "error": "Exit code 1\n/usr/bin/bash: line 3: cd: too many arguments\nTraceback (most recent call last):\r\n  File \"<string>\", line 1, in <module>\r\n  File \"C:\\Python311\\Lib\\json\\__init__.py\", line 293, in load\r\n    return loads(fp.read(),\r\n           ^^^^^^^^^^^^^^^^\r\n  File \"C:\\Python311\\Lib\\json\\__init__.py\", line 346, in loads\r\n    return _default_decoder.decode(s)\r\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^\r\n  File \"C:\\Python311\\Lib\\json\\decoder.py\", line 337, in decode\r\n    obj, end = self.raw_decode(s, idx=_...",
-  "timestamp": "2026-04-18T06:12:40.296Z",
-  "retry_count": 1
+  "tool_input_preview": "{\"command\":\"curl -s \\\"https://push2.eastmoney.com/api/qt/stock/get?secid=1.931039639&fields=f43,f57,f58,f169,f170&ut=fa5fd1943c7b386f172d6893dbfba10b&fltt=2&invt=2\\\" 2>&1\",\"timeout\":10000}",
+  "error": "Exit code 56",
+  "timestamp": "2026-04-22T02:27:48.409Z",
+  "retry_count": 4
 }
