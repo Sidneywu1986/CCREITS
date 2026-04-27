@@ -23,4 +23,4 @@ with get_conn() as conn:
     """)
     print("\n情感分布：")
     for row in cur.fetchall():
-        print(f"  {row[0]}: {row[1]}篇 (avg_score={row[2]:.3f})")
+        print(f"  {row['emotion_tag']}: {row['count']}篇 (avg_score={row['avg']:.3f})")

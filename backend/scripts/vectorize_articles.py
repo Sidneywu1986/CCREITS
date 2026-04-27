@@ -138,8 +138,7 @@ def fetch_pending_articles() -> List[Dict]:
             WHERE vectorized = FALSE AND content IS NOT NULL AND LENGTH(TRIM(content)) > 50
             ORDER BY published DESC
         """)
-        cols = [d[0] for d in cur.description]
-        return [dict(zip(cols, row)) for row in cur.fetchall()]
+        return [dict(row) for row in cur.fetchall()]
 
 
 def mark_vectorized(article_ids: List[int]):
@@ -158,7 +157,8 @@ def get_not_vectorized_count() -> int:
     with get_conn() as conn:
         cur = conn.cursor()
         cur.execute("SELECT COUNT(*) FROM business.wechat_articles WHERE vectorized = FALSE AND content IS NOT NULL")
-        return cur.fetchone()[0]
+        row = cur.fetchone()
+        return row['count'] if row else 0
 
 
 def insert_vectors(entities: List[Dict]):
@@ -212,19 +212,19 @@ def search_similar(query_vector: List[float], top_k: int = 5,
 
         results = []
         for row in cur.fetchall():
-            vec = np.array(json.loads(row[3]), dtype=np.float32)
+            vec = np.array(json.loads(row['vector']), dtype=np.float32)
             vec_norm = np.linalg.norm(vec)
             if vec_norm == 0:
                 continue
             vec = vec / vec_norm
             similarity = float(np.dot(query, vec))
             results.append({
-                "id": row[0],
-                "article_id": row[1],
-                "chunk_text": row[2],
-                "source": row[4],
-                "title": row[5],
-                "published": row[6],
+                "id": row['id'],
+                "article_id": row['article_id'],
+                "chunk_text": row['chunk_text'],
+                "source": row['source'],
+                "title": row['title'],
+                "published": row['published'],
                 "similarity": similarity,
             })
 

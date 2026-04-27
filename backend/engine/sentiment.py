@@ -310,7 +310,7 @@ class SentimentEngine:
             SELECT column_name FROM information_schema.columns
             WHERE table_schema = 'business' AND table_name = 'wechat_articles'
         """)
-        cols = [row[0] for row in cur.fetchall()]
+        cols = [row['column_name'] for row in cur.fetchall()]
         if "sentiment_score" not in cols:
             cur.execute("ALTER TABLE business.wechat_articles ADD COLUMN sentiment_score NUMERIC(8,4) DEFAULT 0")
         if "emotion_tag" not in cols:
@@ -345,13 +345,16 @@ class SentimentEngine:
             rows = cur.fetchall()
             count = 0
             for row in rows:
-                art_id, title, content = row
+                art_id = row['id']
+                title = row['title']
+                content = row['content']
                 res = self.analyze(title + " " + (content or "")[:500])
+                import json
                 cur.execute("""
                     UPDATE business.wechat_articles
                     SET sentiment_score = %s, emotion_tag = %s, asset_tags = %s, event_tags = %s
                     WHERE id = %s
-                """, (res.score, res.emotion, ",".join(res.asset_tags), ",".join(res.event_tags), art_id))
+                """, (res.score, res.emotion, ",".join(res.asset_tags), json.dumps(res.event_tags), art_id))
                 count += 1
 
             conn.commit()
@@ -415,9 +418,9 @@ class SentimentEngine:
             results = []
             for row in cur.fetchall():
                 results.append({
-                    "date": str(row[0]) if row[0] else None,
-                    "avg_score": round(row[1], 3) if row[1] else 0,
-                    "dominant_emotion": row[2],
+                    "date": str(row['dt']) if row['dt'] else None,
+                    "avg_score": round(row['avg_score'], 3) if row['avg_score'] else 0,
+                    "dominant_emotion": row['emotion_tag'],
                 })
         return results
 

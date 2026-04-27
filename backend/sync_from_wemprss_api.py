@@ -86,7 +86,8 @@ def get_local_last_sync():
     with get_conn() as conn:
             c = conn.cursor()
             c.execute("SELECT MAX(published) FROM business.wechat_articles")
-            result = c.fetchone()[0]
+            row = c.fetchone()
+            result = row['max'] if row else None
     return result or "1970-01-01T00:00:00"
 
 
@@ -95,7 +96,7 @@ def get_local_links():
     with get_conn() as conn:
             c = conn.cursor()
             c.execute("SELECT link FROM business.wechat_articles")
-            links = {row[0] for row in c.fetchall() if row[0]}
+            links = {row['link'] for row in c.fetchall() if row.get('link')}
     return links
 
 
@@ -123,7 +124,7 @@ def ensure_table():
                     link TEXT UNIQUE,
                     published TEXT,
                     content TEXT,
-                    vectorized INTEGER DEFAULT 0,
+                    vectorized BOOLEAN DEFAULT FALSE,
                     sentiment_score REAL,
                     emotion_tag TEXT,
                     event_tags TEXT,
@@ -231,7 +232,7 @@ def sync_articles(client, local_links, dry_run=False):
                         try:
                             c.execute("""
                                 INSERT INTO business.wechat_articles (source, title, link, published, content, vectorized)
-                                VALUES (%s, %s, %s, %s, %s, 0)
+                                VALUES (%s, %s, %s, %s, %s, FALSE)
                             """, (a['source'], a['title'], a['link'], a['published'], a['content']))
                             inserted += 1
                         except Exception:  # psycopg2.IntegrityError
