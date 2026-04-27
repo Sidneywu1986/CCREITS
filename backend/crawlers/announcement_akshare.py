@@ -6,12 +6,12 @@ AKShare REITs公告/新闻爬虫
 """
 
 import akshare as ak
-import sqlite3
 import re
 import sys
 import os
 from datetime import datetime
 from typing import List, Dict
+from core.db import get_conn
 
 # 添加数据库路径
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -144,38 +144,36 @@ def crawl_all_announcements(limit_per_stock: int = 5, max_stocks: int = 20) -> L
 
 
 def save_to_database(announcements: List[Dict]) -> int:
-    """保存公告到SQLite数据库"""
-    db_path = os.path.join(os.path.dirname(__file__), '..', 'database', 'reits.db')
+    """保存公告到PostgreSQL数据库"""
     
     inserted = 0
     try:
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
+        with get_conn() as conn:
+            cursor = conn.cursor()
+            
+            for ann in announcements:
+                try:
+                    cursor.execute('''
+                        INSERT INTO business.announcements 
+                        (fund_code, title, category, summary, publish_date, source_url, pdf_url, exchange, confidence)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        ON CONFLICT DO NOTHING
+                    ''', (
+                        ann['fund_code'],
+                        ann['title'],
+                        ann['category'],
+                        ann['summary'],
+                        ann['publish_date'],
+                        ann['source_url'],
+                        ann['pdf_url'],
+                        ann['exchange'],
+                        ann['confidence']
+                    ))
+                    if cursor.rowcount > 0:
+                        inserted += 1
+                except Exception as e:
+                    print(f"插入失败: {e}")
         
-        for ann in announcements:
-            try:
-                cursor.execute('''
-                    INSERT OR IGNORE INTO announcements 
-                    (fund_code, title, category, summary, publish_date, source_url, pdf_url, exchange, confidence)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ''', (
-                    ann['fund_code'],
-                    ann['title'],
-                    ann['category'],
-                    ann['summary'],
-                    ann['publish_date'],
-                    ann['source_url'],
-                    ann['pdf_url'],
-                    ann['exchange'],
-                    ann['confidence']
-                ))
-                if cursor.rowcount > 0:
-                    inserted += 1
-            except Exception as e:
-                print(f"插入失败: {e}")
-        
-        conn.commit()
-        conn.close()
         print(f"保存到数据库: {inserted} 条新公告")
         return inserted
         

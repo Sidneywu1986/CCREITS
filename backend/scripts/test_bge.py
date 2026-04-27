@@ -1,33 +1,37 @@
 #!/usr/bin/env python3
 """
 BGE-M3 编码测试 — Day 1
-从 SQLite 取 10 篇文章，测试编码速度和向量质量
+从 PostgreSQL 取 10 篇文章，测试编码速度和向量质量
 """
 
 import os
 import sys
 import time
 import logging
-import sqlite3
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
+from core.db import get_conn
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("test_bge")
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "..", "database", "reits.db")
-
 
 def fetch_sample_articles(limit: int = 10) -> list:
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT id, title, content FROM wechat_articles WHERE content IS NOT NULL AND length(content) > 100 ORDER BY id LIMIT ?",
-        (limit,),
-    )
-    rows = [dict(r) for r in cur.fetchall()]
-    conn.close()
+    with get_conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT id, title, content 
+            FROM business.wechat_articles 
+            WHERE content IS NOT NULL AND LENGTH(content) > 100 
+            ORDER BY id 
+            LIMIT %s
+            """,
+            (limit,),
+        )
+        cols = [d[0] for d in cur.description]
+        rows = [dict(zip(cols, row)) for row in cur.fetchall()]
     return rows
 
 
@@ -37,7 +41,7 @@ def main():
     logger.info("=" * 60)
 
     articles = fetch_sample_articles(limit=10)
-    logger.info(f"Fetched {len(articles)} articles from SQLite")
+    logger.info(f"Fetched {len(articles)} articles from PostgreSQL")
 
     # 构造 chunks（复用现有切分逻辑）
     from scripts.vectorize_articles import split_text

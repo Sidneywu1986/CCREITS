@@ -8,7 +8,6 @@
 """
 
 import requests
-import sqlite3
 import re
 import os
 import datetime
@@ -16,8 +15,7 @@ import time
 from typing import List, Dict, Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-# 数据库路径
-DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'database', 'reits.db')
+from core.db import get_conn
 
 # REITs基金代码列表
 REITS_CODES = [
@@ -79,16 +77,15 @@ def _get_fund_info_map():
     """从数据库获取基金信息映射"""
     fund_map = {}
     try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute("SELECT fund_code, fund_name, manager, custodian FROM funds")
-        for row in cursor.fetchall():
-            fund_map[row[0]] = {
-                'fund_name': row[1] or '',
-                'manager': row[2] or '',
-                'custodian': row[3] or ''
-            }
-        conn.close()
+        with get_conn() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT fund_code, fund_name, manager, custodian FROM business.funds")
+            for row in cursor.fetchall():
+                fund_map[row[0]] = {
+                    'fund_name': row[1] or '',
+                    'manager': row[2] or '',
+                    'custodian': row[3] or ''
+                }
     except Exception as e:
         print(f"获取基金信息失败: {e}")
     return fund_map
@@ -291,25 +288,24 @@ def merge_announcements(primary: List[Dict], secondary: List[Dict]) -> List[Dict
 def get_cached_announcements(limit: int = 100) -> List[Dict]:
     """获取数据库缓存的公告"""
     try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
+        with get_conn() as conn:
+            cursor = conn.cursor()
 
-        cursor.execute("""
-            SELECT a.id, a.fund_code, a.fund_name, a.title, a.category, a.publish_date,
-                   a.source_url, a.pdf_url, a.exchange, a.confidence, a.source, a.created_at,
-                   a.manager, a.publisher,
-                   f.ipo_date, f.total_shares,
-                   (SELECT open_price FROM fund_prices WHERE fund_code = a.fund_code ORDER BY trade_date ASC LIMIT 1) as first_open_price,
-                   (SELECT close_price FROM fund_prices WHERE fund_code = a.fund_code ORDER BY trade_date DESC LIMIT 1) as latest_price,
-                   a.status, a.status_changed_at, a.is_suspicious
-            FROM announcements a
-            LEFT JOIN funds f ON a.fund_code = f.fund_code
-            ORDER BY a.publish_date DESC
-            LIMIT ?
-        """, (limit,))
+            cursor.execute("""
+                SELECT a.id, a.fund_code, a.fund_name, a.title, a.category, a.publish_date,
+                       a.source_url, a.pdf_url, a.exchange, a.confidence, a.source, a.created_at,
+                       a.manager, a.publisher,
+                       f.ipo_date, f.total_shares,
+                       (SELECT open_price FROM business.fund_prices WHERE fund_code = a.fund_code ORDER BY trade_date ASC LIMIT 1) as first_open_price,
+                       (SELECT close_price FROM business.fund_prices WHERE fund_code = a.fund_code ORDER BY trade_date DESC LIMIT 1) as latest_price,
+                       a.status, a.status_changed_at, a.is_suspicious
+                FROM business.announcements a
+                LEFT JOIN business.funds f ON a.fund_code = f.fund_code
+                ORDER BY a.publish_date DESC
+                LIMIT %s
+            """, (limit,))
 
-        rows = cursor.fetchall()
-        conn.close()
+            rows = cursor.fetchall()
 
         announcements = []
         for row in rows:
@@ -361,37 +357,37 @@ def save_announcements_to_db(announcements: List[Dict]) -> int:
         return 0
 
     try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
+        with get_conn() as conn:
+            cursor = conn.cursor()
 
-        inserted = 0
-        for ann in announcements:
-            try:
-                cursor.execute("""
-                    INSERT OR REPLACE INTO announcements
-                    (fund_code, fund_name, title, category, source, source_url, pdf_url, exchange, confidence, publish_date, is_processed, is_important, manager, publisher)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?)
-                """, (
-                    ann['fund_code'],
-                    ann.get('fund_name', ''),
-                    ann['title'],
-                    ann['category'],
-                    ann.get('source', 'cninfo'),
-                    ann['source_url'],
-                    ann['pdf_url'],
-                    ann['exchange'],
-                    int(ann.get('confidence', 0.9) * 100),
-                    ann['publish_date'],
-                    ann.get('manager', ''),
-                    ann.get('publisher', '')
-                ))
-                if cursor.rowcount > 0:
-                    inserted += 1
-            except Exception as e:
-                pass
+            inserted = 0
+            for ann in announcements:
+                try:
+                    cursor.execute("""
+                        INSERT INTO business.announcements
+                        (fund_code, fund_name, title, category, source, source_url, pdf_url, exchange, confidence, publish_date, is_processed, is_important, manager, publisher)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, FALSE, FALSE, %s, %s)
+                        ON CONFLICT DO NOTHING
+                    """, (
+                        ann['fund_code'],
+                        ann.get('fund_name', ''),
+                        ann['title'],
+                        ann['category'],
+                        ann.get('source', 'cninfo'),
+                        ann['source_url'],
+                        ann['pdf_url'],
+                        ann['exchange'],
+                        int(ann.get('confidence', 0.9) * 100),
+                        ann['publish_date'],
+                        ann.get('manager', ''),
+                        ann.get('publisher', '')
+                    ))
+                    if cursor.rowcount > 0:
+                        inserted += 1
+                except Exception as e:
+                    pass
 
-        conn.commit()
-        conn.close()
+            conn.commit()
         print(f"[公告服务] 保存 {inserted} 条新公告到数据库")
         return inserted
     except Exception as e:
@@ -404,21 +400,20 @@ def save_announcements_to_db(announcements: List[Dict]) -> int:
 def get_announcements_by_fund(code: str, limit: int = 20) -> List[Dict]:
     """获取指定基金的公告"""
     try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
+        with get_conn() as conn:
+            cursor = conn.cursor()
 
-        cursor.execute("""
-            SELECT id, fund_code, fund_name, title, category, publish_date,
-                   source_url, pdf_url, exchange, confidence, source,
-                   manager, publisher, status, status_changed_at, is_suspicious
-            FROM announcements
-            WHERE fund_code = ?
-            ORDER BY publish_date DESC
-            LIMIT ?
-        """, (code, limit))
+            cursor.execute("""
+                SELECT id, fund_code, fund_name, title, category, publish_date,
+                       source_url, pdf_url, exchange, confidence, source,
+                       manager, publisher, status, status_changed_at, is_suspicious
+                FROM business.announcements
+                WHERE fund_code = %s
+                ORDER BY publish_date DESC
+                LIMIT %s
+            """, (code, limit))
 
-        rows = cursor.fetchall()
-        conn.close()
+            rows = cursor.fetchall()
 
         return [{
             'id': row[0],
@@ -446,21 +441,20 @@ def get_announcements_by_fund(code: str, limit: int = 20) -> List[Dict]:
 def get_announcements_by_category(category: str, limit: int = 50) -> List[Dict]:
     """按分类获取公告"""
     try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
+        with get_conn() as conn:
+            cursor = conn.cursor()
 
-        cursor.execute("""
-            SELECT id, fund_code, fund_name, title, category, publish_date,
-                   source_url, pdf_url, exchange, confidence, source,
-                   manager, publisher, status, status_changed_at, is_suspicious
-            FROM announcements
-            WHERE category = ?
-            ORDER BY publish_date DESC
-            LIMIT ?
-        """, (category, limit))
+            cursor.execute("""
+                SELECT id, fund_code, fund_name, title, category, publish_date,
+                       source_url, pdf_url, exchange, confidence, source,
+                       manager, publisher, status, status_changed_at, is_suspicious
+                FROM business.announcements
+                WHERE category = %s
+                ORDER BY publish_date DESC
+                LIMIT %s
+            """, (category, limit))
 
-        rows = cursor.fetchall()
-        conn.close()
+            rows = cursor.fetchall()
 
         return [{
             'id': row[0],
@@ -488,11 +482,10 @@ def get_announcements_by_category(category: str, limit: int = 50) -> List[Dict]:
 def mark_as_read(announcement_id: int) -> bool:
     """标记公告已读"""
     try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute("UPDATE announcements SET is_important = 1 WHERE id = ?", (announcement_id,))
-        conn.commit()
-        conn.close()
+        with get_conn() as conn:
+            cursor = conn.cursor()
+            cursor.execute("UPDATE business.announcements SET is_important = TRUE WHERE id = %s", (announcement_id,))
+            conn.commit()
         return True
     except Exception as e:
         print(f"标记已读失败: {e}")

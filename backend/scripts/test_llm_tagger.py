@@ -8,26 +8,30 @@ import os
 import sys
 import time
 import logging
-import sqlite3
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
+from core.db import get_conn
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("test_llm_tagger")
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "..", "database", "reits.db")
-
 
 def fetch_sample_articles(limit: int = 3) -> list:
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT id, title, published, content FROM wechat_articles WHERE content IS NOT NULL AND length(content) > 200 ORDER BY id LIMIT ?",
-        (limit,),
-    )
-    rows = [dict(r) for r in cur.fetchall()]
-    conn.close()
+    with get_conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT id, title, published, content 
+            FROM business.wechat_articles 
+            WHERE content IS NOT NULL AND LENGTH(content) > 200 
+            ORDER BY id 
+            LIMIT %s
+            """,
+            (limit,),
+        )
+        cols = [d[0] for d in cur.description]
+        rows = [dict(zip(cols, row)) for row in cur.fetchall()]
     return rows
 
 
@@ -43,7 +47,6 @@ def main():
 
     engine = LLMTagEngine()
     total_time = 0
-    total_tokens = 0
 
     for i, art in enumerate(articles):
         logger.info(f"\n--- Article {i+1}/{len(articles)}: id={art['id']} ---")

@@ -24,10 +24,19 @@ class Settings:
     HOST = os.getenv("HOST", "0.0.0.0")
     PORT = int(os.getenv("PORT", 5074))
     
-    # 数据库
+    # 数据库 (PostgreSQL 为默认，兼容 SQLite 回退)
     DATABASE_URL = os.getenv(
-        "DATABASE_URL", 
-        f"sqlite:///{BASE_DIR}/database/reits.db"
+        "DATABASE_URL",
+        "postgresql://postgres:postgres@localhost:5432/reits"
+    )
+    
+    # 数据库类型标识: postgres | sqlite
+    DB_TYPE = os.getenv("DB_TYPE", "postgres").lower()
+    
+    # SQLite 兼容路径（降级时用）
+    SQLITE_PATH = os.getenv(
+        "SQLITE_PATH",
+        str(BASE_DIR / "database" / "reits.db")
     )
     
     # JWT
@@ -53,17 +62,17 @@ class Settings:
     # 爬虫
     CRAWLER_ENABLED = os.getenv("CRAWLER_ENABLED", "true").lower() == "true"
 
-    # AI PostgreSQL数据库
+    # AI PostgreSQL数据库（v3.0 起与主业务库共用同一实例，通过 schema 隔离）
     AI_DB_CONFIG = {
         "connections": {
             "default": {
                 "engine": "tortoise.backends.asyncpg",
                 "credentials": {
-                    "host": os.getenv("AI_DB_HOST", "localhost"),
-                    "port": int(os.getenv("AI_DB_PORT", 5432)),
-                    "user": os.getenv("AI_DB_USER", "postgres"),
-                    "password": os.getenv("AI_DB_PASSWORD", "postgres"),
-                    "database": os.getenv("AI_DB_NAME", "ai_db"),
+                    "host": os.getenv("PG_HOST", "localhost"),
+                    "port": int(os.getenv("PG_PORT", 5432)),
+                    "user": os.getenv("PG_USER", "postgres"),
+                    "password": os.getenv("PG_PASSWORD", "postgres"),
+                    "database": os.getenv("PG_DATABASE", "reits"),
                 }
             }
         },
@@ -74,6 +83,15 @@ class Settings:
             }
         }
     }
+    
+    # 统一 PostgreSQL 配置（用于 sync psycopg2 / async asyncpg）
+    PG_CONFIG = {
+        "host": os.getenv("PG_HOST", "localhost"),
+        "port": int(os.getenv("PG_PORT", 5432)),
+        "user": os.getenv("PG_USER", "postgres"),
+        "password": os.getenv("PG_PASSWORD", "postgres"),
+        "database": os.getenv("PG_DATABASE", "reits"),
+    }
 
     # Milvus向量数据库配置
     MILVUS_CONFIG = {
@@ -83,12 +101,13 @@ class Settings:
         "password": os.getenv("MILVUS_PASSWORD", ""),
     }
 
-    # Embedding配置（国产API）
+    # Embedding配置（BGE-M3 默认）
     EMBEDDING_CONFIG = {
-        "provider": os.getenv("EMBEDDING_PROVIDER", "zhipu"),
+        "provider": os.getenv("EMBEDDING_PROVIDER", "local"),
         "api_key": os.getenv("EMBEDDING_API_KEY", ""),
-        "model": os.getenv("EMBEDDING_MODEL", "embedding-3"),
-        "batch_size": int(os.getenv("EMBEDDING_BATCH_SIZE", 100)),
+        "model": os.getenv("EMBEDDING_MODEL", "BAAI/bge-m3"),
+        "batch_size": int(os.getenv("EMBEDDING_BATCH_SIZE", 32)),
+        "dimension": int(os.getenv("EMBEDDING_DIMENSION", 1024)),
     }
 
     # LLM配置（分层模型）

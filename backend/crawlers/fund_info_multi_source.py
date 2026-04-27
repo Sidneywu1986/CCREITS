@@ -5,13 +5,11 @@ REIT基础信息多源爬虫
 """
 
 import requests
-import sqlite3
 import re
 import time
 import os
 from datetime import datetime
-
-DB_PATH = os.path.join(os.path.dirname(__file__), '..', 'database', 'reits.db')
+from core.db import get_conn
 
 # REIT基础信息（手动整理的准确数据，网上到处都是）
 REIT_BASE_INFO = {
@@ -116,39 +114,36 @@ def calculate_remaining_years(listing_date, total_years):
 
 def update_database():
     """使用准备好的数据更新数据库"""
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    
-    success = 0
-    print('开始更新数据库...\n')
-    
-    for code, info in REIT_BASE_INFO.items():
-        try:
-            listing_date = info['listing_date']
-            total_years = info['total_years']
-            remaining = calculate_remaining_years(listing_date, total_years)
-            full_name = info['full_name']
-            
-            # 更新数据库
-            cursor.execute('''
-                UPDATE funds 
-                SET listing_date = ?, 
-                    remaining_years = ?,
-                    updated_at = ?
-                WHERE code = ?
-            ''', (listing_date, remaining, datetime.now().strftime('%Y-%m-%d %H:%M:%S'), code))
-            
-            if cursor.rowcount > 0:
-                print(f'{code}: 成立{listing_date}, 剩余{remaining}')
-                success += 1
-            else:
-                print(f'{code}: 未找到记录')
+    with get_conn() as conn:
+        cursor = conn.cursor()
+        
+        success = 0
+        print('开始更新数据库...\n')
+        
+        for code, info in REIT_BASE_INFO.items():
+            try:
+                listing_date = info['listing_date']
+                total_years = info['total_years']
+                remaining = calculate_remaining_years(listing_date, total_years)
+                full_name = info['full_name']
                 
-        except Exception as e:
-            print(f'{code}: 更新失败 - {e}')
-    
-    conn.commit()
-    conn.close()
+                # 更新数据库
+                cursor.execute('''
+                    UPDATE business.funds 
+                    SET listing_date = %s, 
+                        remaining_years = %s,
+                        updated_at = %s
+                    WHERE code = %s
+                ''', (listing_date, remaining, datetime.now().strftime('%Y-%m-%d %H:%M:%S'), code))
+                
+                if cursor.rowcount > 0:
+                    print(f'{code}: 成立{listing_date}, 剩余{remaining}')
+                    success += 1
+                else:
+                    print(f'{code}: 未找到记录')
+                    
+            except Exception as e:
+                print(f'{code}: 更新失败 - {e}')
     
     print(f'\n完成: 成功更新 {success}/{len(REIT_BASE_INFO)} 只REIT')
     return success
@@ -156,22 +151,20 @@ def update_database():
 
 def verify_data():
     """验证数据库数据"""
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    
-    print('\n=== 数据验证 ===')
-    cursor.execute('SELECT COUNT(*) FROM funds WHERE listing_date IS NOT NULL')
-    print(f'有成立日期的REIT: {cursor.fetchone()[0]}/81')
-    
-    cursor.execute('SELECT COUNT(*) FROM funds WHERE remaining_years IS NOT NULL')
-    print(f'有剩余期限的REIT: {cursor.fetchone()[0]}/81')
-    
-    print('\n=== 数据样例 ===')
-    cursor.execute('SELECT code, name, listing_date, remaining_years FROM funds LIMIT 5')
-    for row in cursor.fetchall():
-        print(f'{row[0]} {row[1][:10]}... 成立:{row[2]} 剩余:{row[3]}')
-    
-    conn.close()
+    with get_conn() as conn:
+        cursor = conn.cursor()
+        
+        print('\n=== 数据验证 ===')
+        cursor.execute('SELECT COUNT(*) FROM business.funds WHERE listing_date IS NOT NULL')
+        print(f'有成立日期的REIT: {cursor.fetchone()[0]}/81')
+        
+        cursor.execute('SELECT COUNT(*) FROM business.funds WHERE remaining_years IS NOT NULL')
+        print(f'有剩余期限的REIT: {cursor.fetchone()[0]}/81')
+        
+        print('\n=== 数据样例 ===')
+        cursor.execute('SELECT code, name, listing_date, remaining_years FROM business.funds LIMIT 5')
+        for row in cursor.fetchall():
+            print(f'{row[0]} {row[1][:10]}... 成立:{row[2]} 剩余:{row[3]}')
 
 
 if __name__ == '__main__':

@@ -49,17 +49,17 @@ async function getAnnouncementsFromDB(limit = 100, days = 30) {
         let sql = `
             SELECT 
                 a.*,
-                f.name as fund_name,
+                f.fund_name as fund_name,
                 f.sector_name
-            FROM announcements a
-            LEFT JOIN funds f ON a.fund_code = f.code
+            FROM business.announcements a
+            LEFT JOIN business.funds f ON a.fund_code = f.fund_code
             WHERE 1=1
         `;
         
         const params = [];
         
         if (days > 0) {
-            sql += ` AND a.publish_date >= date('now', '-${days} days')`;
+            sql += ` AND a.publish_date >= CURRENT_DATE - INTERVAL '${days} days'`;
         }
         
         sql += ` ORDER BY a.publish_date DESC, a.id DESC LIMIT ?`;

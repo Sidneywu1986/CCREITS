@@ -4,7 +4,7 @@ Base scheduler with retry, exponential backoff, error logging, and alert logic
 import asyncio
 import logging
 from abc import ABC, abstractmethod
-from backend.ai_db.models import CrawlErrorLog
+from ai_db.models import CrawlErrorLog
 
 logger = logging.getLogger(__name__)
 

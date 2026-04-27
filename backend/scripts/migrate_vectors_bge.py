@@ -8,15 +8,14 @@ import os
 import sys
 import logging
 import time
-import sqlite3
-from datetime import datetime
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
+from core.db import get_conn
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("migrate_bge")
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "..", "database", "reits.db")
 BATCH_SIZE = 32  # BGE-M3 batch size
 CHUNK_SIZE = 512
 OVERLAP = 64
@@ -26,13 +25,19 @@ NEW_COLLECTION = "reit_wechat_articles_bge"
 OLD_COLLECTION = "reit_wechat_articles"
 
 
-def fetch_all_articles(conn: sqlite3.Connection):
-    conn.row_factory = sqlite3.Row
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT id, source, title, link, published, content FROM wechat_articles WHERE content IS NOT NULL AND length(content) > 50 ORDER BY id"
-    )
-    return [dict(r) for r in cur.fetchall()]
+def fetch_all_articles():
+    with get_conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT id, source, title, link, published, content 
+            FROM business.wechat_articles 
+            WHERE content IS NOT NULL AND LENGTH(content) > 50 
+            ORDER BY id
+            """
+        )
+        cols = [d[0] for d in cur.description]
+        return [dict(zip(cols, row)) for row in cur.fetchall()]
 
 
 def split_text(text: str, chunk_size: int = CHUNK_SIZE, overlap: int = OVERLAP) -> list:
@@ -80,7 +85,7 @@ def migrate():
     # 1. 连接 Milvus
     from vector.milvus_client import MilvusClient
 
-    mc = MilvusClient(uri="http://localhost:19530", collection=OLD_COLLECTION)
+    mc = MilvusClient(uri="./milvus_reits.db", collection=OLD_COLLECTION)
     if not mc.connect():
         logger.error("Failed to connect Milvus")
         return
@@ -94,9 +99,7 @@ def migrate():
     embedder = get_embedder()
 
     # 3. 读取所有文章
-    conn = sqlite3.connect(DB_PATH)
-    articles = fetch_all_articles(conn)
-    conn.close()
+    articles = fetch_all_articles()
     logger.info(f"Total articles: {len(articles)}")
 
     # 4. 分批处理

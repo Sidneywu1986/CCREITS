@@ -21,7 +21,7 @@ class MilvusClient:
         self.uri = uri
         self.collection_name = collection
         self._client = None
-        self._dim = int(os.environ.get("EMBEDDING_DIMENSION", "1536"))
+        self._dim = int(os.environ.get("EMBEDDING_DIMENSION", "1024"))
 
     def connect(self) -> bool:
         """Connect to Milvus (Lite or Server)"""

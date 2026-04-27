@@ -33,31 +33,54 @@ class BGEEmbedder:
         self.max_length = 8192
         self._load_model()
 
+    def _resolve_model_path(self) -> str:
+        """Resolve the actual model path, checking local caches first."""
+        # 1. Check ModelScope cache (China-friendly mirror)
+        modelscope_path = os.path.expanduser("~/.cache/modelscope/hub/BAAI/bge-m3")
+        modelscope_weights = os.path.join(modelscope_path, "pytorch_model.bin")
+        if os.path.exists(modelscope_weights):
+            logger.info(f"Using ModelScope cached model at {modelscope_path}")
+            return modelscope_path
+
+        # 2. Check HuggingFace local cache
+        try:
+            from huggingface_hub import snapshot_download
+            local_path = snapshot_download(
+                repo_id=self.MODEL_NAME,
+                cache_dir=self.cache_dir,
+                local_files_only=True,
+            )
+            logger.info(f"Using HuggingFace cached model at {local_path}")
+            return local_path
+        except Exception:
+            pass
+
+        # 3. Try online download via ModelScope first, then HF
+        try:
+            from modelscope import snapshot_download as ms_snapshot_download
+            logger.info("Downloading model via ModelScope...")
+            modelscope_path = ms_snapshot_download("BAAI/bge-m3", cache_dir=os.path.expanduser("~/.cache/modelscope/hub"))
+            logger.info(f"Model downloaded to {modelscope_path}")
+            return modelscope_path
+        except Exception as e:
+            logger.warning(f"ModelScope download failed: {e}")
+
+        # 4. Fallback to HuggingFace online (with mirror)
+        logger.info("Downloading model via HuggingFace...")
+        return self.MODEL_NAME
+
     def _load_model(self):
         logger.info(f"Loading BGE-M3 on {self.device} (cache: {self.cache_dir or 'default'})...")
         t0 = time.time()
+        
+        model_path = self._resolve_model_path()
+        
         kwargs = {"trust_remote_code": True}
         if self.cache_dir:
             kwargs["cache_dir"] = self.cache_dir
 
-        # 强制使用 hf-mirror 加速中国下载
-        try:
-            from huggingface_hub import snapshot_download
-            mirror = os.environ.get("HF_ENDPOINT", "https://hf-mirror.com")
-            logger.info(f"Downloading model via {mirror} ...")
-            local_path = snapshot_download(
-                repo_id=self.MODEL_NAME,
-                cache_dir=self.cache_dir,
-                local_files_only=False,
-                endpoint=mirror,
-            )
-            logger.info(f"Model cached at {local_path}")
-            kwargs["pretrained_model_name_or_path"] = local_path
-        except Exception as e:
-            logger.warning(f"Snapshot download failed ({e}), falling back to direct download")
-
-        self._tokenizer = AutoTokenizer.from_pretrained(self.MODEL_NAME, **kwargs)
-        self._model = AutoModel.from_pretrained(self.MODEL_NAME, **kwargs).to(self.device)
+        self._tokenizer = AutoTokenizer.from_pretrained(model_path, **kwargs)
+        self._model = AutoModel.from_pretrained(model_path, **kwargs).to(self.device)
         self._model.eval()
         elapsed = time.time() - t0
         logger.info(f"BGE-M3 loaded in {elapsed:.1f}s, dim={self.DIM}")

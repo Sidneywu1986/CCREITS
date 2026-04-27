@@ -25,13 +25,8 @@ def run_sync_pipeline():
     except Exception as e:
         logger.error(f"[Scheduler] Article sync failed: {e}")
 
-    # 2. 基金标签匹配
-    try:
-        from migrate_fund_tags import main as tag_main
-        tag_main()
-        logger.info("[Scheduler] Fund tags updated")
-    except Exception as e:
-        logger.error(f"[Scheduler] Fund tags failed: {e}")
+    # 2. 基金标签匹配（TODO: 需要实现 migrate_fund_tags 脚本）
+    logger.info("[Scheduler] Fund tag migration skipped (script not implemented)")
 
     # 3. LLM 增量标签（新文章自动打 asset/event 标签）
     try:
@@ -42,13 +37,13 @@ def run_sync_pipeline():
     except Exception as e:
         logger.error(f"[Scheduler] LLM tagging failed: {e}")
 
-    # 4. 向量导入（TF-IDF 旧版，BGE-M3 切换后替换为 migrate_vectors_bge）
+    # 4. 向量导入（BGE-M3 → Milvus）
     try:
-        from migrate_vectors_to_milvus import main as vec_main
+        from scripts.migrate_vectors_bge import migrate as vec_main
         vec_main()
-        logger.info("[Scheduler] Vector import completed")
+        logger.info("[Scheduler] BGE-M3 vector import completed")
     except Exception as e:
-        logger.error(f"[Scheduler] Vector import failed: {e}")
+        logger.error(f"[Scheduler] BGE-M3 vector import failed: {e}")
 
     logger.info("[Scheduler] Sync pipeline finished")
 

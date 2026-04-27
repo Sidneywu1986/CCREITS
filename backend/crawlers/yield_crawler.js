@@ -48,7 +48,7 @@ class YieldCrawler {
 
     async getFundCodes() {
         return new Promise((resolve, reject) => {
-            db.all("SELECT fund_code FROM funds WHERE status = 'active'", [], (err, rows) => {
+            db.all("SELECT fund_code FROM business.funds WHERE status = 'active'", [], (err, rows) => {
                 if (err) reject(err);
                 else resolve(rows.map(r => r.fund_code));
             });
@@ -101,7 +101,7 @@ class YieldCrawler {
     async saveToDatabase(fundCode, yieldVal) {
         return new Promise((resolve, reject) => {
             db.run(
-                "UPDATE funds SET dividend_yield = ? WHERE fund_code = ?",
+                "UPDATE business.funds SET dividend_yield = ? WHERE fund_code = ?",
                 [yieldVal, fundCode],
                 function(err) {
                     if (err) reject(err);

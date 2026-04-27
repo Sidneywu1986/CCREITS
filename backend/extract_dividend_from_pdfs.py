@@ -5,10 +5,10 @@
 
 import os
 import re
-import sqlite3
 import json
 from collections import defaultdict
 from datetime import datetime
+from core.db import get_conn
 
 def extract_dividend_from_pdf(pdf_path):
     """从单个PDF中提取分红金额"""
@@ -155,11 +155,10 @@ if __name__ == '__main__':
     print(f"找到 {len(fund_dividends)} 只基金的分红公告")
     
     # 获取本地数据库数据
-    conn = sqlite3.connect('database/reits.db')
-    cursor = conn.cursor()
-    cursor.execute('SELECT fund_code, fund_name, nav, dividend_yield FROM funds')
-    local_data = {r[0]: {'name': r[1], 'nav': r[2], 'dividend_yield': r[3]} for r in cursor.fetchall()}
-    conn.close()
+    with get_conn() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT fund_code, fund_name, nav, dividend_yield FROM business.funds')
+            local_data = {r[0]: {'name': r[1], 'nav': r[2], 'dividend_yield': r[3]} for r in cursor.fetchall()}
     
     # 获取实时价格
     import sys

@@ -222,16 +222,15 @@ class CentralProcessor {
                 : null;
             
             db.run(
-                `INSERT INTO quotes 
-                (fund_code, price, open, high, low, prev_close, change_percent, volume, premium, yield, market_cap)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                `INSERT INTO business.quotes 
+                (fund_code, price, open_price, high_price, low_price, change_percent, volume, premium, yield, market_cap)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 [
                     fund.fund_code,
                     fund.price || null,
                     fund.open || null,
                     fund.high || null,
                     fund.low || null,
-                    fund.close || fund.prev_close || null,
                     fund.change_percent || null,
                     fund.volume || null,
                     premium,
@@ -253,12 +252,12 @@ class CentralProcessor {
         return new Promise((resolve, reject) => {
             // 使用 COALESCE 保留已有值
             db.run(
-                `UPDATE funds 
-                SET name = COALESCE(?, name),
+                `UPDATE business.funds 
+                SET fund_name = COALESCE(?, fund_name),
                     nav = COALESCE(?, nav),
                     debt_ratio = COALESCE(?, debt_ratio),
-                    updated_at = datetime('now')
-                WHERE code = ?`,
+                    updated_at = NOW()
+                WHERE fund_code = ?`,
                 [fund.name, fund.nav, fund.debt_ratio, fund.fund_code],
                 (err) => {
                     if (err) reject(err);
@@ -276,9 +275,13 @@ class CentralProcessor {
         
         return new Promise((resolve, reject) => {
             db.run(
-                `INSERT OR REPLACE INTO price_history 
-                (fund_code, date, open, close, high, low, volume)
-                VALUES (?, date('now'), ?, ?, ?, ?, ?)`,
+                `INSERT INTO business.price_history 
+                (fund_code, trade_date, open_price, close_price, high_price, low_price, volume)
+                VALUES (?, CURRENT_DATE, ?, ?, ?, ?, ?)
+                ON CONFLICT (fund_code, trade_date) DO UPDATE SET
+                open_price = EXCLUDED.open_price, close_price = EXCLUDED.close_price,
+                high_price = EXCLUDED.high_price, low_price = EXCLUDED.low_price,
+                volume = EXCLUDED.volume`,
                 [
                     fund.fund_code,
                     fund.open || fund.price,

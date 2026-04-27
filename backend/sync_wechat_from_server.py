@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
 """
-开机自动同步脚本：从服务器 wemprss PostgreSQL 增量同步文章到本地 reits.db
+开机自动同步脚本：从服务器 wemprss PostgreSQL 增量同步文章到本地 PostgreSQL
 用法：直接运行，或放入 Windows 开机启动项
 """
 import os
 import sys
-import sqlite3
 import paramiko
 import subprocess
 import re
 from datetime import datetime
+from core.db import get_conn
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DB_PATH = os.path.join(BASE_DIR, 'backend', 'database', 'reits.db')
 
 SERVER_HOST = '43.134.236.80'
 SERVER_USER = 'ubuntu'
@@ -22,13 +21,10 @@ SERVER_SUDO_PASS = '1032.com'
 
 def get_local_last_sync():
     """获取本地最新同步时间"""
-    if not os.path.exists(DB_PATH):
-        return "1970-01-01T00:00:00"
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute("SELECT MAX(published) FROM wechat_articles")
-    result = c.fetchone()[0]
-    conn.close()
+    with get_conn() as conn:
+            c = conn.cursor()
+            c.execute("SELECT MAX(published) FROM business.wechat_articles")
+            result = c.fetchone()[0]
     return result or "1970-01-01T00:00:00"
 
 
@@ -102,55 +98,53 @@ def fetch_new_articles(last_sync_iso):
 
 
 def sync_to_local(articles):
-    """写入本地 SQLite"""
+    """写入本地 PostgreSQL"""
     if not articles:
         return 0
 
-    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS wechat_articles (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            source TEXT,
-            title TEXT,
-            link TEXT UNIQUE,
-            published TEXT,
-            content TEXT,
-            vectorized INTEGER DEFAULT 0,
-            sentiment_score REAL,
-            emotion_tag TEXT,
-            event_tags TEXT,
-            vector BLOB
-        )
-    """)
-    conn.commit()
-
-    inserted = 0
-    skipped = 0
-    for a in articles:
-        c.execute("SELECT 1 FROM wechat_articles WHERE link = ?", (a['url'],))
-        if c.fetchone():
-            skipped += 1
-            continue
-
-        content = a['content'] if a['content'] else clean_html(a['content_html'])
-        if len(content) < 50:
-            skipped += 1
-            continue
-
-        pub_dt = datetime.fromtimestamp(a['publish_time'])
-        pub_iso = pub_dt.strftime('%Y-%m-%dT%H:%M:%S')
-
-        c.execute("""
-            INSERT INTO wechat_articles (source, title, link, published, content, vectorized)
-            VALUES (?, ?, ?, ?, ?, 0)
-        """, (a['source'], a['title'], a['url'], pub_iso, content))
-        inserted += 1
-
-    conn.commit()
-    conn.close()
+    with get_conn() as conn:
+            c = conn.cursor()
+        
+            c.execute("""
+                CREATE TABLE IF NOT EXISTS business.wechat_articles (
+                    id SERIAL PRIMARY KEY,
+                    source TEXT,
+                    title TEXT,
+                    link TEXT UNIQUE,
+                    published TEXT,
+                    content TEXT,
+                    vectorized INTEGER DEFAULT 0,
+                    sentiment_score REAL,
+                    emotion_tag TEXT,
+                    event_tags TEXT,
+                    vector BYTEA
+                )
+            """)
+            conn.commit()
+        
+            inserted = 0
+            skipped = 0
+            for a in articles:
+                c.execute("SELECT 1 FROM business.wechat_articles WHERE link = %s", (a['url'],))
+                if c.fetchone():
+                    skipped += 1
+                    continue
+        
+                content = a['content'] if a['content'] else clean_html(a['content_html'])
+                if len(content) < 50:
+                    skipped += 1
+                    continue
+        
+                pub_dt = datetime.fromtimestamp(a['publish_time'])
+                pub_iso = pub_dt.strftime('%Y-%m-%dT%H:%M:%S')
+        
+                c.execute("""
+                    INSERT INTO business.wechat_articles (source, title, link, published, content, vectorized)
+                    VALUES (%s, %s, %s, %s, %s, 0)
+                """, (a['source'], a['title'], a['url'], pub_iso, content))
+                inserted += 1
+        
+            conn.commit()
     print(f"[Sync] Inserted {inserted}, skipped {skipped}")
     return inserted
 

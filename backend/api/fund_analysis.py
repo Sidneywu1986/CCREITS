@@ -10,7 +10,6 @@ from typing import Optional, List, Dict
 import logging
 import re
 import json
-import sqlite3
 import os
 from pathlib import Path
 
@@ -18,11 +17,10 @@ from api.search import search_articles_for_rag
 from engine.sentiment import get_sentiment_engine
 from agents.persona_router import get_persona_router
 from core.config import settings
+from core.db import get_conn
 
 router = APIRouter(prefix="/api/ai", tags=["AI投研分析"])
 logger = logging.getLogger(__name__)
-
-DB_PATH = Path(__file__).resolve().parent.parent / 'database' / 'reits.db'
 
 
 class FundAnalysisRequest(BaseModel):
@@ -43,60 +41,58 @@ class FundAnalysisResponse(BaseModel):
 
 # ---------- 数据层 ----------
 
-def _get_db() -> sqlite3.Connection:
-    conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    return conn
-
-
 def _get_fund_profiles(codes: List[str]) -> List[dict]:
     """获取基金完整画像"""
-    conn = _get_db()
     profiles = []
-    for code in codes:
-        # 基本信息
-        row = conn.execute(
-            """SELECT fund_code, fund_name, full_name, exchange, sector, sector_name,
-                      scale, market_cap, nav, dividend_yield, debt_ratio, premium_rate,
-                      manager, property_type, remaining_years, listing_date
-               FROM funds WHERE fund_code = ?""", (code,)
-        ).fetchone()
-        if not row:
-            continue
-        profile = dict(row)
+    with get_conn() as conn:
+        cur = conn.cursor()
+        for code in codes:
+            # 基本信息
+            cur.execute(
+                """SELECT fund_code, fund_name, full_name, exchange, sector, sector_name,
+                          scale, market_cap, nav, dividend_yield, debt_ratio, premium_rate,
+                          manager, property_type, remaining_years, listing_date
+                   FROM business.funds WHERE fund_code = %s""", (code,)
+            )
+            row = cur.fetchone()
+            if not row:
+                continue
+            profile = dict(row)
 
-        # 最新价格
-        price_row = conn.execute(
-            """SELECT trade_date, close_price, change_pct, volume, premium_rate, yield
-               FROM fund_prices WHERE fund_code = ? ORDER BY trade_date DESC LIMIT 1""", (code,)
-        ).fetchone()
-        if price_row:
-            profile["latest_price"] = dict(price_row)
-        else:
-            profile["latest_price"] = None
+            # 最新价格
+            cur.execute(
+                """SELECT trade_date, close_price, change_pct, volume, premium_rate, yield
+                   FROM business.fund_prices WHERE fund_code = %s ORDER BY trade_date DESC LIMIT 1""", (code,)
+            )
+            price_row = cur.fetchone()
+            if price_row:
+                profile["latest_price"] = dict(price_row)
+            else:
+                profile["latest_price"] = None
 
-        # 最新财务指标
-        fin_row = conn.execute(
-            """SELECT report_period, total_revenue, operating_revenue, net_profit,
-                      total_assets, net_assets, fund_nav_per_share,
-                      distributeable_amount, distribution_per_share
-               FROM reit_financial_metrics
-               WHERE fund_code = ? ORDER BY report_period DESC LIMIT 1""", (code,)
-        ).fetchone()
-        if fin_row:
-            profile["financials"] = dict(fin_row)
-        else:
-            profile["financials"] = None
+            # 最新财务指标
+            cur.execute(
+                """SELECT report_period, total_revenue, operating_revenue, net_profit,
+                          total_assets, net_assets, fund_nav_per_share,
+                          distributeable_amount, distribution_per_share
+                   FROM business.reit_financial_metrics
+                   WHERE fund_code = %s ORDER BY report_period DESC LIMIT 1""", (code,)
+            )
+            fin_row = cur.fetchone()
+            if fin_row:
+                profile["financials"] = dict(fin_row)
+            else:
+                profile["financials"] = None
 
-        # 最近4次分红
-        div_rows = conn.execute(
-            """SELECT dividend_date, dividend_amount, record_date, ex_dividend_date
-               FROM dividends WHERE fund_code = ? ORDER BY dividend_date DESC LIMIT 4""", (code,)
-        ).fetchall()
-        profile["dividends"] = [dict(r) for r in div_rows]
+            # 最近4次分红
+            cur.execute(
+                """SELECT dividend_date, dividend_amount, record_date, ex_dividend_date
+                   FROM business.dividends WHERE fund_code = %s ORDER BY dividend_date DESC LIMIT 4""", (code,)
+            )
+            div_rows = cur.fetchall()
+            profile["dividends"] = [dict(r) for r in div_rows]
 
-        profiles.append(profile)
-    conn.close()
+            profiles.append(profile)
     return profiles
 
 

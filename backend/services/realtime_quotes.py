@@ -9,10 +9,11 @@ import requests
 import json
 import re
 import datetime
-import sqlite3
 import os
 from typing import List, Dict, Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
+
+from core.db import get_conn
 
 # 板块映射表路径
 SECTOR_MAPPING_PATH = os.path.join(os.path.dirname(__file__), '..', 'sector_mapping.json')
@@ -32,7 +33,6 @@ SECTOR_MAPPING = None
 
 # 市值计算份额（亿份）
 SHARES_CACHE = None
-DB_PATH = os.path.join(os.path.dirname(__file__), '..', 'database', 'reits.db')
 SCALE_MAPPING_PATH = os.path.join(os.path.dirname(__file__), '..', 'scale_mapping.json')
 
 def _load_shares_mapping() -> Dict[str, float]:
@@ -40,13 +40,12 @@ def _load_shares_mapping() -> Dict[str, float]:
     shares = {}
     # 首先从数据库加载
     try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute('SELECT fund_code, total_shares FROM funds')
-        for row in cursor.fetchall():
-            if row[1]:
-                shares[row[0]] = row[1]
-        conn.close()
+        with get_conn() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT fund_code, total_shares FROM business.funds')
+            for row in cursor.fetchall():
+                if row[1]:
+                    shares[row[0]] = row[1]
     except Exception as e:
         print(f"加载数据库份额失败: {e}")
     # 用scale_mapping.json补充缺失数据
@@ -384,39 +383,44 @@ def save_to_database(quotes: List[Dict], db_path: str = None):
     if not quotes:
         return 0
 
-    if db_path is None:
-        db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'database', 'reits.db')
-
     try:
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
+        with get_conn() as conn:
+            cursor = conn.cursor()
 
-        inserted = 0
-        for quote in quotes:
-            trade_date = quote.get('date', datetime.date.today().strftime('%Y-%m-%d'))
-            trade_time = quote.get('time', '')
+            inserted = 0
+            for quote in quotes:
+                trade_date = quote.get('date', datetime.date.today().strftime('%Y-%m-%d'))
+                trade_time = quote.get('time', '')
 
-            cursor.execute('''
-                INSERT OR REPLACE INTO fund_prices
-                (fund_code, trade_date, open_price, high_price, low_price,
-                 close_price, volume, amount, change_pct, update_time)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (
-                quote['fund_code'],
-                trade_date,
-                quote.get('open_price', 0),
-                quote.get('high_price', 0),
-                quote.get('low_price', 0),
-                quote.get('current_price', 0),
-                quote.get('volume', 0),
-                quote.get('amount', 0),
-                quote.get('change_pct', 0),
-                quote.get('timestamp', '')
-            ))
-            inserted += 1
+                cursor.execute('''
+                    INSERT INTO business.fund_prices
+                    (fund_code, trade_date, open_price, high_price, low_price,
+                     close_price, volume, amount, change_pct, update_time)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (fund_code, trade_date) DO UPDATE SET
+                        open_price = EXCLUDED.open_price,
+                        high_price = EXCLUDED.high_price,
+                        low_price = EXCLUDED.low_price,
+                        close_price = EXCLUDED.close_price,
+                        volume = EXCLUDED.volume,
+                        amount = EXCLUDED.amount,
+                        change_pct = EXCLUDED.change_pct,
+                        update_time = EXCLUDED.update_time
+                ''', (
+                    quote['fund_code'],
+                    trade_date,
+                    quote.get('open_price', 0),
+                    quote.get('high_price', 0),
+                    quote.get('low_price', 0),
+                    quote.get('current_price', 0),
+                    quote.get('volume', 0),
+                    quote.get('amount', 0),
+                    quote.get('change_pct', 0),
+                    quote.get('timestamp', '')
+                ))
+                inserted += 1
 
-        conn.commit()
-        conn.close()
+            conn.commit()
         return inserted
     except Exception as e:
         print(f"保存失败: {e}")

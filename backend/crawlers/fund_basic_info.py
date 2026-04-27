@@ -6,17 +6,13 @@ REIT基金基础信息爬虫
 """
 
 import requests
-import sqlite3
 import json
 import re
 import time
 from datetime import datetime
 from typing import Dict, Optional, List
-
-# 数据库路径（支持从任何目录运行）
 import os
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(SCRIPT_DIR, '..', 'database', 'reits.db')
+from core.db import get_conn
 
 # 请求头
 HEADERS = {
@@ -33,15 +29,13 @@ class REITBasicInfoCrawler:
     def __init__(self):
         self.session = requests.Session()
         self.session.headers.update(HEADERS)
-        self.db_path = DB_PATH
         
     def get_fund_list(self) -> List[Dict]:
         """从数据库获取所有REIT基金代码"""
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        cursor.execute('SELECT fund_code, fund_name FROM funds ORDER BY fund_code')
-        funds = [{'fund_code': row[0], 'fund_name': row[1]} for row in cursor.fetchall()]
-        conn.close()
+        with get_conn() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT fund_code, fund_name FROM business.funds ORDER BY fund_code')
+            funds = [{'fund_code': row[0], 'fund_name': row[1]} for row in cursor.fetchall()]
         return funds
     
     def fetch_eastmoney_basic(self, code: str) -> Optional[Dict]:
@@ -237,43 +231,42 @@ class REITBasicInfoCrawler:
         更新数据库
         """
         try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
+            with get_conn() as conn:
+                cursor = conn.cursor()
+                
+                # 构建更新SQL - 映射字段名到数据库列名
+                field_mapping = {
+                    'scale': 'total_shares',  # 规模(亿) -> total_shares
+                    'listing_date': 'ipo_date',  # 成立日期 -> ipo_date
+                    'manager': 'manager',
+                    'nav': 'nav',
+                    'remaining_years': 'asset_type',  # 临时存储剩余期限
+                }
+                
+                fields = []
+                values = []
+                
+                for source_key, db_column in field_mapping.items():
+                    if fund_data.get(source_key) is not None:
+                        fields.append(f"{db_column} = %s")
+                        values.append(fund_data[source_key])
+                
+                if not fields:
+                    print(f"[{fund_data['code']}] 无数据可更新")
+                    return False
+                
+                # 添加updated_at
+                fields.append("updated_at = %s")
+                values.append(fund_data['updated_at'])
+                
+                # 添加WHERE条件 - 使用fund_code
+                values.append(fund_data['code'])
+                
+                sql = f"UPDATE business.funds SET {', '.join(fields)} WHERE fund_code = %s"
+                cursor.execute(sql, values)
+                rowcount = cursor.rowcount
             
-            # 构建更新SQL - 映射字段名到数据库列名
-            field_mapping = {
-                'scale': 'total_shares',  # 规模(亿) -> total_shares
-                'listing_date': 'ipo_date',  # 成立日期 -> ipo_date
-                'manager': 'manager',
-                'nav': 'nav',
-                'remaining_years': 'asset_type',  # 临时存储剩余期限
-            }
-            
-            fields = []
-            values = []
-            
-            for source_key, db_column in field_mapping.items():
-                if fund_data.get(source_key) is not None:
-                    fields.append(f"{db_column} = ?")
-                    values.append(fund_data[source_key])
-            
-            if not fields:
-                print(f"[{fund_data['code']}] 无数据可更新")
-                return False
-            
-            # 添加updated_at
-            fields.append("updated_at = ?")
-            values.append(fund_data['updated_at'])
-            
-            # 添加WHERE条件 - 使用fund_code
-            values.append(fund_data['code'])
-            
-            sql = f"UPDATE funds SET {', '.join(fields)} WHERE fund_code = ?"
-            cursor.execute(sql, values)
-            conn.commit()
-            conn.close()
-            
-            return cursor.rowcount > 0
+            return rowcount > 0
             
         except Exception as e:
             print(f"[DB] 更新{fund_data['code']}失败: {e}")

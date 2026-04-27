@@ -11,12 +11,12 @@ import json
 import logging
 import random
 import asyncio
-import sqlite3
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from datetime import datetime
 from typing import Dict, Optional, List
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from core.db import get_conn
 
 from api.search import search_articles_for_rag
 from engine.sentiment import get_sentiment_engine
@@ -253,7 +253,6 @@ def _extract_fund_code(query: str) -> Optional[str]:
 
 def _query_fund_info(fund_code: str) -> dict:
     """从数据库查询基金基本信息和近期价格"""
-    db_path = os.path.join(os.path.dirname(__file__), "..", "database", "reits.db")
 pg_dsn = "host=localhost dbname=ai_db user=postgres password=postgres"
 
 def get_pg_conn():
@@ -262,15 +261,14 @@ def get_pg_conn():
     return conn
     result = {"found": False, "basic": "", "prices": "", "sector": ""}
     try:
-        conn = sqlite3.connect(db_path)
-        conn.row_factory = sqlite3.Row
+        conn = get_conn()
         cur = conn.cursor()
 
         # 1. 基本信息
         cur.execute("""
             SELECT fund_code, fund_name, sector_name, property_type,
                    scale, market_cap, dividend_yield, debt_ratio, premium_rate
-            FROM funds WHERE fund_code = ?
+            FROM business.funds WHERE fund_code = %s
         """, (fund_code,))
         row = cur.fetchone()
         if row:
@@ -287,7 +285,7 @@ def get_pg_conn():
         cur.execute("""
             SELECT trade_date, open_price, high_price, low_price, close_price, change_pct, volume
             FROM fund_prices
-            WHERE fund_code = ?
+            WHERE fund_code = %s
             ORDER BY trade_date DESC
             LIMIT 5
         """, (fund_code,))
@@ -322,14 +320,12 @@ def _is_market_overview_query(query: str) -> bool:
 
 def _query_market_overview() -> str:
     """查询市场整体概况：总数、分类、规模"""
-    db_path = os.path.join(os.path.dirname(__file__), "..", "database", "reits.db")
     try:
-        conn = sqlite3.connect(db_path)
-        conn.row_factory = sqlite3.Row
+        conn = get_conn()
         cur = conn.cursor()
 
         # 1. 总数
-        cur.execute("SELECT COUNT(*) as total FROM funds")
+        cur.execute("SELECT COUNT(*) as total FROM business.funds")
         total = cur.fetchone()["total"]
 
         # 2. 分类统计
@@ -337,7 +333,7 @@ def _query_market_overview() -> str:
             SELECT sector_name, COUNT(*) as cnt,
                    ROUND(AVG(COALESCE(scale, 0)), 1) as avg_scale,
                    ROUND(AVG(COALESCE(market_cap, 0)), 1) as avg_cap
-            FROM funds
+            FROM business.funds
             WHERE sector_name IS NOT NULL AND sector_name != ''
             GROUP BY sector_name
             ORDER BY cnt DESC
@@ -348,14 +344,14 @@ def _query_market_overview() -> str:
         cur.execute("""
             SELECT ROUND(SUM(COALESCE(scale, 0)), 1) as total_scale,
                    ROUND(SUM(COALESCE(market_cap, 0)), 1) as total_cap
-            FROM funds
+            FROM business.funds
         """)
         totals = cur.fetchone()
 
         # 4. 最近5只（按fund_code倒序，假设新基金code更大）
         cur.execute("""
             SELECT fund_code, fund_name, sector_name, scale, market_cap
-            FROM funds
+            FROM business.funds
             ORDER BY fund_code DESC
             LIMIT 5
         """)

@@ -1,7 +1,7 @@
 """
 Fulltext Search - PostgreSQL fulltext fallback when Milvus is unavailable
 """
-from backend.ai_db.models import AnnouncementContent, SocialHotspot, Article
+from ai_db.models import AnnouncementContent, SocialHotspot, Article
 
 
 class FulltextSearch:

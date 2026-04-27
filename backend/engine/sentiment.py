@@ -6,11 +6,12 @@ V2: 扩展词典（资产类别×事件类型×程度副词×否定处理）
 """
 
 import os
-import sqlite3
 import re
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 from datetime import datetime
+
+from core.db import get_conn
 
 
 # ==================== 核心情感词典 ====================
@@ -140,11 +141,8 @@ class SentimentResult:
 
 class SentimentEngine:
     def __init__(self, db_path: Optional[str] = None):
-        if db_path:
-            self.db_path = db_path
-        else:
-            base = os.path.dirname(os.path.dirname(__file__))
-            self.db_path = os.path.join(base, "database", "reits.db")
+        # db_path 参数保留兼容，不再使用
+        self.db_path = None
 
     def analyze(self, text: str) -> SentimentResult:
         """单条文本情感分析（V2 增强版）"""
@@ -305,19 +303,22 @@ class SentimentEngine:
         """分析热点话题情感"""
         return self.analyze(title + " " + content)
 
-    def _ensure_columns(self, conn: sqlite3.Connection):
+    def _ensure_columns(self, conn):
         """确保 wechat_articles 表有情感字段"""
         cur = conn.cursor()
-        cur.execute("PRAGMA table_info(wechat_articles)")
-        cols = [row[1] for row in cur.fetchall()]
+        cur.execute("""
+            SELECT column_name FROM information_schema.columns
+            WHERE table_schema = 'business' AND table_name = 'wechat_articles'
+        """)
+        cols = [row[0] for row in cur.fetchall()]
         if "sentiment_score" not in cols:
-            cur.execute("ALTER TABLE wechat_articles ADD COLUMN sentiment_score REAL DEFAULT 0")
+            cur.execute("ALTER TABLE business.wechat_articles ADD COLUMN sentiment_score NUMERIC(8,4) DEFAULT 0")
         if "emotion_tag" not in cols:
-            cur.execute("ALTER TABLE wechat_articles ADD COLUMN emotion_tag TEXT DEFAULT 'neutral'")
+            cur.execute("ALTER TABLE business.wechat_articles ADD COLUMN emotion_tag VARCHAR(20) DEFAULT 'neutral'")
         if "asset_tags" not in cols:
-            cur.execute("ALTER TABLE wechat_articles ADD COLUMN asset_tags TEXT DEFAULT ''")
+            cur.execute("ALTER TABLE business.wechat_articles ADD COLUMN asset_tags TEXT DEFAULT ''")
         if "event_tags" not in cols:
-            cur.execute("ALTER TABLE wechat_articles ADD COLUMN event_tags TEXT DEFAULT ''")
+            cur.execute("ALTER TABLE business.wechat_articles ADD COLUMN event_tags TEXT DEFAULT ''")
         conn.commit()
 
     def batch_tag_articles(self, retag_extremes: bool = False) -> int:
@@ -326,60 +327,58 @@ class SentimentEngine:
         Args:
             retag_extremes: 为 True 时，同时重打 sentiment_score 为 0 或 ±1.0 的极端值文章
         """
-        conn = sqlite3.connect(self.db_path)
-        self._ensure_columns(conn)
-        cur = conn.cursor()
+        with get_conn() as conn:
+            self._ensure_columns(conn)
+            cur = conn.cursor()
 
-        if retag_extremes:
-            cur.execute("""
-                SELECT id, title, content FROM wechat_articles
-                WHERE content IS NOT NULL AND length(trim(content)) > 10
-                  AND (sentiment_score = 0 OR sentiment_score = 1.0 OR sentiment_score = -1.0)
-            """)
-        else:
-            cur.execute("""
-                SELECT id, title, content FROM wechat_articles
-                WHERE sentiment_score = 0 AND content IS NOT NULL AND length(trim(content)) > 10
-            """)
-        rows = cur.fetchall()
-        count = 0
-        for row in rows:
-            art_id, title, content = row
-            res = self.analyze(title + " " + (content or "")[:500])
-            cur.execute("""
-                UPDATE wechat_articles
-                SET sentiment_score = ?, emotion_tag = ?, asset_tags = ?, event_tags = ?
-                WHERE id = ?
-            """, (res.score, res.emotion, ",".join(res.asset_tags), ",".join(res.event_tags), art_id))
-            count += 1
+            if retag_extremes:
+                cur.execute("""
+                    SELECT id, title, content FROM business.wechat_articles
+                    WHERE content IS NOT NULL AND length(trim(content)) > 10
+                      AND (sentiment_score = 0 OR sentiment_score = 1.0 OR sentiment_score = -1.0)
+                """)
+            else:
+                cur.execute("""
+                    SELECT id, title, content FROM business.wechat_articles
+                    WHERE sentiment_score = 0 AND content IS NOT NULL AND length(trim(content)) > 10
+                """)
+            rows = cur.fetchall()
+            count = 0
+            for row in rows:
+                art_id, title, content = row
+                res = self.analyze(title + " " + (content or "")[:500])
+                cur.execute("""
+                    UPDATE business.wechat_articles
+                    SET sentiment_score = %s, emotion_tag = %s, asset_tags = %s, event_tags = %s
+                    WHERE id = %s
+                """, (res.score, res.emotion, ",".join(res.asset_tags), ",".join(res.event_tags), art_id))
+                count += 1
 
-        conn.commit()
-        conn.close()
+            conn.commit()
         return count
 
     def get_market_emotion(self, date: Optional[str] = None) -> Dict:
         """获取当日市场整体情绪"""
         date = date or datetime.now().strftime("%Y-%m-%d")
-        conn = sqlite3.connect(self.db_path)
-        self._ensure_columns(conn)
-        cur = conn.cursor()
+        with get_conn() as conn:
+            self._ensure_columns(conn)
+            cur = conn.cursor()
 
-        cur.execute("""
-            SELECT emotion_tag, COUNT(*), AVG(sentiment_score)
-            FROM wechat_articles
-            WHERE date(published) = ? AND sentiment_score != 0
-            GROUP BY emotion_tag
-        """, (date,))
-        rows = cur.fetchall()
+            cur.execute("""
+                SELECT emotion_tag, COUNT(*), AVG(sentiment_score)
+                FROM business.wechat_articles
+                WHERE date(published) = %s AND sentiment_score != 0
+                GROUP BY emotion_tag
+            """, (date,))
+            rows = cur.fetchall()
 
-        # 资产分布
-        cur.execute("""
-            SELECT asset_tags, COUNT(*) FROM wechat_articles
-            WHERE date(published) = ? AND asset_tags != ''
-            GROUP BY asset_tags
-        """, (date,))
-        asset_rows = cur.fetchall()
-        conn.close()
+            # 资产分布
+            cur.execute("""
+                SELECT asset_tags, COUNT(*) FROM business.wechat_articles
+                WHERE date(published) = %s AND asset_tags != ''
+                GROUP BY asset_tags
+            """, (date,))
+            asset_rows = cur.fetchall()
 
         if not rows:
             return {"overall": "neutral", "score": 0.0, "dominant": "暂无数据", "distribution": {}, "asset_breakdown": {}}
@@ -399,27 +398,27 @@ class SentimentEngine:
 
     def get_emotion_trend(self, days: int = 7) -> List[Dict]:
         """获取近N天情绪趋势"""
-        conn = sqlite3.connect(self.db_path)
-        cur = conn.cursor()
-        self._ensure_columns(conn)
+        with get_conn() as conn:
+            cur = conn.cursor()
+            self._ensure_columns(conn)
 
-        cur.execute("""
-            SELECT date(published) as dt, AVG(sentiment_score) as avg_score, emotion_tag
-            FROM wechat_articles
-            WHERE published IS NOT NULL AND sentiment_score != 0
-            GROUP BY date(published)
-            ORDER BY dt DESC
-            LIMIT ?
-        """, (days,))
+            cur.execute("""
+                SELECT date(published) as dt, AVG(sentiment_score) as avg_score,
+                       MODE() WITHIN GROUP (ORDER BY emotion_tag) as emotion_tag
+                FROM business.wechat_articles
+                WHERE published IS NOT NULL AND sentiment_score != 0
+                GROUP BY date(published)
+                ORDER BY dt DESC
+                LIMIT %s
+            """, (days,))
 
-        results = []
-        for row in cur.fetchall():
-            results.append({
-                "date": row[0],
-                "avg_score": round(row[1], 3) if row[1] else 0,
-                "dominant_emotion": row[2],
-            })
-        conn.close()
+            results = []
+            for row in cur.fetchall():
+                results.append({
+                    "date": str(row[0]) if row[0] else None,
+                    "avg_score": round(row[1], 3) if row[1] else 0,
+                    "dominant_emotion": row[2],
+                })
         return results
 
 

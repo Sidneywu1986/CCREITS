@@ -6,8 +6,8 @@ import logging
 import random
 import asyncio
 from typing import List, Dict
-from backend.crawlers.base_scheduler import BaseScheduler
-from backend.ai_db.models import SocialHotspot
+from crawlers.base_scheduler import BaseScheduler
+from ai_db.models import SocialHotspot
 
 logger = logging.getLogger(__name__)
 

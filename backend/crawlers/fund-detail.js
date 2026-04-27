@@ -144,7 +144,7 @@ class FundDetailCrawler {
     async getFundCodes() {
         return new Promise((resolve, reject) => {
             db.all(
-                "SELECT fund_code, fund_name FROM funds WHERE status = 'active'",
+                "SELECT fund_code, fund_name FROM business.funds WHERE status = 'active'",
                 [],
                 (err, rows) => {
                     if (err) reject(err);
@@ -160,9 +160,9 @@ class FundDetailCrawler {
     async saveToDatabase(detail) {
         return new Promise((resolve, reject) => {
             db.run(
-                `UPDATE funds SET
+                `UPDATE business.funds SET
                     nav = ?,
-                    updated_at = datetime('now')
+                    updated_at = NOW()
                  WHERE fund_code = ?`,
                 [
                     detail.nav,

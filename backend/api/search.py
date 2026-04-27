@@ -13,6 +13,8 @@ from rag.local_retriever import get_retriever, SearchResult
 from vector.milvus_client import get_milvus_client
 import psycopg2
 
+from core.db import get_conn
+
 router = APIRouter(prefix="/api/v1/search", tags=["search"])
 logger = logging.getLogger(__name__)
 
@@ -26,20 +28,14 @@ class SearchResponse(BaseModel):
 
 # ---------- 内部接口（仅供 chat_reits.py RAG 调用）----------
 
-import sqlite3
-import os
-
-DB_PATH = os.path.join(os.path.dirname(__file__), "..", "database", "reits.db")
-
 
 def _get_fund_name(fund_code: str) -> Optional[str]:
     try:
-        conn = sqlite3.connect(DB_PATH)
-        cur = conn.cursor()
-        cur.execute("SELECT fund_name FROM funds WHERE fund_code = ?", (fund_code,))
-        row = cur.fetchone()
-        conn.close()
-        return row[0] if row else None
+        with get_conn() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT fund_name FROM business.funds WHERE fund_code = %s", (fund_code,))
+            row = cur.fetchone()
+            return row['fund_name'] if row else None
     except Exception:
         return None
 
@@ -47,28 +43,27 @@ def _get_fund_name(fund_code: str) -> Optional[str]:
 def _get_fund_articles_pg(fund_code: str) -> set:
     """从 PostgreSQL 查询该基金关联的文章 ID"""
     try:
-        conn = psycopg2.connect("host=localhost dbname=ai_db user=postgres password=postgres")
-        cur = conn.cursor()
-        cur.execute("SELECT article_id FROM article_fund_tags WHERE fund_code = %s", (fund_code,))
-        rows = cur.fetchall()
-        conn.close()
-        return {r[0] for r in rows}
+        from core.db import get_conn
+        with get_conn() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT article_id FROM business.article_fund_tags WHERE fund_code = %s", (fund_code,))
+            rows = cur.fetchall()
+            return {r[0] for r in rows}
     except Exception:
         return set()
 
 
 def _search_milvus(query: str, top_k: int = 5, fund_code: Optional[str] = None) -> List[SearchResult]:
-    """使用 Milvus 做向量检索"""
+    """使用 Milvus 做向量检索（BGE-M3 编码）"""
     milvus = get_milvus_client()
     if not milvus.connect():
         return []
 
-    # 获取查询向量：复用 local_retriever 的 embedder
-    from rag.local_retriever import LocalVectorRetriever
-    retriever = LocalVectorRetriever()
-    retriever._ensure_initialized()
+    # 获取查询向量：使用 BGE-M3 编码
+    from rag.bge_embedder import get_embedder
     import numpy as np
-    query_vec = np.array(retriever._embedder.encode([query])[0], dtype=np.float32)
+    embedder = get_embedder()
+    query_vec = embedder.encode_query(query)
     query_vec = query_vec / (np.linalg.norm(query_vec) + 1e-8)
 
     results = milvus.search(vector=query_vec.tolist(), top_k=top_k * 3)

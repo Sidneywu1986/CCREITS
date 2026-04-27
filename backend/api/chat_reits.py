@@ -331,12 +331,10 @@ async def get_agents():
 async def get_hotspots(limit: int = 20):
     """Get latest REITs hotspots from wechat_articles (fallback to SocialHotspot)"""
     try:
-        import sqlite3
-        from pathlib import Path
+        from core.db import get_conn
 
-        # SQLite path: backend/database/reits.db
-        db_path = Path(__file__).resolve().parent.parent / 'database' / 'reits.db'
-        conn = sqlite3.connect(str(db_path), check_same_thread=False)
+        # PostgreSQL: query from business.wechat_articles
+        conn = get_conn()
         cursor = conn.cursor()
 
         # Query REITs-related articles from wechat_articles
@@ -344,10 +342,10 @@ async def get_hotspots(limit: int = 20):
         # 确保每种情感标签都有代表，避免全是"利好"
         cursor.execute("""
             SELECT id, title, link, published, sentiment_score, emotion_tag, event_tags
-            FROM wechat_articles
-            WHERE title LIKE '%REIT%' OR title LIKE '%reit%'
+            FROM business.wechat_articles
+            WHERE title ILIKE '%REIT%'
             ORDER BY published DESC
-            LIMIT ?
+            LIMIT %s
         """, (limit * 3,))
         rows = cursor.fetchall()
         conn.close()

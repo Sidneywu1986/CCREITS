@@ -49,11 +49,11 @@ class EastMoneyCrawler {
     async getFundCodes() {
         return new Promise((resolve, reject) => {
             db.all(
-                "SELECT code FROM funds WHERE status = 'listed' OR status IS NULL",
+                "SELECT fund_code FROM business.funds WHERE status = 'listed' OR status IS NULL",
                 [],
                 (err, rows) => {
                     if (err) reject(err);
-                    else resolve(rows.map(r => r.code));
+                    else resolve(rows.map(r => r.fund_code));
                 }
             );
         });

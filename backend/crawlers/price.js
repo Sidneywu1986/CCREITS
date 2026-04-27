@@ -80,8 +80,8 @@ async function saveQuotes(quotes) {
         // 先确保基金记录存在（不覆盖已有信息）
         await new Promise((resolve, reject) => {
             db.run(
-                `INSERT OR IGNORE INTO funds (code, name, created_at)
-                 VALUES (?, ?, CURRENT_TIMESTAMP)`,
+                `INSERT INTO business.funds (fund_code, fund_name, created_at)
+                 VALUES (?, ?, CURRENT_TIMESTAMP) ON CONFLICT DO NOTHING`,
                 [quote.fund_code, quote.name],
                 (err) => {
                     if (err) reject(err);
@@ -94,11 +94,11 @@ async function saveQuotes(quotes) {
         if (quote.nav || quote.debt_ratio) {
             await new Promise((resolve, reject) => {
                 db.run(
-                    `UPDATE funds 
+                    `UPDATE business.funds 
                      SET nav = COALESCE(?, nav),
                          debt_ratio = COALESCE(?, debt_ratio),
                          updated_at = CURRENT_TIMESTAMP
-                     WHERE code = ?`,
+                     WHERE fund_code = ?`,
                     [quote.nav, quote.debt_ratio, quote.fund_code],
                     (err) => {
                         if (err) reject(err);
@@ -111,9 +111,9 @@ async function saveQuotes(quotes) {
         // 插入行情数据（溢价率、派息率、市值暂时为null）
         await new Promise((resolve, reject) => {
             db.run(
-                `INSERT INTO quotes (fund_code, price, open, high, low, prev_close, change_percent, volume, premium, yield, market_cap)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL)`,
-                [quote.fund_code, quote.price, quote.open, quote.high, quote.low, quote.close,
+                `INSERT INTO business.quotes (fund_code, price, open_price, high_price, low_price, change_percent, volume, premium, yield, market_cap)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL)`,
+                [quote.fund_code, quote.price, quote.open, quote.high, quote.low,
                  quote.change_percent, quote.volume],
                 (err) => {
                     if (err) reject(err);
@@ -125,9 +125,13 @@ async function saveQuotes(quotes) {
         // 插入历史数据
         await new Promise((resolve, reject) => {
             db.run(
-                `INSERT OR REPLACE INTO price_history 
-                 (fund_code, date, open, close, high, low, volume)
-                 VALUES (?, date('now'), ?, ?, ?, ?, ?)`,
+                `INSERT INTO business.price_history 
+                 (fund_code, trade_date, open_price, close_price, high_price, low_price, volume)
+                 VALUES (?, CURRENT_DATE, ?, ?, ?, ?, ?)
+                 ON CONFLICT (fund_code, trade_date) DO UPDATE SET
+                 open_price = EXCLUDED.open_price, close_price = EXCLUDED.close_price,
+                 high_price = EXCLUDED.high_price, low_price = EXCLUDED.low_price,
+                 volume = EXCLUDED.volume`,
                 [quote.fund_code, quote.open, quote.price, quote.high, quote.low, quote.volume],
                 (err) => {
                     if (err) reject(err);

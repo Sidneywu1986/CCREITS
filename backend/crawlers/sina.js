@@ -35,7 +35,7 @@ class SinaCrawler {
     async getFundCodes() {
         return new Promise((resolve, reject) => {
             db.all(
-                "SELECT fund_code FROM funds WHERE status = 'active'",
+                "SELECT fund_code FROM business.funds WHERE status = 'active'",
                 [],
                 (err, rows) => {
                     if (err) {
@@ -78,10 +78,13 @@ class SinaCrawler {
         for (const q of quotes) {
             await new Promise((resolve, reject) => {
                 db.run(`
-                    INSERT OR REPLACE INTO fund_prices
-                    (fund_code, trade_date, open_price, close_price, high_price, low_price, volume, amount, change_pct, update_time)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
-                `, [q.fund_code, today, q.open, q.price, q.high, q.low, q.volume, 0, q.change_percent],
+                    INSERT INTO business.fund_prices
+                    (fund_code, trade_date, close_price, change_pct, volume)
+                    VALUES (?, ?, ?, ?, ?)
+                    ON CONFLICT (fund_code, trade_date) DO UPDATE SET
+                    close_price = EXCLUDED.close_price, change_pct = EXCLUDED.change_pct,
+                    volume = EXCLUDED.volume
+                `, [q.fund_code, today, q.price, q.change_percent, q.volume],
                 function(err) {
                     if (err) {
                         // 忽略重复插入错误

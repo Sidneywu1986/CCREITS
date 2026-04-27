@@ -5,7 +5,7 @@ import pytest
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from backend.crawlers.base_scheduler import BaseScheduler
+from crawlers.base_scheduler import BaseScheduler
 
 
 class ConcreteTestScheduler(BaseScheduler):
@@ -25,7 +25,7 @@ def test_base_scheduler_init():
 
 def test_hotspot_scheduler_defaults():
     """Test HotspotScheduler has correct default values"""
-    from backend.crawlers.hotspot_scheduler import HotspotScheduler
+    from crawlers.hotspot_scheduler import HotspotScheduler
     scheduler = HotspotScheduler()
     assert scheduler.name == "hotspot_spider"
     assert scheduler.interval_minutes == 30
@@ -33,7 +33,7 @@ def test_hotspot_scheduler_defaults():
 
 def test_article_scheduler_defaults():
     """Test ArticleScheduler has correct default values"""
-    from backend.crawlers.article_scheduler import ArticleScheduler
+    from crawlers.article_scheduler import ArticleScheduler
     scheduler = ArticleScheduler()
     assert scheduler.name == "article_spider"
     assert scheduler.cron_hour == 8
@@ -41,7 +41,7 @@ def test_article_scheduler_defaults():
 
 def test_announcement_scheduler_defaults():
     """Test AnnouncementScheduler has correct default values"""
-    from backend.crawlers.announcement_scheduler import AnnouncementScheduler
+    from crawlers.announcement_scheduler import AnnouncementScheduler
     scheduler = AnnouncementScheduler()
     assert scheduler.name == "announcement_spider"
     assert scheduler.cron_hours == [6, 18]

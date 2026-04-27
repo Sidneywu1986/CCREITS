@@ -1,20 +1,19 @@
 #!/usr/bin/env python3
 """
 基于 wemprss API 的全量同步脚本
-从服务器 wemprss 同步全部文章到本地 reits.db，支持增量更新
+从服务器 wemprss 同步全部文章到本地 PostgreSQL，支持增量更新
 """
 import os
 import sys
 import json
-import sqlite3
 import urllib.request
 import subprocess
 import re
 import time
 from datetime import datetime
+from core.db import get_conn
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DB_PATH = os.path.join(BASE_DIR, 'backend', 'database', 'reits.db')
 API_BASE = 'http://43.134.236.80:3000'
 USERNAME = 'admin'
 PASSWORD = 'admin@123'
@@ -84,25 +83,19 @@ class WemprssClient:
 
 def get_local_last_sync():
     """获取本地最新同步时间"""
-    if not os.path.exists(DB_PATH):
-        return "1970-01-01T00:00:00"
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute("SELECT MAX(published) FROM wechat_articles")
-    result = c.fetchone()[0]
-    conn.close()
+    with get_conn() as conn:
+            c = conn.cursor()
+            c.execute("SELECT MAX(published) FROM business.wechat_articles")
+            result = c.fetchone()[0]
     return result or "1970-01-01T00:00:00"
 
 
 def get_local_links():
     """获取本地已存在的文章链接（用于去重）"""
-    if not os.path.exists(DB_PATH):
-        return set()
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute("SELECT link FROM wechat_articles")
-    links = {row[0] for row in c.fetchall() if row[0]}
-    conn.close()
+    with get_conn() as conn:
+            c = conn.cursor()
+            c.execute("SELECT link FROM business.wechat_articles")
+            links = {row[0] for row in c.fetchall() if row[0]}
     return links
 
 
@@ -120,26 +113,24 @@ def clean_html(raw_html):
 
 def ensure_table():
     """确保 wechat_articles 表存在"""
-    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS wechat_articles (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            source TEXT,
-            title TEXT,
-            link TEXT UNIQUE,
-            published TEXT,
-            content TEXT,
-            vectorized INTEGER DEFAULT 0,
-            sentiment_score REAL,
-            emotion_tag TEXT,
-            event_tags TEXT,
-            vector BLOB
-        )
-    """)
-    conn.commit()
-    conn.close()
+    with get_conn() as conn:
+            c = conn.cursor()
+            c.execute("""
+                CREATE TABLE IF NOT EXISTS business.wechat_articles (
+                    id SERIAL PRIMARY KEY,
+                    source TEXT,
+                    title TEXT,
+                    link TEXT UNIQUE,
+                    published TEXT,
+                    content TEXT,
+                    vectorized INTEGER DEFAULT 0,
+                    sentiment_score REAL,
+                    emotion_tag TEXT,
+                    event_tags TEXT,
+                    vector BYTEA
+                )
+            """)
+            conn.commit()
 
 
 def sync_articles(client, local_links, dry_run=False):
@@ -233,20 +224,19 @@ def sync_articles(client, local_links, dry_run=False):
     # 写入数据库
     if not dry_run and new_articles:
         print(f'[Sync] Writing {len(new_articles)} articles to local DB...')
-        conn = sqlite3.connect(DB_PATH)
-        c = conn.cursor()
-        inserted = 0
-        for a in new_articles:
-            try:
-                c.execute("""
-                    INSERT INTO wechat_articles (source, title, link, published, content, vectorized)
-                    VALUES (?, ?, ?, ?, ?, 0)
-                """, (a['source'], a['title'], a['link'], a['published'], a['content']))
-                inserted += 1
-            except sqlite3.IntegrityError:
-                pass  # 重复，忽略
-        conn.commit()
-        conn.close()
+        with get_conn() as conn:
+                    c = conn.cursor()
+                    inserted = 0
+                    for a in new_articles:
+                        try:
+                            c.execute("""
+                                INSERT INTO business.wechat_articles (source, title, link, published, content, vectorized)
+                                VALUES (%s, %s, %s, %s, %s, 0)
+                            """, (a['source'], a['title'], a['link'], a['published'], a['content']))
+                            inserted += 1
+                        except Exception:  # psycopg2.IntegrityError
+                            pass  # 重复，忽略
+                    conn.commit()
         print(f'[Sync] Inserted {inserted} articles')
         return inserted, skipped, errors
     elif dry_run:

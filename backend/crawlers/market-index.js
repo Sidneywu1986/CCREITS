@@ -214,10 +214,10 @@ class MarketIndexCrawler {
             const quotes = await new Promise((resolve, reject) => {
                 db.all(`
                     SELECT q.fund_code, q.price, q.change_percent
-                    FROM quotes q
+                    FROM business.quotes q
                     INNER JOIN (
                         SELECT fund_code, MAX(id) as max_id 
-                        FROM quotes 
+                        FROM business.quotes 
                         GROUP BY fund_code
                     ) latest ON q.fund_code = latest.fund_code AND q.id = latest.max_id
                 `, [], (err, rows) => {
@@ -258,8 +258,8 @@ class MarketIndexCrawler {
             try {
                 await new Promise((resolve, reject) => {
                     db.run(`
-                        INSERT INTO market_indices (code, name, value, change, change_percent, source, updated_at)
-                        VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+                        INSERT INTO business.market_indices (code, name, value, change, change_percent, source, updated_at)
+                        VALUES (?, ?, ?, ?, ?, ?, NOW())
                         ON CONFLICT(code) DO UPDATE SET
                             value = excluded.value,
                             change = excluded.change,

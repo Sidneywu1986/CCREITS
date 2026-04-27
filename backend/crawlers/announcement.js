@@ -129,7 +129,7 @@ async function saveAnnouncements(announcements) {
     for (const item of announcements) {
         await new Promise((resolve, reject) => {
             db.run(
-                `INSERT OR IGNORE INTO announcements 
+                `INSERT INTO business.announcements 
                  (fund_code, title, category, summary, publish_date, source_url, confidence)
                  VALUES (?, ?, ?, ?, ?, ?, ?)`,
                 [item.fund_code, item.title, item.category, item.summary, 

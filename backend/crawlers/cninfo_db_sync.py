@@ -4,14 +4,11 @@ CNInfo公告数据自动同步到数据库
 含：去重、非REITs过滤、AI辅助分类、PDF有效性校验
 """
 
-import sqlite3
 import re
 import os
 import requests
 from datetime import datetime
-
-# 数据库路径
-DB_PATH = os.path.join(os.path.dirname(__file__), '..', 'database', 'reits.db')
+from core.db import get_conn
 
 # REITs 名称特征（用于识别真正的REITs公告）
 REIT_NAME_PATTERNS = [
@@ -111,98 +108,98 @@ def save_announcements_to_db(announcements, fund_code):
     result = {'inserted': 0, 'skipped': 0, 'filtered': 0, 'invalid_pdf': 0, 'error': None}
 
     try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
+        with get_conn() as conn:
+            cursor = conn.cursor()
 
-        exchange = get_exchange(fund_code)
-        cninfo_search_url = f'http://www.cninfo.com.cn/new/information/topSearch/query?keyWord={fund_code}'
+            exchange = get_exchange(fund_code)
+            cninfo_search_url = f'http://www.cninfo.com.cn/new/information/topSearch/query?keyWord={fund_code}'
 
-        for ann in announcements:
-            try:
-                title = ann.get('title', '')
-                publish_time = ann.get('time', '')
-                pdf_url = ann.get('pdf_url', '')
+            for ann in announcements:
+                try:
+                    title = ann.get('title', '')
+                    publish_time = ann.get('time', '')
+                    pdf_url = ann.get('pdf_url', '')
 
-                # 处理日期格式
-                if isinstance(publish_time, int):
-                    publish_date = datetime.fromtimestamp(publish_time / 1000).strftime('%Y-%m-%d')
-                elif isinstance(publish_time, str) and len(publish_time) >= 10:
-                    publish_date = publish_time[:10]
-                else:
-                    publish_date = datetime.now().strftime('%Y-%m-%d')
+                    # 处理日期格式
+                    if isinstance(publish_time, int):
+                        publish_date = datetime.fromtimestamp(publish_time / 1000).strftime('%Y-%m-%d')
+                    elif isinstance(publish_time, str) and len(publish_time) >= 10:
+                        publish_date = publish_time[:10]
+                    else:
+                        publish_date = datetime.now().strftime('%Y-%m-%d')
 
-                # ========== 1. 非REITs过滤 ==========
-                if not is_reits_announcement(title):
-                    # 标记为可疑但不删除，留人工审核
+                    # ========== 1. 非REITs过滤 ==========
+                    if not is_reits_announcement(title):
+                        # 标记为可疑但不删除，留人工审核
+                        cursor.execute('''
+                            SELECT id FROM business.announcements
+                            WHERE fund_code = %s AND title = %s AND publish_date = %s
+                        ''', (fund_code, title, publish_date))
+
+                        if cursor.fetchone():
+                            result['skipped'] += 1
+                        else:
+                            # 可疑公告，标记并入库
+                            category = classify_announcement(title)
+                            cursor.execute('''
+                                INSERT INTO business.announcements
+                                (fund_code, title, category, publish_date, source_url, pdf_url, exchange, confidence, is_suspicious, pdf_valid)
+                                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                ON CONFLICT DO NOTHING
+                            ''', (
+                                fund_code, title, category, publish_date,
+                                cninfo_search_url, pdf_url, exchange,
+                                60, 1, 1  # 可疑公告置信度60，标记is_suspicious=1
+                            ))
+                            if cursor.rowcount > 0:
+                                result['inserted'] += 1
+                        continue
+
+                    # ========== 2. PDF有效性校验 ==========
+                    pdf_valid = check_pdf_validity(pdf_url)
+
+                    # ========== 3. 分类 ==========
+                    category = classify_announcement(title)
+
+                    # ========== 4. 去重检查 ==========
                     cursor.execute('''
-                        SELECT id FROM announcements
-                        WHERE fund_code = ? AND title = ? AND publish_date = ?
+                        SELECT id FROM business.announcements
+                        WHERE fund_code = %s AND title = %s AND publish_date = %s
                     ''', (fund_code, title, publish_date))
 
                     if cursor.fetchone():
                         result['skipped'] += 1
-                    else:
-                        # 可疑公告，标记并入库
-                        category = classify_announcement(title)
-                        cursor.execute('''
-                            INSERT INTO announcements
-                            (fund_code, title, category, publish_date, source_url, pdf_url, exchange, confidence, is_suspicious, pdf_valid)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        ''', (
-                            fund_code, title, category, publish_date,
-                            cninfo_search_url, pdf_url, exchange,
-                            60, 1, 1  # 可疑公告置信度60，标记is_suspicious=1
-                        ))
-                        result['inserted'] += 1
+                        continue
+
+                    # 插入数据
+                    cursor.execute('''
+                        INSERT INTO business.announcements
+                        (fund_code, title, category, publish_date, source_url, pdf_url, exchange, confidence, is_suspicious, pdf_valid)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        ON CONFLICT DO NOTHING
+                    ''', (
+                        fund_code,
+                        title,
+                        category,
+                        publish_date,
+                        cninfo_search_url,
+                        pdf_url,
+                        exchange,
+                        90 if pdf_valid else 70,  # PDF无效降低置信度
+                        0,
+                        1 if pdf_valid else 0
+                    ))
+
+                    if not pdf_valid:
+                        result['invalid_pdf'] += 1
+
+                    result['inserted'] += 1
+
+                except Exception as e:
+                    print(f'[DB] 保存单条公告失败: {e}')
                     continue
 
-                # ========== 2. PDF有效性校验 ==========
-                pdf_valid = check_pdf_validity(pdf_url)
-
-                # ========== 3. 分类 ==========
-                category = classify_announcement(title)
-
-                # ========== 4. 去重检查 ==========
-                cursor.execute('''
-                    SELECT id FROM announcements
-                    WHERE fund_code = ? AND title = ? AND publish_date = ?
-                ''', (fund_code, title, publish_date))
-
-                if cursor.fetchone():
-                    result['skipped'] += 1
-                    continue
-
-                # 插入数据
-                cursor.execute('''
-                    INSERT INTO announcements
-                    (fund_code, title, category, publish_date, source_url, pdf_url, exchange, confidence, is_suspicious, pdf_valid)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ''', (
-                    fund_code,
-                    title,
-                    category,
-                    publish_date,
-                    cninfo_search_url,
-                    pdf_url,
-                    exchange,
-                    90 if pdf_valid else 70,  # PDF无效降低置信度
-                    0,
-                    1 if pdf_valid else 0
-                ))
-
-                if not pdf_valid:
-                    result['invalid_pdf'] += 1
-
-                result['inserted'] += 1
-
-            except Exception as e:
-                print(f'[DB] 保存单条公告失败: {e}')
-                continue
-
-        conn.commit()
-        conn.close()
-
-        print(f'[DB] 同步完成: 新增{result["inserted"]} | 跳过{result["skipped"]} | 可疑{result["filtered"]} | PDF无效{result["invalid_pdf"]}')
+            print(f'[DB] 同步完成: 新增{result["inserted"]} | 跳过{result["skipped"]} | 可疑{result["filtered"]} | PDF无效{result["invalid_pdf"]}')
 
     except Exception as e:
         result['error'] = str(e)

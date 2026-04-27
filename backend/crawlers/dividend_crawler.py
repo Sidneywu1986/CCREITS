@@ -13,7 +13,7 @@ import time
 import re
 import os
 import sys
-import sqlite3
+from core.db import get_conn
 
 # 添加父目录到路径
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -227,9 +227,7 @@ class REITsDividendManager:
         self.code_pattern_sse = re.compile(r'^508\d{3}$')
         self.code_pattern_szse = re.compile(r'^180\d{3}$')
         
-        # 数据库路径
-        db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'database', 'reits.db')
-        self.db_path = db_path
+
     
     def get_dividends(self, fund_codes: List[str], start_date: str = None, end_date: str = None) -> pd.DataFrame:
         """批量获取多只 REITs 分红信息"""
@@ -273,60 +271,64 @@ class REITsDividendManager:
         if df.empty:
             return
         
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        
-        for _, row in df.iterrows():
-            try:
-                # 1. 保存到 announcements
-                cursor.execute("""
-                    INSERT OR REPLACE INTO announcements 
-                    (fund_code, title, category, publish_date, source_url, exchange, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
-                """, (
-                    row['fund_code'],
-                    row['title'],
-                    'dividend',
-                    row['publish_date'],
-                    row['url'],
-                    row['exchange']
-                ))
-                
-                # 2. 如果解析出了分红金额，同时写入 dividends 表
-                amount = row.get('dividend_per_share')
-                if amount and amount > 0:
-                    # 尝试从标题提取日期
-                    ex_date = row.get('ex_dividend_date')
-                    record_date = row.get('record_date')
-                    pub_date = row.get('publish_date', '')
+        with get_conn() as conn:
+            cursor = conn.cursor()
+            
+            for _, row in df.iterrows():
+                try:
+                    # 1. 保存到 announcements
+                    cursor.execute("""
+                        INSERT INTO business.announcements 
+                        (fund_code, title, category, publish_date, source_url, exchange, created_at)
+                        VALUES (%s, %s, %s, %s, %s, %s, NOW())
+                        ON CONFLICT (fund_code, title, publish_date) DO UPDATE SET
+                            category = EXCLUDED.category,
+                            source_url = EXCLUDED.source_url,
+                            exchange = EXCLUDED.exchange,
+                            created_at = EXCLUDED.created_at
+                    """, (
+                        row['fund_code'],
+                        row['title'],
+                        'dividend',
+                        row['publish_date'],
+                        row['url'],
+                        row['exchange']
+                    ))
                     
-                    # 日期标准化
-                    def normalize_date(d):
-                        if not d:
-                            return None
-                        d = str(d).replace('/', '-').replace('.', '-')
-                        if len(d) == 8 and d.isdigit():
-                            return f"{d[:4]}-{d[4:6]}-{d[6:]}"
-                        return d if len(d) >= 8 else None
-                    
-                    dividend_date = normalize_date(ex_date) or normalize_date(record_date) or normalize_date(pub_date)
-                    if dividend_date:
-                        cursor.execute("""
-                            INSERT OR IGNORE INTO dividends 
-                            (fund_code, dividend_date, dividend_amount, record_date, ex_dividend_date, created_at)
-                            VALUES (?, ?, ?, ?, ?, datetime('now'))
-                        """, (
-                            row['fund_code'],
-                            dividend_date,
-                            amount,
-                            normalize_date(record_date),
-                            normalize_date(ex_date)
-                        ))
-            except Exception as e:
-                print(f"[ERROR] 保存失败 {row['fund_code']}: {e}")
+                    # 2. 如果解析出了分红金额，同时写入 dividends 表
+                    amount = row.get('dividend_per_share')
+                    if amount and amount > 0:
+                        # 尝试从标题提取日期
+                        ex_date = row.get('ex_dividend_date')
+                        record_date = row.get('record_date')
+                        pub_date = row.get('publish_date', '')
+                        
+                        # 日期标准化
+                        def normalize_date(d):
+                            if not d:
+                                return None
+                            d = str(d).replace('/', '-').replace('.', '-')
+                            if len(d) == 8 and d.isdigit():
+                                return f"{d[:4]}-{d[4:6]}-{d[6:]}"
+                            return d if len(d) >= 8 else None
+                        
+                        dividend_date = normalize_date(ex_date) or normalize_date(record_date) or normalize_date(pub_date)
+                        if dividend_date:
+                            cursor.execute("""
+                                INSERT INTO business.dividends 
+                                (fund_code, dividend_date, dividend_amount, record_date, ex_dividend_date, created_at)
+                                VALUES (%s, %s, %s, %s, %s, NOW())
+                                ON CONFLICT DO NOTHING
+                            """, (
+                                row['fund_code'],
+                                dividend_date,
+                                amount,
+                                normalize_date(record_date),
+                                normalize_date(ex_date)
+                            ))
+                except Exception as e:
+                    print(f"[ERROR] 保存失败 {row['fund_code']}: {e}")
         
-        conn.commit()
-        conn.close()
         print(f"  └─ 保存到数据库")
 
 

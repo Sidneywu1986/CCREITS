@@ -3,7 +3,7 @@ PDF announcement crawler scheduler (daily at 6:00 and 18:00)
 """
 import logging
 from typing import List, Dict
-from backend.crawlers.base_scheduler import BaseScheduler
+from crawlers.base_scheduler import BaseScheduler
 
 logger = logging.getLogger(__name__)
 

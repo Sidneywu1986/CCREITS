@@ -7,7 +7,6 @@ AKShare REITs 数据爬虫
 
 import sys
 import json
-import sqlite3
 import argparse
 from datetime import datetime, timedelta
 from pathlib import Path

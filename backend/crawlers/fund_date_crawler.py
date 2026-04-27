@@ -4,13 +4,11 @@ REIT成立日期和剩余期限爬虫
 """
 
 import requests
-import sqlite3
 import re
 import time
 import os
 from datetime import datetime
-
-DB_PATH = os.path.join(os.path.dirname(__file__), '..', 'database', 'reits.db')
+from core.db import get_conn
 
 def fetch_fund_info(code):
     """获取基金详细信息"""
@@ -60,38 +58,38 @@ def calculate_remaining_years(listing_date, total_years):
 def update_fund(code, data):
     """更新数据库"""
     try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
+        with get_conn() as conn:
+            cursor = conn.cursor()
+            
+            fields = []
+            values = []
+            
+            if 'listing_date' in data:
+                fields.append('listing_date = %s')
+                values.append(data['listing_date'])
+            
+            if 'scale' in data:
+                fields.append('scale = %s')
+                values.append(data['scale'])
+            
+            if 'total_years' in data and 'listing_date' in data:
+                remaining = calculate_remaining_years(data['listing_date'], data['total_years'])
+                if remaining:
+                    fields.append('remaining_years = %s')
+                    values.append(remaining)
+            
+            if not fields:
+                return False
+            
+            fields.append('updated_at = %s')
+            values.append(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+            values.append(code)
+            
+            sql = f'UPDATE business.funds SET {", ".join(fields)} WHERE code = %s'
+            cursor.execute(sql, values)
+            rowcount = cursor.rowcount
         
-        fields = []
-        values = []
-        
-        if 'listing_date' in data:
-            fields.append('listing_date = ?')
-            values.append(data['listing_date'])
-        
-        if 'scale' in data:
-            fields.append('scale = ?')
-            values.append(data['scale'])
-        
-        if 'total_years' in data and 'listing_date' in data:
-            remaining = calculate_remaining_years(data['listing_date'], data['total_years'])
-            if remaining:
-                fields.append('remaining_years = ?')
-                values.append(remaining)
-        
-        if not fields:
-            return False
-        
-        fields.append('updated_at = ?')
-        values.append(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-        values.append(code)
-        
-        sql = f'UPDATE funds SET {", ".join(fields)} WHERE code = ?'
-        cursor.execute(sql, values)
-        conn.commit()
-        conn.close()
-        return cursor.rowcount > 0
+        return rowcount > 0
     except Exception as e:
         print(f'  [DB Error] {code}: {e}')
         return False
@@ -99,11 +97,10 @@ def update_fund(code, data):
 def crawl_all():
     """爬取所有缺失的基金"""
     # 获取列表
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute('SELECT code, name FROM funds WHERE listing_date IS NULL ORDER BY code')
-    funds = cursor.fetchall()
-    conn.close()
+    with get_conn() as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT code, name FROM business.funds WHERE listing_date IS NULL ORDER BY code')
+        funds = cursor.fetchall()
     
     print(f'开始爬取 {len(funds)} 只REIT的成立日期...\n')
     

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-增量向量化公众号文章 —— SQLite + sklearn Embedding + SQLite 向量存储版
+增量向量化公众号文章 —— PostgreSQL + sklearn Embedding + PostgreSQL 向量存储版
 无需 Milvus/Docker，纯 Python 实现
 """
 
@@ -12,19 +12,13 @@ import re
 import json
 from datetime import datetime
 from typing import List, Dict, Optional
-import sqlite3
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+from core.db import get_conn
 
 logger = logging.getLogger("vectorize")
 
 # ---------- 配置 ----------
-DB_PATH = os.getenv("DATABASE_URL", "sqlite:///./database/reits.db")
-if DB_PATH.startswith("sqlite:///"):
-    DB_PATH = DB_PATH.replace("sqlite:///", "")
-    if not os.path.isabs(DB_PATH):
-        DB_PATH = os.path.join(os.path.dirname(__file__), "..", DB_PATH)
-
 CHUNK_SIZE = 512
 OVERLAP = 64
 VECTOR_DIM = 256
@@ -111,58 +105,68 @@ def split_text(text: str, chunk_size: int = CHUNK_SIZE, overlap: int = OVERLAP) 
 
 
 # ---------- 数据库操作 ----------
-def ensure_vector_tables(conn: sqlite3.Connection, dim: int):
-    """Create tables for vector storage"""
-    conn.executescript(f"""
-    CREATE TABLE IF NOT EXISTS article_vectors (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        article_id INTEGER NOT NULL,
-        chunk_index INTEGER NOT NULL,
-        chunk_text TEXT,
-        vector BLOB NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (article_id) REFERENCES wechat_articles(id),
-        UNIQUE(article_id, chunk_index)
-    );
-    CREATE INDEX IF NOT EXISTS idx_vec_article ON article_vectors(article_id);
-    CREATE INDEX IF NOT EXISTS idx_vec_created ON article_vectors(created_at);
-    """)
-    conn.commit()
+def ensure_vector_tables(dim: int):
+    """Create tables for vector storage in PostgreSQL"""
+    stmts = [
+        """
+        CREATE TABLE IF NOT EXISTS business.article_vectors (
+            id SERIAL PRIMARY KEY,
+            article_id INTEGER NOT NULL REFERENCES business.wechat_articles(id),
+            chunk_index INTEGER NOT NULL,
+            chunk_text TEXT,
+            vector TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(article_id, chunk_index)
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS idx_vec_article ON business.article_vectors(article_id)",
+        "CREATE INDEX IF NOT EXISTS idx_vec_created ON business.article_vectors(created_at)",
+    ]
+    with get_conn() as conn:
+        cur = conn.cursor()
+        for stmt in stmts:
+            cur.execute(stmt)
+        conn.commit()
 
 
-def fetch_pending_articles(conn: sqlite3.Connection) -> List[Dict]:
-    cur = conn.cursor()
-    cur.execute("""
-        SELECT id, source, title, published, content
-        FROM wechat_articles
-        WHERE vectorized = 0 AND content IS NOT NULL AND length(trim(content)) > 50
-        ORDER BY published DESC
-    """)
-    cols = [d[0] for d in cur.description]
-    return [dict(zip(cols, row)) for row in cur.fetchall()]
+def fetch_pending_articles() -> List[Dict]:
+    with get_conn() as conn:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT id, source, title, published, content
+            FROM business.wechat_articles
+            WHERE vectorized = FALSE AND content IS NOT NULL AND LENGTH(TRIM(content)) > 50
+            ORDER BY published DESC
+        """)
+        cols = [d[0] for d in cur.description]
+        return [dict(zip(cols, row)) for row in cur.fetchall()]
 
 
-def mark_vectorized(conn: sqlite3.Connection, article_ids: List[int]):
-    placeholders = ",".join("?" * len(article_ids))
-    conn.execute(f"""
-        UPDATE wechat_articles
-        SET vectorized = 1, updated_at = CURRENT_TIMESTAMP
-        WHERE id IN ({placeholders})
-    """, article_ids)
-    conn.commit()
+def mark_vectorized(article_ids: List[int]):
+    placeholders = ",".join(["%s"] * len(article_ids))
+    with get_conn() as conn:
+        cur = conn.cursor()
+        cur.execute(f"""
+            UPDATE business.wechat_articles
+            SET vectorized = TRUE, updated_at = CURRENT_TIMESTAMP
+            WHERE id IN ({placeholders})
+        """, article_ids)
+        conn.commit()
 
 
-def get_not_vectorized_count(conn: sqlite3.Connection) -> int:
-    cur = conn.cursor()
-    cur.execute("SELECT COUNT(*) FROM wechat_articles WHERE vectorized = 0 AND content IS NOT NULL")
-    return cur.fetchone()[0]
+def get_not_vectorized_count() -> int:
+    with get_conn() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT COUNT(*) FROM business.wechat_articles WHERE vectorized = FALSE AND content IS NOT NULL")
+        return cur.fetchone()[0]
 
 
-def insert_vectors(conn: sqlite3.Connection, entities: List[Dict]):
-    """Insert vectors as JSON blobs"""
+def insert_vectors(entities: List[Dict]):
+    """Insert vectors as JSON text"""
     sql = """
-    INSERT OR IGNORE INTO article_vectors (article_id, chunk_index, chunk_text, vector)
-    VALUES (?, ?, ?, ?)
+    INSERT INTO business.article_vectors (article_id, chunk_index, chunk_text, vector)
+    VALUES (%s, %s, %s, %s)
+    ON CONFLICT (article_id, chunk_index) DO NOTHING
     """
     rows = []
     for e in entities:
@@ -172,12 +176,14 @@ def insert_vectors(conn: sqlite3.Connection, entities: List[Dict]):
             e["chunk_text"],
             json.dumps(e["vector"])
         ))
-    conn.executemany(sql, rows)
-    conn.commit()
+    with get_conn() as conn:
+        cur = conn.cursor()
+        cur.executemany(sql, rows)
+        conn.commit()
 
 
 # ---------- 向量搜索 ----------
-def search_similar(conn: sqlite3.Connection, query_vector: List[float], top_k: int = 5,
+def search_similar(query_vector: List[float], top_k: int = 5,
                    source_filter: Optional[str] = None) -> List[Dict]:
     """Search similar vectors using cosine similarity"""
     import numpy as np
@@ -188,38 +194,39 @@ def search_similar(conn: sqlite3.Connection, query_vector: List[float], top_k: i
         return []
     query = query / query_norm
 
-    cur = conn.cursor()
     where = ""
     params = []
     if source_filter:
-        where = "WHERE a.source = ?"
+        where = "WHERE a.source = %s"
         params.append(source_filter)
 
-    cur.execute(f"""
-        SELECT v.id, v.article_id, v.chunk_text, v.vector,
-               a.source, a.title, a.published
-        FROM article_vectors v
-        JOIN wechat_articles a ON v.article_id = a.id
-        {where}
-    """, params)
+    with get_conn() as conn:
+        cur = conn.cursor()
+        cur.execute(f"""
+            SELECT v.id, v.article_id, v.chunk_text, v.vector,
+                   a.source, a.title, a.published
+            FROM business.article_vectors v
+            JOIN business.wechat_articles a ON v.article_id = a.id
+            {where}
+        """, params)
 
-    results = []
-    for row in cur.fetchall():
-        vec = np.array(json.loads(row[3]), dtype=np.float32)
-        vec_norm = np.linalg.norm(vec)
-        if vec_norm == 0:
-            continue
-        vec = vec / vec_norm
-        similarity = float(np.dot(query, vec))
-        results.append({
-            "id": row[0],
-            "article_id": row[1],
-            "chunk_text": row[2],
-            "source": row[4],
-            "title": row[5],
-            "published": row[6],
-            "similarity": similarity,
-        })
+        results = []
+        for row in cur.fetchall():
+            vec = np.array(json.loads(row[3]), dtype=np.float32)
+            vec_norm = np.linalg.norm(vec)
+            if vec_norm == 0:
+                continue
+            vec = vec / vec_norm
+            similarity = float(np.dot(query, vec))
+            results.append({
+                "id": row[0],
+                "article_id": row[1],
+                "chunk_text": row[2],
+                "source": row[4],
+                "title": row[5],
+                "published": row[6],
+                "similarity": similarity,
+            })
 
     # Sort by similarity descending
     results.sort(key=lambda x: x["similarity"], reverse=True)
@@ -235,81 +242,76 @@ def main():
 
     embedder = SklearnEmbedder(dim=VECTOR_DIM)
 
-    logger.info(f"Connecting to SQLite at {DB_PATH}...")
-    conn = sqlite3.connect(DB_PATH)
+    logger.info("Connecting to PostgreSQL...")
+    
+    total_pending = get_not_vectorized_count()
+    logger.info(f"Pending articles: {total_pending}")
 
-    try:
-        total_pending = get_not_vectorized_count(conn)
-        logger.info(f"Pending articles: {total_pending}")
+    if total_pending == 0:
+        logger.info("No pending articles, done")
+        return
 
-        if total_pending == 0:
-            logger.info("No pending articles, done")
-            return
+    # First pass: collect all texts
+    logger.info("First pass: collecting all texts...")
+    all_texts = []
+    articles_data = []
 
-        # First pass: collect all texts
-        logger.info("First pass: collecting all texts...")
-        all_texts = []
-        articles_data = []
+    for art in fetch_pending_articles():
+        chunks = split_text(art["content"])
+        if chunks:
+            all_texts.extend(chunks)
+            articles_data.append({"article": art, "chunks": chunks})
 
-        for art in fetch_pending_articles(conn):
-            chunks = split_text(art["content"])
-            if chunks:
-                all_texts.extend(chunks)
-                articles_data.append({"article": art, "chunks": chunks})
+    if not all_texts:
+        logger.info("No valid chunks found")
+        return
 
-        if not all_texts:
-            logger.info("No valid chunks found")
-            return
+    logger.info(f"Total chunks: {len(all_texts)}, from {len(articles_data)} articles")
 
-        logger.info(f"Total chunks: {len(all_texts)}, from {len(articles_data)} articles")
+    # Fit embedder
+    logger.info("Fitting embedder...")
+    embeddings = embedder.encode(all_texts)
+    actual_dim = len(embeddings[0])
+    logger.info(f"Actual vector dim: {actual_dim}")
 
-        # Fit embedder
-        logger.info("Fitting embedder...")
-        embeddings = embedder.encode(all_texts)
-        actual_dim = len(embeddings[0])
-        logger.info(f"Actual vector dim: {actual_dim}")
+    if args.dry_run:
+        logger.info(f"[DRY-RUN] Would process {len(articles_data)} articles, {len(all_texts)} chunks")
+        return
 
-        if args.dry_run:
-            logger.info(f"[DRY-RUN] Would process {len(articles_data)} articles, {len(all_texts)} chunks")
-            return
+    # Ensure vector tables exist
+    ensure_vector_tables(actual_dim)
 
-        # Ensure vector tables exist
-        ensure_vector_tables(conn, actual_dim)
+    # Build entities
+    entities = []
+    vectorized_ids = set()
+    idx = 0
+    for item in articles_data:
+        art = item["article"]
+        chunks = item["chunks"]
+        for i, chunk in enumerate(chunks):
+            entities.append({
+                "article_id": art["id"],
+                "chunk_index": i,
+                "chunk_text": chunk[:1500],
+                "vector": embeddings[idx],
+            })
+            idx += 1
+            vectorized_ids.add(art["id"])
 
-        # Build entities
-        entities = []
-        vectorized_ids = set()
-        idx = 0
-        for item in articles_data:
-            art = item["article"]
-            chunks = item["chunks"]
-            for i, chunk in enumerate(chunks):
-                entities.append({
-                    "article_id": art["id"],
-                    "chunk_index": i,
-                    "chunk_text": chunk[:1500],
-                    "vector": embeddings[idx],
-                })
-                idx += 1
-                vectorized_ids.add(art["id"])
+    # Insert vectors
+    insert_vectors(entities)
 
-        # Insert vectors
-        insert_vectors(conn, entities)
+    # Mark as vectorized
+    mark_vectorized(list(vectorized_ids))
 
-        # Mark as vectorized
-        mark_vectorized(conn, list(vectorized_ids))
+    logger.info(f"All done! Processed {len(vectorized_ids)} articles, {len(entities)} chunks, dim={actual_dim}")
 
-        logger.info(f"All done! Processed {len(vectorized_ids)} articles, {len(entities)} chunks, dim={actual_dim}")
-
-        # Quick verification: test search
-        logger.info("Running verification search...")
-        test_query = embedder.encode(["REITs 投资分析"])[0]
-        results = search_similar(conn, test_query, top_k=3)
-        for r in results:
-            logger.info(f"  [{r['source'][:20]}] sim={r['similarity']:.3f} | {r['title'][:40]}")
-
-    finally:
-        conn.close()
+    # Quick verification: test search
+    logger.info("Running verification search...")
+    test_query = embedder.encode(["REITs 投资分析"])[0]
+    results = search_similar(test_query, top_k=3)
+    for r in results:
+        logger.info(f"  [{r['source'][:20]}] sim={r['similarity']:.3f} | {r['title'][:40]}")
 
 
 if __name__ == "__main__":

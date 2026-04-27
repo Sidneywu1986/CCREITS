@@ -7,7 +7,7 @@
 import os
 import re
 import json
-import sqlite3
+from core.db import get_conn
 
 def extract_dividend_from_pdf(pdf_path):
     """快速提取分红金额"""
@@ -61,11 +61,10 @@ def main():
     print(f"找到 {len(fund_pdfs)} 只基金的分红公告")
     
     # 获取数据库数据
-    conn = sqlite3.connect('database/reits.db')
-    cursor = conn.cursor()
-    cursor.execute('SELECT fund_code, fund_name, nav, dividend_yield FROM funds')
-    local_data = {r[0]: {'name': r[1], 'nav': r[2], 'dividend_yield': r[3]} for r in cursor.fetchall()}
-    conn.close()
+    with get_conn() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT fund_code, fund_name, nav, dividend_yield FROM business.funds')
+            local_data = {r[0]: {'name': r[1], 'nav': r[2], 'dividend_yield': r[3]} for r in cursor.fetchall()}
     
     # 解析PDF（每只基金最多3份）
     results = []

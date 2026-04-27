@@ -1,7 +1,7 @@
 """批量爬取所有REIT基金公告"""
 import sys
 sys.path.insert(0, '.')
-from backend.crawlers.cninfo_crawler import CNInfoCrawler
+from crawlers.cninfo_crawler import CNInfoCrawler
 import time
 
 def crawl_all():

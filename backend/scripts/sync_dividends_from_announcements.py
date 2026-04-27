@@ -3,14 +3,15 @@
 从 announcements 表中的分红公告同步到 dividends 表
 V2: 全页扫描 + 表格提取 + 每10份自动处理
 """
-import sqlite3
 import os
 import re
 import sys
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DB_PATH = os.path.join(BASE_DIR, 'database', 'reits.db')
 ANNOUNCEMENTS_DIR = os.path.join(os.path.dirname(BASE_DIR), 'announcements')
+
+sys.path.insert(0, BASE_DIR)
+from core.db import get_conn
 
 def find_pdf_for_announcement(fund_code, publish_date):
     """在 announcements 目录中查找对应的PDF"""
@@ -145,63 +146,71 @@ def extract_dividend_from_pdf(pdf_path):
         return None, None, None
 
 def sync_dividends():
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
+    with get_conn() as conn:
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT fund_code, title, publish_date, source_url 
+            FROM business.announcements 
+            WHERE category = 'dividend' 
+            ORDER BY publish_date DESC
+        """)
+        rows = cursor.fetchall()
+        print(f"找到 {len(rows)} 条分红公告")
+        
+        inserted = 0
+        parsed = 0
+        
+        for fund_code, title, publish_date, source_url in rows:
+            pdf_path = find_pdf_for_announcement(fund_code, publish_date)
+            amount = record_date = ex_date = None
+            
+            if pdf_path:
+                amount, record_date, ex_date = extract_dividend_from_pdf(pdf_path)
+                if amount:
+                    parsed += 1
+                    print(f"[{fund_code}] PDF解析成功: 金额={amount}, 登记日={record_date}, 除息日={ex_date}")
+            
+            # 如果PDF解析失败，尝试从标题提取金额
+            if not amount and title:
+                m = re.search(r'([0-9]+\.[0-9]+)\s*元', title)
+                if m:
+                    amount = float(m.group(1))
+                    if not (0.001 <= amount <= 5):
+                        amount = None
+            
+            if not amount:
+                print(f"[{fund_code}] 无法提取分红金额, 跳过")
+                continue
+            
+            dividend_date = ex_date or record_date or publish_date
+            if not dividend_date:
+                continue
+            
+            if len(str(dividend_date)) == 8 and str(dividend_date).isdigit():
+                dividend_date = f"{str(dividend_date)[:4]}-{str(dividend_date)[4:6]}-{str(dividend_date)[6:]}"
+            
+            # 检查是否已存在
+            cursor.execute(
+                "SELECT 1 FROM business.dividends WHERE fund_code = %s AND dividend_date = %s",
+                (fund_code, dividend_date)
+            )
+            if cursor.fetchone():
+                continue
+            
+            try:
+                cursor.execute("""
+                    INSERT INTO business.dividends 
+                    (fund_code, dividend_date, dividend_amount, record_date, ex_dividend_date, created_at)
+                    VALUES (%s, %s, %s, %s, %s, NOW())
+                """, (fund_code, dividend_date, amount, record_date, ex_date))
+                if cursor.rowcount > 0:
+                    inserted += 1
+            except Exception as e:
+                print(f"[{fund_code}] 插入失败: {e}")
+        
+        conn.commit()
     
-    cursor.execute("""
-        SELECT fund_code, title, publish_date, source_url 
-        FROM announcements 
-        WHERE category = 'dividend' 
-        ORDER BY publish_date DESC
-    """)
-    rows = cursor.fetchall()
-    print(f"找到 {len(rows)} 条分红公告")
-    
-    inserted = 0
-    parsed = 0
-    
-    for fund_code, title, publish_date, source_url in rows:
-        pdf_path = find_pdf_for_announcement(fund_code, publish_date)
-        amount = record_date = ex_date = None
-        
-        if pdf_path:
-            amount, record_date, ex_date = extract_dividend_from_pdf(pdf_path)
-            if amount:
-                parsed += 1
-                print(f"[{fund_code}] PDF解析成功: 金额={amount}, 登记日={record_date}, 除息日={ex_date}")
-        
-        # 如果PDF解析失败，尝试从标题提取金额
-        if not amount and title:
-            m = re.search(r'([0-9]+\.[0-9]+)\s*元', title)
-            if m:
-                amount = float(m.group(1))
-                if not (0.001 <= amount <= 5):
-                    amount = None
-        
-        if not amount:
-            print(f"[{fund_code}] 无法提取分红金额, 跳过")
-            continue
-        
-        dividend_date = ex_date or record_date or publish_date
-        if not dividend_date:
-            continue
-        
-        if len(str(dividend_date)) == 8 and str(dividend_date).isdigit():
-            dividend_date = f"{str(dividend_date)[:4]}-{str(dividend_date)[4:6]}-{str(dividend_date)[6:]}"
-        
-        try:
-            cursor.execute("""
-                INSERT OR IGNORE INTO dividends 
-                (fund_code, dividend_date, dividend_amount, record_date, ex_dividend_date, created_at)
-                VALUES (?, ?, ?, ?, ?, datetime('now'))
-            """, (fund_code, dividend_date, amount, record_date, ex_date))
-            if cursor.rowcount > 0:
-                inserted += 1
-        except Exception as e:
-            print(f"[{fund_code}] 插入失败: {e}")
-    
-    conn.commit()
-    conn.close()
     print(f"\n完成: 解析成功 {parsed} 条, 新插入 {inserted} 条")
     return inserted
 

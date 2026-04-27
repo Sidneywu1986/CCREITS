@@ -17,12 +17,24 @@ from typing import Optional
 
 # 数据库路径
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(BASE_DIR, 'database', 'reits.db')
+
+# PostgreSQL 统一配置（兼容旧 SQLite 降级）
+from core.config import settings
+import asyncpg
+DB_TYPE = getattr(settings, 'DB_TYPE', 'postgres')
+
+if DB_TYPE == 'sqlite':
+    _pg = settings.PG_CONFIG
+    DB_DSN = f"postgres://{_pg['user']}:{_pg['password']}@{_pg['host']}:{_pg['port']}/{_pg['database']}"
+else:
+    # PostgreSQL asyncpg DSN
+    pg = settings.PG_CONFIG
+    DB_URL = f"postgres://{pg['user']}:{pg['password']}@{pg['host']}:{pg['port']}/{pg['database']}"
 
 # Tortoise ORM 配置
 TORTOISE_ORM = {
     "connections": {
-        "default": f"sqlite://{DB_PATH}",
+        "default": DB_URL,
     },
     "apps": {
         "models": {
@@ -33,15 +45,26 @@ TORTOISE_ORM = {
 }
 
 
+
+# SQLite ? → asyncpg $1,$2... 转换
+def _sql(sql: str) -> str:
+    import re
+    cnt = [0]
+    def repl(m):
+        cnt[0] += 1
+        return f'${cnt[0]}'
+    return re.sub(r'\?', repl, sql)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     from tortoise import Tortoise
     from passlib.hash import bcrypt
     
-    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+    if DB_TYPE == 'sqlite':
+        os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     
     await Tortoise.init(
-        db_url=f"sqlite://{DB_PATH}",
+        db_url=DB_URL,
         modules={"models": ["admin_models"]},
         _enable_global_fallback=True
     )
@@ -62,7 +85,7 @@ async def lifespan(app: FastAPI):
     else:
         print(f"管理员账号已存在: {count} 个")
     
-    print(f"数据库已初始化: {DB_PATH}")
+    print(f"数据库已初始化: {DB_URL.replace(pg.get('password', ''), '***') if DB_TYPE != 'sqlite' else DB_URL}")
     
     yield
     
@@ -109,14 +132,13 @@ class LoginResponse(BaseModel):
 # ========== API 登录接口 (JSON格式) ==========
 @app.post("/api/v1/auth/login")
 async def api_login(request: LoginRequest):
-    import aiosqlite
     from passlib.hash import bcrypt
     
-    async with aiosqlite.connect(DB_PATH) as db:
-        db.row_factory = aiosqlite.Row
+    conn = await asyncpg.connect(DB_DSN)
+    try:
         
         cursor = await db.execute(
-            "SELECT id, username, email, password_hash, is_active, is_superuser FROM users WHERE username = ?",
+            "SELECT id, username, email, password_hash, is_active, is_superuser FROM admin.users WHERE username = ?",
             (request.username,)
         )
         user = await cursor.fetchone()
@@ -154,6 +176,8 @@ async def api_login(request: LoginRequest):
         )
 
 
+    finally:
+        await conn.close()
 @app.get("/api/v1/auth/me")
 async def api_get_me():
     return {
@@ -176,24 +200,23 @@ async def api_logout():
 # ========== Dashboard API ==========
 @app.get("/api/v1/dashboard/stats")
 async def api_dashboard_stats():
-    import aiosqlite
     from datetime import date
     
-    async with aiosqlite.connect(DB_PATH) as db:
-        db.row_factory = aiosqlite.Row
+    conn = await asyncpg.connect(DB_DSN)
+    try:
         
-        cursor = await db.execute("SELECT COUNT(*) as cnt FROM funds")
-        fund_count = (await cursor.fetchone())["cnt"]
+        cursor = await db.execute("SELECT COUNT(*) as cnt FROM business.funds")
+        fund_count = _row["cnt"] if _row else 0
         
-        cursor = await db.execute("SELECT COUNT(*) as cnt FROM announcements")
-        announcement_count = (await cursor.fetchone())["cnt"]
+        cursor = await db.execute("SELECT COUNT(*) as cnt FROM business.announcements")
+        announcement_count = _row["cnt"] if _row else 0
         
         today = str(date.today())
-        cursor = await db.execute("SELECT COUNT(*) as cnt FROM announcements WHERE date(publish_date) = ?", (today,))
-        today_announcements = (await cursor.fetchone())["cnt"]
+        cursor = await db.execute("SELECT COUNT(*) as cnt FROM business.announcements WHERE date(publish_date) = ?", (today,))
+        today_announcements = _row["cnt"] if _row else 0
         
-        cursor = await db.execute("SELECT COUNT(*) as cnt FROM users")
-        user_count = (await cursor.fetchone())["cnt"]
+        cursor = await db.execute("SELECT COUNT(*) as cnt FROM admin.users")
+        user_count = _row["cnt"] if _row else 0
         
         return {
             "code": 200,
@@ -208,6 +231,8 @@ async def api_dashboard_stats():
         }
 
 
+    finally:
+        await conn.close()
 # ========== 菜单 API ==========
 @app.get("/api/v1/menu/routes")
 async def api_menu_routes():
@@ -237,31 +262,28 @@ async def api_menu_routes():
 # ========== 基金 API ==========
 @app.get("/api/v1/funds")
 async def api_list_funds(page: int = 1, page_size: int = 20, keyword: str = ""):
-    import aiosqlite
     
-    async with aiosqlite.connect(DB_PATH) as db:
-        db.row_factory = aiosqlite.Row
+    conn = await asyncpg.connect(DB_DSN)
+    try:
         
         offset = (page - 1) * page_size
         
         if keyword:
-            count_query = "SELECT COUNT(*) as cnt FROM funds WHERE fund_code LIKE ? OR fund_name LIKE ?"
+            count_query = "SELECT COUNT(*) as cnt FROM business.funds WHERE fund_code LIKE ? OR fund_name LIKE ?"
             cursor = await db.execute(count_query, (f"%{keyword}%", f"%{keyword}%"))
-            total = (await cursor.fetchone())["cnt"]
             
             data_query = """
                 SELECT id, fund_code, fund_name, exchange, ipo_date, nav, status
-                FROM funds 
+                FROM business.funds 
                 WHERE fund_code LIKE ? OR fund_name LIKE ?
                 LIMIT ? OFFSET ?
             """
             cursor = await db.execute(data_query, (f"%{keyword}%", f"%{keyword}%", page_size, offset))
         else:
-            count_query = "SELECT COUNT(*) as cnt FROM funds"
+            count_query = "SELECT COUNT(*) as cnt FROM business.funds"
             cursor = await db.execute(count_query)
-            total = (await cursor.fetchone())["cnt"]
             
-            data_query = "SELECT id, fund_code, fund_name, exchange, ipo_date, nav, status FROM funds LIMIT ? OFFSET ?"
+            data_query = "SELECT id, fund_code, fund_name, exchange, ipo_date, nav, status FROM business.funds LIMIT ? OFFSET ?"
             cursor = await db.execute(data_query, (page_size, offset))
         
         rows = await cursor.fetchall()
@@ -287,37 +309,36 @@ async def api_list_funds(page: int = 1, page_size: int = 20, keyword: str = ""):
         }
 
 
+    finally:
+        await conn.close()
 # ========== 公告 API ==========
 @app.get("/api/v1/announcements")
 async def api_list_announcements(page: int = 1, page_size: int = 20, fund_code: str = ""):
-    import aiosqlite
     
-    async with aiosqlite.connect(DB_PATH) as db:
-        db.row_factory = aiosqlite.Row
+    conn = await asyncpg.connect(DB_DSN)
+    try:
         
         offset = (page - 1) * page_size
         
         if fund_code:
-            count_query = "SELECT COUNT(*) as cnt FROM announcements WHERE fund_code = ?"
+            count_query = "SELECT COUNT(*) as cnt FROM business.announcements WHERE fund_code = ?"
             cursor = await db.execute(count_query, (fund_code,))
-            total = (await cursor.fetchone())["cnt"]
             
             data_query = """
                 SELECT id, fund_code, title, publish_date, category, source_url
-                FROM announcements 
+                FROM business.announcements 
                 WHERE fund_code = ?
                 ORDER BY publish_date DESC
                 LIMIT ? OFFSET ?
             """
             cursor = await db.execute(data_query, (fund_code, page_size, offset))
         else:
-            count_query = "SELECT COUNT(*) as cnt FROM announcements"
+            count_query = "SELECT COUNT(*) as cnt FROM business.announcements"
             cursor = await db.execute(count_query)
-            total = (await cursor.fetchone())["cnt"]
             
             data_query = """
                 SELECT id, fund_code, title, publish_date, category, source_url
-                FROM announcements 
+                FROM business.announcements 
                 ORDER BY publish_date DESC
                 LIMIT ? OFFSET ?
             """
@@ -345,34 +366,33 @@ async def api_list_announcements(page: int = 1, page_size: int = 20, fund_code: 
         }
 
 
+    finally:
+        await conn.close()
 # ========== 用户管理 API ==========
 @app.get("/api/v1/users")
 async def api_list_users(page: int = 1, page_size: int = 10, keyword: str = ""):
-    import aiosqlite
     
-    async with aiosqlite.connect(DB_PATH) as db:
-        db.row_factory = aiosqlite.Row
+    conn = await asyncpg.connect(DB_DSN)
+    try:
         
         offset = (page - 1) * page_size
         
         if keyword:
-            count_query = "SELECT COUNT(*) as cnt FROM users WHERE username LIKE ? OR email LIKE ?"
+            count_query = "SELECT COUNT(*) as cnt FROM admin.users WHERE username LIKE ? OR email LIKE ?"
             cursor = await db.execute(count_query, (f"%{keyword}%", f"%{keyword}%"))
-            total = (await cursor.fetchone())["cnt"]
             
             data_query = """
                 SELECT id, username, email, is_active, is_superuser, created_at
-                FROM users 
+                FROM admin.users 
                 WHERE username LIKE ? OR email LIKE ?
                 LIMIT ? OFFSET ?
             """
             cursor = await db.execute(data_query, (f"%{keyword}%", f"%{keyword}%", page_size, offset))
         else:
-            count_query = "SELECT COUNT(*) as cnt FROM users"
+            count_query = "SELECT COUNT(*) as cnt FROM admin.users"
             cursor = await db.execute(count_query)
-            total = (await cursor.fetchone())["cnt"]
             
-            data_query = "SELECT id, username, email, is_active, is_superuser, created_at FROM users LIMIT ? OFFSET ?"
+            data_query = "SELECT id, username, email, is_active, is_superuser, created_at FROM admin.users LIMIT ? OFFSET ?"
             cursor = await db.execute(data_query, (page_size, offset))
         
         rows = await cursor.fetchall()
@@ -397,6 +417,8 @@ async def api_list_users(page: int = 1, page_size: int = 10, keyword: str = ""):
         }
 
 
+    finally:
+        await conn.close()
 # ========== 角色管理 API ==========
 @app.get("/api/v1/roles")
 async def api_list_roles():

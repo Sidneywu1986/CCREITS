@@ -17,9 +17,9 @@ class VectorQueueProcessor:
 
     async def process_pending(self) -> int:
         """Process pending vectorization records. Returns count of processed records."""
-        from backend.ai_db.models import VectorPending
-        from backend.vector.milvus_client import get_milvus_client
-        from backend.vector.embedding_service import get_embedding_service
+        from ai_db.models import VectorPending
+        from vector.milvus_client import get_milvus_client
+        from vector.embedding_service import get_embedding_service
 
         # Fetch pending records
         pending_records = await VectorPending.filter(status="pending").limit(self.batch_size).all()
@@ -59,9 +59,9 @@ class VectorQueueProcessor:
 
     async def _vectorize_announcement(self, record) -> None:
         """Vectorize announcement content"""
-        from backend.ai_db.models import AnnouncementContent
-        from backend.vector.milvus_client import get_milvus_client
-        from backend.vector.embedding_service import get_embedding_service
+        from ai_db.models import AnnouncementContent
+        from vector.milvus_client import get_milvus_client
+        from vector.embedding_service import get_embedding_service
 
         contents = await AnnouncementContent.filter(announcement_id=int(record.content_id)).all()
         if not contents:
@@ -82,9 +82,9 @@ class VectorQueueProcessor:
 
     async def _vectorize_hotspot(self, record) -> None:
         """Vectorize social hotspot"""
-        from backend.ai_db.models import SocialHotspot
-        from backend.vector.milvus_client import get_milvus_client
-        from backend.vector.embedding_service import get_embedding_service
+        from ai_db.models import SocialHotspot
+        from vector.milvus_client import get_milvus_client
+        from vector.embedding_service import get_embedding_service
 
         hotspot = await SocialHotspot.filter(id=int(record.content_id)).first()
         if not hotspot:
@@ -105,9 +105,9 @@ class VectorQueueProcessor:
 
     async def _vectorize_article(self, record) -> None:
         """Vectorize article content"""
-        from backend.ai_db.models import Article
-        from backend.vector.milvus_client import get_milvus_client
-        from backend.vector.embedding_service import get_embedding_service
+        from ai_db.models import Article
+        from vector.milvus_client import get_milvus_client
+        from vector.embedding_service import get_embedding_service
 
         article = await Article.filter(id=int(record.content_id)).first()
         if not article:

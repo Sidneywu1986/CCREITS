@@ -11,7 +11,6 @@ import json
 import re
 import logging
 import time
-import sqlite3
 from typing import List, Dict, Optional
 from datetime import datetime
 
@@ -26,9 +25,10 @@ try:
 except ImportError:
     pass
 
+from core.db import get_conn
+
 logger = logging.getLogger("llm_tagger")
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "..", "database", "reits.db")
 CHECKPOINT_FILE = os.path.join(os.path.dirname(__file__), "..", "scripts", ".retag_checkpoint.json")
 
 # DeepSeek API 配置（从环境变量读取）
@@ -168,30 +168,30 @@ class LLMTagEngine:
             return None
 
 
-def ensure_extractions_table(conn: sqlite3.Connection):
+def ensure_extractions_table(conn):
     """创建 article_extractions 表（如果不存在）"""
-    conn.executescript("""
-    CREATE TABLE IF NOT EXISTS article_extractions (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+    cur = conn.cursor()
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS business.article_extractions (
+        id SERIAL PRIMARY KEY,
         article_id INTEGER NOT NULL,
-        key TEXT NOT NULL,
+        key VARCHAR(100) NOT NULL,
         value TEXT NOT NULL,
-        unit TEXT,
+        unit VARCHAR(50),
         context TEXT,
-        time_ref TEXT,
-        source TEXT DEFAULT 'llm',
+        time_ref VARCHAR(50),
+        source VARCHAR(20) DEFAULT 'llm',
         extracted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        confidence_score REAL DEFAULT 0.8,
-        FOREIGN KEY (article_id) REFERENCES wechat_articles(id)
-    );
-    CREATE INDEX IF NOT EXISTS idx_ext_article ON article_extractions(article_id);
-    CREATE INDEX IF NOT EXISTS idx_ext_key ON article_extractions(key);
+        confidence_score NUMERIC(4,2) DEFAULT 0.8
+    )
     """)
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_ext_article ON business.article_extractions(article_id)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_ext_key ON business.article_extractions(key)")
     conn.commit()
 
 
-def save_tags_to_sqlite(conn: sqlite3.Connection, article_id: int, tags: dict):
-    """保存标签到 SQLite"""
+def save_tags_to_db(conn, article_id: int, tags: dict):
+    """保存标签到数据库"""
     now = datetime.now().isoformat()
     cur = conn.cursor()
 
@@ -202,11 +202,11 @@ def save_tags_to_sqlite(conn: sqlite3.Connection, article_id: int, tags: dict):
     confidence = sentiment.get("confidence", 0.5)
 
     cur.execute(
-        """UPDATE wechat_articles SET
-            sentiment_score = ?,
-            emotion_tag = ?,
+        """UPDATE business.wechat_articles SET
+            sentiment_score = %s,
+            emotion_tag = %s,
             updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?""",
+        WHERE id = %s""",
         (score, emotion, article_id),
     )
 
@@ -219,10 +219,10 @@ def save_tags_to_sqlite(conn: sqlite3.Connection, article_id: int, tags: dict):
     event_str = ",".join(events) if events else ""
 
     cur.execute(
-        """UPDATE wechat_articles SET
-            asset_tags = ?,
-            event_tags = ?
-        WHERE id = ?""",
+        """UPDATE business.wechat_articles SET
+            asset_tags = %s,
+            event_tags = %s
+        WHERE id = %s""",
         (asset_str, event_str, article_id),
     )
 
@@ -230,9 +230,9 @@ def save_tags_to_sqlite(conn: sqlite3.Connection, article_id: int, tags: dict):
     ensure_extractions_table(conn)
     for ext in tags.get("extractions", []):
         cur.execute(
-            """INSERT INTO article_extractions
+            """INSERT INTO business.article_extractions
                 (article_id, key, value, unit, context, time_ref, source, extracted_at, confidence_score)
-            VALUES (?, ?, ?, ?, ?, ?, 'llm', ?, 0.8)""",
+            VALUES (%s, %s, %s, %s, %s, %s, 'llm', %s, 0.8)""",
             (
                 article_id,
                 ext.get("key", ""),
@@ -261,19 +261,18 @@ def save_checkpoint(idx: int, stats: dict):
         json.dump({"last_processed": idx, "stats": stats}, f, ensure_ascii=False, indent=2)
 
 
-def fetch_target_articles(conn: sqlite3.Connection, only_untagged: bool = False, limit: Optional[int] = None) -> List[dict]:
-    conn.row_factory = sqlite3.Row
+def fetch_target_articles(conn, only_untagged: bool = False, limit: Optional[int] = None) -> List[dict]:
     cur = conn.cursor()
     if only_untagged:
         # 只补打 asset_tags 或 event_tags 为空的文章
         sql = """SELECT id, source, title, published, content
-            FROM wechat_articles
+            FROM business.wechat_articles
             WHERE content IS NOT NULL AND length(content) > 50
               AND (asset_tags IS NULL OR asset_tags = '' OR event_tags IS NULL OR event_tags = '')
             ORDER BY id"""
     else:
         sql = """SELECT id, source, title, published, content
-            FROM wechat_articles
+            FROM business.wechat_articles
             WHERE content IS NOT NULL AND length(content) > 50
             ORDER BY id"""
     if limit:
@@ -291,8 +290,7 @@ class BatchRetagJob:
 
     def run(self, only_untagged: bool = False, limit: Optional[int] = None):
         self.stats["start_time"] = datetime.now().isoformat()
-        conn = sqlite3.connect(DB_PATH)
-        try:
+        with get_conn() as conn:
             articles = fetch_target_articles(conn, only_untagged=only_untagged, limit=limit)
             self.stats["total"] = len(articles)
             logger.info(f"Batch retag start: {len(articles)} articles")
@@ -307,7 +305,7 @@ class BatchRetagJob:
 
                 tags = self.engine.tag_article(article)
                 if tags:
-                    save_tags_to_sqlite(conn, article["id"], tags)
+                    save_tags_to_db(conn, article["id"], tags)
                     self.stats["success"] += 1
                 else:
                     self.stats["failed"] += 1
@@ -321,8 +319,6 @@ class BatchRetagJob:
             logger.info(
                 f"Batch retag complete: success={self.stats['success']}, failed={self.stats['failed']}"
             )
-        finally:
-            conn.close()
         return self.stats
 
 

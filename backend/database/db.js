@@ -1,143 +1,212 @@
 /**
- * 数据库连接模块
- * 使用 sqlite3（异步API，兼容性更好）
+ * PostgreSQL 数据库连接模块
+ * 兼容旧版 SQLite API，支持 Node.js 爬虫系统
  */
 
-const sqlite3 = require('sqlite3').verbose();
+const { Pool } = require('pg');
 const path = require('path');
-const fs = require('fs');
 
-const DB_PATH = path.join(__dirname, 'reits.db');
-const SCHEMA_PATH = path.join(__dirname, 'schema.sql');
+// 尝试加载 .env，失败则使用环境变量或默认值
+try {
+    require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
+} catch (e) {
+    // dotenv 未安装，忽略
+}
 
-// 创建数据库连接
-const db = new sqlite3.Database(DB_PATH);
+const pool = new Pool({
+    host: process.env.PG_HOST || 'localhost',
+    port: parseInt(process.env.PG_PORT || '5432'),
+    database: process.env.PG_DB || 'reits',
+    user: process.env.PG_USER || 'postgres',
+    password: process.env.PG_PASSWORD || 'postgres',
+});
 
-// 启用外键约束
-db.run('PRAGMA foreign_keys = ON');
-db.run('PRAGMA journal_mode = WAL');
+pool.on('error', (err) => {
+    console.error('PostgreSQL pool error:', err);
+});
 
-// 初始化表结构
+// 已知冲突列映射（用于 INSERT OR REPLACE / INSERT OR IGNORE 转换）
+const CONFLICT_COLUMNS = {
+    'business.price_history': 'fund_code, trade_date',
+    'business.fund_prices': 'fund_code, trade_date',
+    'business.funds': 'fund_code',
+    'business.data_sources': 'data_type, source_name',
+    'business.announcements': 'id',
+};
+
+// SQL 翻译：SQLite → PostgreSQL
+function translateSql(sql) {
+    let result = sql;
+
+    // 1. SQLite 函数 → PostgreSQL
+    result = result.replace(/datetime\('now'\)/gi, 'NOW()');
+    result = result.replace(/date\('now'\)/gi, 'CURRENT_DATE');
+
+    // 2. 表名添加 business. 前缀（避免重复）
+    const tables = [
+        'funds', 'quotes', 'price_history', 'announcements',
+        'data_sources', 'update_logs', 'fund_prices',
+        'wechat_articles', 'dividends', 'article_vectors'
+    ];
+    for (const t of tables) {
+        // 使用负向后行断言确保前面没有 business.
+        const re = new RegExp(`(?<!business\\.)\\b${t}\\b`, 'g');
+        result = result.replace(re, `business.${t}`);
+    }
+
+    // 3. INSERT OR REPLACE → INSERT ... ON CONFLICT DO UPDATE
+    const orReplaceRe = /INSERT\s+OR\s+REPLACE\s+INTO\s+(\w+)\s*\(([^)]+)\)\s*VALUES\s*\(([^)]+)\)/i;
+    let m;
+    while ((m = result.match(orReplaceRe)) !== null) {
+        const table = m[1];
+        const cols = m[2];
+        const vals = m[3];
+        const colArr = cols.split(',').map(c => c.trim());
+        const conflictCols = CONFLICT_COLUMNS[table] || CONFLICT_COLUMNS[`business.${table}`] || 'id';
+        const updateSets = colArr.map(c => `${c} = EXCLUDED.${c}`).join(', ');
+        const replacement = `INSERT INTO ${table} (${cols}) VALUES (${vals}) ON CONFLICT (${conflictCols}) DO UPDATE SET ${updateSets}`;
+        result = result.replace(m[0], replacement);
+    }
+
+    // 4. INSERT OR IGNORE → INSERT ... ON CONFLICT DO NOTHING
+    const orIgnoreRe = /INSERT\s+OR\s+IGNORE\s+INTO\s+(\w+)\s*\(([^)]+)\)\s*VALUES\s*\(/i;
+    while ((m = result.match(orIgnoreRe)) !== null) {
+        const table = m[1];
+        const cols = m[2];
+        const conflictCols = CONFLICT_COLUMNS[table] || CONFLICT_COLUMNS[`business.${table}`] || 'id';
+        // 找到匹配的 VALUES 结束位置
+        const startIdx = result.indexOf(m[0]);
+        let parenDepth = 1;
+        let endIdx = startIdx + m[0].length;
+        while (parenDepth > 0 && endIdx < result.length) {
+            if (result[endIdx] === '(') parenDepth++;
+            else if (result[endIdx] === ')') parenDepth--;
+            endIdx++;
+        }
+        const original = result.slice(startIdx, endIdx);
+        const replacement = `INSERT INTO ${table} (${cols}) VALUES (${original.slice(m[0].length, -1)}) ON CONFLICT (${conflictCols}) DO NOTHING`;
+        result = result.slice(0, startIdx) + replacement + result.slice(endIdx);
+    }
+
+    return result;
+}
+
+// ? → $1, $2...
+function convertPlaceholders(sql, params) {
+    let idx = 0;
+    const pgSql = sql.replace(/\?/g, () => `$${++idx}`);
+    return { sql: pgSql, params: params || [] };
+}
+
+function executeQuery(sql, params) {
+    const translated = translateSql(sql);
+    const { sql: pgSql, params: pgParams } = convertPlaceholders(translated, params);
+    return pool.query(pgSql, pgParams);
+}
+
+// 兼容 SQLite 风格的 db 对象
+const db = {
+    all(sql, params, callback) {
+        if (typeof params === 'function') {
+            callback = params;
+            params = [];
+        }
+        executeQuery(sql, params)
+            .then(res => callback(null, res.rows))
+            .catch(err => callback(err));
+    },
+
+    run(sql, params, callback) {
+        if (typeof params === 'function') {
+            callback = params;
+            params = [];
+        }
+        executeQuery(sql, params)
+            .then(res => {
+                const context = {
+                    lastID: res.rows[0]?.id || 0,
+                    changes: res.rowCount || 0
+                };
+                if (callback) callback.call(context, null);
+            })
+            .catch(err => {
+                if (callback) callback(err);
+            });
+    },
+
+    get(sql, params, callback) {
+        if (typeof params === 'function') {
+            callback = params;
+            params = [];
+        }
+        executeQuery(sql, params)
+            .then(res => callback(null, res.rows[0] || null))
+            .catch(err => callback(err));
+    },
+
+    exec(sql, callback) {
+        const statements = sql.split(/;\s*\n/).filter(s => s.trim());
+        let idx = 0;
+        const next = () => {
+            if (idx >= statements.length) {
+                if (callback) callback(null);
+                return;
+            }
+            const stmt = statements[idx++].trim();
+            if (!stmt) { next(); return; }
+            executeQuery(stmt, [])
+                .then(() => next())
+                .catch(err => { if (callback) callback(err); });
+        };
+        next();
+    },
+
+    // 模拟 sqlite3.prepare 返回 statement 对象
+    prepare(sql) {
+        const translated = translateSql(sql);
+        return {
+            run(params, callback) {
+                const { sql: pgSql, params: pgParams } = convertPlaceholders(translated, params || []);
+                pool.query(pgSql, pgParams)
+                    .then(res => {
+                        const context = { lastID: res.rows[0]?.id || 0, changes: res.rowCount || 0 };
+                        if (callback) callback.call(context, null);
+                    })
+                    .catch(err => { if (callback) callback(err); });
+            },
+            finalize() {}
+        };
+    }
+};
+
 function initDatabase() {
-    return new Promise((resolve, reject) => {
-        try {
-            // 加载主schema
-            const schema = fs.readFileSync(SCHEMA_PATH, 'utf8');
-            
-            // 加载AI聊天schema
-            const aiSchemaPath = path.join(__dirname, 'ai_chat_schema.sql');
-            let aiSchema = '';
-            if (fs.existsSync(aiSchemaPath)) {
-                aiSchema = fs.readFileSync(aiSchemaPath, 'utf8');
-            }
-            
-            // 加载大盘指数schema
-            const indexSchemaPath = path.join(__dirname, 'index_schema.sql');
-            let indexSchema = '';
-            if (fs.existsSync(indexSchemaPath)) {
-                indexSchema = fs.readFileSync(indexSchemaPath, 'utf8');
-            }
-            
-            // 合并schema并执行
-            const combinedSchema = schema + ';\n' + aiSchema + ';\n' + indexSchema;
-            
-            // 使用exec批量执行（更安全）
-            db.exec(combinedSchema, (err) => {
-                if (err) {
-                    console.error('❌ Schema执行错误:', err);
-                    reject(err);
-                    return;
-                }
-                console.log('✅ 数据库表结构初始化成功');
-                // 初始化数据源追踪表
-                initDataSources().then(resolve).catch(reject);
-            });
-        } catch (error) {
-            console.error('❌ 数据库初始化失败:', error);
-            reject(error);
-        }
-    });
+    // PostgreSQL schema 已由 postgres_schema.sql 初始化
+    return Promise.resolve();
 }
 
-// 初始化数据源配置
-function initDataSources() {
-    return new Promise((resolve, reject) => {
-        const sources = [
-            { type: 'price', name: 'sina-finance', url: 'https://hq.sinajs.cn/' },
-            { type: 'price', name: 'akshare', url: 'https://www.akshare.xyz/' },
-            { type: 'history', name: 'akshare', url: 'https://www.akshare.xyz/' },
-            { type: 'announcement', name: 'sse-crawler', url: 'http://www.sse.com.cn/' },
-            { type: 'announcement', name: 'szse-crawler', url: 'http://www.szse.cn/' },
-            { type: 'nav', name: 'china-fund', url: 'http://fund.eastmoney.com/' }
-        ];
-        
-        const stmt = db.prepare(`
-            INSERT OR IGNORE INTO data_sources (data_type, source_name, source_url)
-            VALUES (?, ?, ?)
-        `);
-        
-        let completed = 0;
-        for (const source of sources) {
-            stmt.run(source.type, source.name, source.url, function(err) {
-                if (err) console.error('插入数据源失败:', err);
-                completed++;
-                if (completed === sources.length) {
-                    stmt.finalize();
-                    resolve();
-                }
-            });
-        }
-    });
-}
-
-// 记录更新日志
 function logUpdate(dataType, source, status, recordsCount, durationMs, errorMsg = null) {
-    return new Promise((resolve, reject) => {
-        const stmt = db.prepare(`
-            INSERT INTO update_logs (data_type, source, status, records_count, duration_ms, error_msg)
-            VALUES (?, ?, ?, ?, ?, ?)
-        `);
-        
-        stmt.run(dataType, source, status, recordsCount, durationMs, errorMsg, function(err) {
-            stmt.finalize();
-            if (err) reject(err);
-            else resolve();
-        });
-    });
+    return pool.query(
+        `INSERT INTO business.update_logs (data_type, source, status, records_count, duration_ms, error_msg)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [dataType, source, status, recordsCount, durationMs, errorMsg]
+    ).then(() => {}).catch(() => {});
 }
 
-// 更新数据源状态
 function updateSourceStatus(dataType, sourceName, status, errorMsg = null) {
-    return new Promise((resolve, reject) => {
-        const stmt = db.prepare(`
-            UPDATE data_sources 
-            SET last_updated = CURRENT_TIMESTAMP, 
-                status = ?,
-                error_msg = ?,
-                update_count = update_count + 1
-            WHERE data_type = ? AND source_name = ?
-        `);
-        
-        stmt.run(status, errorMsg, dataType, sourceName, function(err) {
-            stmt.finalize();
-            if (err) reject(err);
-            else resolve();
-        });
-    });
+    return pool.query(
+        `UPDATE business.data_sources
+         SET last_updated = CURRENT_TIMESTAMP, status = $1, error_msg = $2, update_count = update_count + 1
+         WHERE data_type = $3 AND source_name = $4`,
+        [status, errorMsg, dataType, sourceName]
+    ).then(() => {}).catch(() => {});
 }
 
-// 获取数据源状态（用于前端展示）
 function getDataSourcesStatus() {
-    return new Promise((resolve, reject) => {
-        db.all(`
-            SELECT data_type, source_name, last_updated, status, error_msg
-            FROM data_sources
-            ORDER BY data_type
-        `, (err, rows) => {
-            if (err) reject(err);
-            else resolve(rows);
-        });
-    });
+    return pool.query(
+        `SELECT data_type, source_name, last_updated, status, error_msg
+         FROM business.data_sources
+         ORDER BY data_type`
+    ).then(res => res.rows);
 }
 
 module.exports = {

@@ -6,11 +6,12 @@
 
 import os
 import json
-import sqlite3
 import numpy as np
 from typing import List, Dict, Optional, Set
 from dataclasses import dataclass
 import logging
+
+from core.db import get_conn
 
 logger = logging.getLogger(__name__)
 
@@ -75,9 +76,8 @@ class LocalVectorRetriever:
     """
 
     def __init__(self, db_path: Optional[str] = None):
-        self.db_path = db_path or os.path.join(
-            os.path.dirname(__file__), "..", "database", "reits.db"
-        )
+        # db_path 参数保留兼容，不再使用
+        self.db_path = None
         self._embedder: Optional[SklearnEmbedder] = None
         self._vectors: Optional[np.ndarray] = None
         self._meta: List[Dict] = []
@@ -90,59 +90,55 @@ class LocalVectorRetriever:
             return
         logger.info("Initializing LocalVectorRetriever...")
 
-        conn = sqlite3.connect(self.db_path)
-        cur = conn.cursor()
+        with get_conn() as conn:
+            cur = conn.cursor()
 
-        # Check if article_vectors exists
-        cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='article_vectors'")
-        if not cur.fetchone():
-            conn.close()
-            raise RuntimeError("article_vectors table not found. Run vectorize_articles.py first.")
+            # Check if article_vectors exists
+            cur.execute("SELECT tablename FROM pg_tables WHERE schemaname = 'business' AND tablename = 'article_vectors'")
+            if not cur.fetchone():
+                raise RuntimeError("article_vectors table not found. Run vectorize_articles.py first.")
 
-        # Load all vectors and texts for fitting
-        cur.execute("""
-            SELECT v.article_id, v.chunk_index, v.vector, v.chunk_text,
-                   a.source, a.title, a.published
-            FROM article_vectors v
-            JOIN wechat_articles a ON v.article_id = a.id
-            WHERE a.vectorized = 1
-        """)
+            # Load all vectors and texts for fitting
+            cur.execute("""
+                SELECT v.article_id, v.chunk_index, v.vector, v.chunk_text,
+                       a.source, a.title, a.published
+                FROM business.article_vectors v
+                JOIN business.wechat_articles a ON v.article_id = a.id
+                WHERE a.vectorized = TRUE
+            """)
 
-        rows = cur.fetchall()
-        if not rows:
-            conn.close()
-            raise RuntimeError("No vectors found in article_vectors.")
+            rows = cur.fetchall()
+            if not rows:
+                raise RuntimeError("No vectors found in article_vectors.")
 
-        texts = []
-        self._meta = []
-        vectors_list = []
+            texts = []
+            self._meta = []
+            vectors_list = []
 
-        for row in rows:
-            vec = json.loads(row[2])
-            vectors_list.append(vec)
-            texts.append(row[3])  # chunk_text for fitting
-            self._meta.append({
-                "article_id": row[0],
-                "chunk_index": row[1],
-                "chunk_text": row[3],
-                "source": row[4],
-                "title": row[5],
-                "publish_date": row[6],
-            })
+            for row in rows:
+                vec = json.loads(row[2])
+                vectors_list.append(vec)
+                texts.append(row[3])  # chunk_text for fitting
+                self._meta.append({
+                    "article_id": row[0],
+                    "chunk_index": row[1],
+                    "chunk_text": row[3],
+                    "source": row[4],
+                    "title": row[5],
+                    "publish_date": str(row[6]) if row[6] else None,
+                })
 
-        # Load article_fund_tags mapping
-        cur.execute("SELECT article_id, fund_code FROM article_fund_tags")
-        for row in cur.fetchall():
-            aid = row[0]
-            fc = row[1]
-            if aid not in self._article_fund_tags:
-                self._article_fund_tags[aid] = set()
-            self._article_fund_tags[aid].add(fc)
-            if fc not in self._fund_article_tags:
-                self._fund_article_tags[fc] = set()
-            self._fund_article_tags[fc].add(aid)
-
-        conn.close()
+            # Load article_fund_tags mapping
+            cur.execute("SELECT article_id, fund_code FROM business.article_fund_tags")
+            for row in cur.fetchall():
+                aid = row[0]
+                fc = row[1]
+                if aid not in self._article_fund_tags:
+                    self._article_fund_tags[aid] = set()
+                self._article_fund_tags[aid].add(fc)
+                if fc not in self._fund_article_tags:
+                    self._fund_article_tags[fc] = set()
+                self._fund_article_tags[fc].add(aid)
 
         # Fit embedder on all chunk texts
         self._embedder = SklearnEmbedder(dim=256)
@@ -317,20 +313,19 @@ class LocalVectorRetriever:
 
     def get_article_meta(self, article_id: int) -> Optional[Dict]:
         """取文章元数据"""
-        conn = sqlite3.connect(self.db_path)
-        cur = conn.cursor()
-        cur.execute("""
-            SELECT id, source, title, link, published, content_length
-            FROM wechat_articles WHERE id = ?
-        """, (article_id,))
-        row = cur.fetchone()
-        conn.close()
-        if not row:
-            return None
-        return {
-            "id": row[0], "source": row[1], "title": row[2],
-            "link": row[3], "published": row[4], "content_length": row[5]
-        }
+        with get_conn() as conn:
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT id, source, title, link, published, content_length
+                FROM business.wechat_articles WHERE id = %s
+            """, (article_id,))
+            row = cur.fetchone()
+            if not row:
+                return None
+            return {
+                "id": row[0], "source": row[1], "title": row[2],
+                "link": row[3], "published": str(row[4]) if row[4] else None, "content_length": row[5]
+            }
 
     def get_stats(self) -> Dict:
         """获取检索器统计信息"""
