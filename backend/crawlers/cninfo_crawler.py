@@ -356,7 +356,7 @@ class CNInfoCrawler:
             
             # 自动同步到数据库
             try:
-                from cninfo_db_sync import save_announcements_to_db
+                from backend.crawlers.cninfo_db_sync import save_announcements_to_db
                 db_result = save_announcements_to_db(result['announcements'], fund_info['code'])
                 result['db_sync'] = db_result
             except Exception as e:

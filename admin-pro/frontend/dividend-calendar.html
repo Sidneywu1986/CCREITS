@@ -8,6 +8,7 @@
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="./css/common.css">
+    <script src="./js/app-core.js?v=1"></script>
     <style>
         body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background-color: #f8fafc; }
         .mono { font-family: 'JetBrains Mono', monospace; }
@@ -313,7 +314,41 @@
         // 异步初始化数据
         async function initCalendarData() {
             await loadCalendarFunds();
-            DIVIDEND_DATA = generateDividendData();
+            
+            // 优先从API加载真实分红数据
+            try {
+                const apiBase = (typeof API_BASE !== 'undefined') ? API_BASE : 'http://localhost:5074/api';
+                const response = await fetch(`${apiBase}/dividend-calendar/list?start_date=2024-01-01&end_date=2026-12-31&page_size=500`);
+                const result = await response.json();
+                
+                if (result.success && result.data && result.data.length > 0) {
+                    DIVIDEND_DATA = result.data.map(d => {
+                        const fund = calendarFundsData.find(f => f.code === d.fund_code) || {};
+                        const name = d.fund_name || fund.name || d.fund_code;
+                        return {
+                            id: d.id,
+                            code: d.fund_code,
+                            name: name,
+                            shortName: name.replace('REIT', '').slice(0, 4),
+                            sector: fund.sector || 'industrial',
+                            exDate: d.ex_dividend_date || d.dividend_date,
+                            recordDate: d.record_date || d.dividend_date,
+                            paymentDate: d.dividend_date,
+                            amount: d.dividend_amount,
+                            yield: fund.dividend_yield || null
+                        };
+                    });
+                    console.log('✅ 分红API数据加载成功:', DIVIDEND_DATA.length, '条记录');
+                    showDataSource('API');
+                } else {
+                    throw new Error('API返回空数据');
+                }
+            } catch (error) {
+                console.warn('⚠️ 分红API加载失败，使用模拟数据:', error.message);
+                DIVIDEND_DATA = generateDividendData();
+                showDataSource('Mock');
+            }
+            
             initCalendar(); // 初始化日历显示
         }
         
@@ -580,6 +615,7 @@
         
         // 页面加载时异步初始化
         window.addEventListener('DOMContentLoaded', () => {
+            initGlobalSearchDropdown();
             initCalendarData();
         });
     </script>

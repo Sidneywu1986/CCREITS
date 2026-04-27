@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>知识库状态 - REITs数据平台</title>
+    <link rel="stylesheet" href="./css/tailwind.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./css/common.css">
+    <script src="./js/app-core.js?v=1"></script>
+    <style>
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background-color: #f8fafc; }
+        .stat-card { transition: all 0.2s ease; }
+        .stat-card:hover { transform: translateY(-1px); box-shadow: 0 4px 12px -2px rgba(0,0,0,0.08); }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+        .status-dot.ready { background: #22c55e; box-shadow: 0 0 0 3px rgba(34,197,94,0.2); }
+        .status-dot.loading { background: #f59e0b; animation: pulse 2s infinite; }
+        .status-dot.error { background: #ef4444; }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+    <!-- Header -->
+    <header class="h-[60px] bg-white border-b border-gray-200 flex items-center justify-between px-6 flex-none z-40">
+        <div class="flex items-center gap-4">
+            <div class="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-lg flex items-center justify-center text-white font-bold text-sm">R</div>
+            <span class="font-bold text-gray-900 text-lg tracking-tight">REITs数据平台</span>
+            <nav class="hidden md:flex items-center gap-0.5 ml-4">
+                <a href="./market.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">市场</a>
+                <a href="./fund-detail.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">详情</a>
+                <a href="./ai-chat.html" class="px-3 py-1.5 text-sm font-medium text-purple-600 bg-purple-50 rounded-lg transition-all flex items-center gap-1">
+                    <span class="w-1.5 h-1.5 bg-purple-500 rounded-full animate-pulse"></span>
+                    AI聊REITs
+                </a>
+                <a href="./announcements.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">公告</a>
+                <a href="./article-search.html" class="px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg">知识库</a>
+                <a href="./portfolio.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">自选</a>
+                <a href="./compare.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">对比</a>
+                <a href="./tools.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">工具</a>
+                <a href="./dividend-calendar.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">分红</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main -->
+    <main class="flex-1 overflow-auto">
+        <div class="max-w-3xl mx-auto p-4 md:p-6 space-y-6">
+            
+            <!-- 说明卡片 -->
+            <div class="bg-gradient-to-r from-indigo-600 to-blue-700 rounded-xl shadow-lg p-6 text-white">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 class="text-lg font-bold">内部知识库</h1>
+                        <p class="text-sm text-blue-100">内容仅用于 AI 内部推理，不对外展示</p>
+                    </div>
+                </div>
+                <p class="text-sm text-blue-50 leading-relaxed">
+                    此处汇集的研究资料为平台独家内容资产，通过向量检索技术注入 AI 的推理过程，
+                    让"老李"等智能体的回答具备专业深度。出于版权保护和内容安全考虑，
+                    资料原文不对外提供检索和展示，用户可通过 AI 聊天获取基于这些资料的脱敏分析观点。
+                </p>
+            </div>
+
+            <!-- 统计卡片 -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="stat-card bg-white rounded-xl border border-gray-200 p-5">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span id="status-dot" class="status-dot loading"></span>
+                        <span class="text-xs text-gray-500 font-medium">向量状态</span>
+                    </div>
+                    <div class="text-2xl font-bold text-gray-900" id="stat-vectors">--</div>
+                    <div class="text-sm text-gray-500">文本向量块</div>
+                </div>
+                <div class="stat-card bg-white rounded-xl border border-gray-200 p-5">
+                    <div class="flex items-center gap-2 mb-2">
+                        <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"/>
+                        </svg>
+                        <span class="text-xs text-gray-500 font-medium">文章数量</span>
+                    </div>
+                    <div class="text-2xl font-bold text-gray-900" id="stat-articles">--</div>
+                    <div class="text-sm text-gray-500">已向量化文章</div>
+                </div>
+                <div class="stat-card bg-white rounded-xl border border-gray-200 p-5">
+                    <div class="flex items-center gap-2 mb-2">
+                        <svg class="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                        </svg>
+                        <span class="text-xs text-gray-500 font-medium">向量维度</span>
+                    </div>
+                    <div class="text-2xl font-bold text-gray-900" id="stat-dim">--</div>
+                    <div class="text-sm text-gray-500">TF-IDF + SVD</div>
+                </div>
+            </div>
+
+            <!-- 使用指引 -->
+            <div class="bg-white rounded-xl border border-gray-200 p-6">
+                <h2 class="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                    </svg>
+                    如何使用
+                </h2>
+                <div class="space-y-3">
+                    <div class="flex items-start gap-3">
+                        <div class="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-bold flex-none mt-0.5">1</div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-800">前往 AI 聊天</p>
+                            <p class="text-sm text-gray-500">点击导航栏的"AI聊REITs"，选择智能体（如老李）</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-3">
+                        <div class="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-bold flex-none mt-0.5">2</div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-800">提问获取分析</p>
+                            <p class="text-sm text-gray-500">AI 会自动检索内部知识库，给出基于独家研究的专业回答</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-3">
+                        <div class="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-bold flex-none mt-0.5">3</div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-800">查看置信度</p>
+                            <p class="text-sm text-gray-500">回答底部会显示"高置信/中置信"标识，表明是否有内部研究支撑</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-5 pt-4 border-t border-gray-100">
+                    <a href="./ai-chat.html" class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-sm font-medium rounded-lg hover:shadow-lg hover:shadow-purple-200 transition-all">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                        </svg>
+                        去和 AI 聊聊
+                    </a>
+                </div>
+            </div>
+        </div>
+    </main>
+
+<script>
+const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:5074' : '';
+
+async function loadStats() {
+    try {
+        const res = await fetch(`${API_BASE}/api/v1/search/stats`);
+        const data = await res.json();
+        document.getElementById('stat-vectors').textContent = data.total_vectors.toLocaleString();
+        document.getElementById('stat-articles').textContent = data.unique_articles.toLocaleString();
+        document.getElementById('stat-dim').textContent = data.embedding_dim;
+        
+        const dot = document.getElementById('status-dot');
+        dot.classList.remove('loading');
+        dot.classList.add('ready');
+    } catch (e) {
+        document.getElementById('stat-vectors').textContent = '未连接';
+        document.getElementById('stat-articles').textContent = '未连接';
+        document.getElementById('stat-dim').textContent = '--';
+        
+        const dot = document.getElementById('status-dot');
+        dot.classList.remove('loading');
+        dot.classList.add('error');
+    }
+}
+
+loadStats();
+</script>
+</body>
+</html>

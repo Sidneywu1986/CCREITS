@@ -8,6 +8,7 @@
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="./css/common.css">
+    <script src="./js/app-core.js?v=1"></script>
     <style>
         body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background-color: #f8fafc; }
         .mono { font-family: 'JetBrains Mono', monospace; }
@@ -331,9 +332,12 @@
     <script src="./js/common.js"></script>
     <script src="./js/api.js"></script>
     <script>
+        const AI_API_BASE = 'http://localhost:5074/api/ai';
         let selectedFunds = [];
         let currentAnalysisType = 'comprehensive';
         let radarChart = null;
+        let currentAnalysisData = null;
+        let isAnalyzing = false;
 
         function initFundList() {
             renderFundList(allFundsData);
@@ -377,7 +381,7 @@
                 selectedFunds.splice(index, 1);
             } else {
                 if (selectedFunds.length >= 5) {
-                    showToast('最多选择5只基金', 'warning');
+                    REITS.showToast('最多选择5只基金', 'warning');
                     return;
                 }
                 selectedFunds.push(code);
@@ -402,12 +406,16 @@
                 tag.classList.toggle('active', isActive);
                 tag.classList.toggle('text-gray-600', !isActive);
             });
+            // 如果已有分析结果，自动重新分析
+            if (currentAnalysisData && selectedFunds.length > 0 && !isAnalyzing) {
+                startAnalysis();
+            }
         }
 
         // 跳转到对比页面
         function goToComparePage() {
             if (selectedFunds.length === 0) {
-                showToast('请先选择至少1只基金', 'warning');
+                REITS.showToast('请先选择至少1只基金', 'warning');
                 return;
             }
             // 将选中的基金保存到localStorage，供对比页读取
@@ -415,105 +423,105 @@
             window.location.href = './compare.html?from=ai';
         }
 
-        function startAnalysis() {
+        async function startAnalysis() {
             if (selectedFunds.length === 0) return;
+            if (isAnalyzing) return;
+            isAnalyzing = true;
             
             document.getElementById('empty-state').classList.add('hidden');
             document.getElementById('result-content').classList.remove('hidden');
-            document.getElementById('analysis-status').textContent = 'AI分析中...';
+            document.getElementById('analysis-status').textContent = 'AI分析中，请稍候...';
             document.getElementById('analysis-status').classList.add('ai-thinking');
             
-            setTimeout(() => {
-                renderAnalysisResult();
-                document.getElementById('analysis-status').textContent = `已完成 ${selectedFunds.length} 只基金分析`;
+            renderSkeletonLoading();
+            
+            try {
+                const response = await fetch(`${AI_API_BASE}/analyze-funds`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        codes: selectedFunds,
+                        analysis_type: currentAnalysisType
+                    })
+                });
+                
+                const data = await response.json();
+                currentAnalysisData = data;
+                
+                if (data.success) {
+                    renderAnalysisResult(data);
+                    document.getElementById('analysis-status').textContent = `已完成 ${selectedFunds.length} 只基金${getAnalysisTypeName(currentAnalysisType)}`;
+                } else {
+                    renderFallbackResult(data.message || 'AI分析暂时不可用');
+                    document.getElementById('analysis-status').textContent = '分析未完成';
+                }
+            } catch (error) {
+                console.error('分析请求失败:', error);
+                renderFallbackResult('网络连接失败，请稍后重试');
+                document.getElementById('analysis-status').textContent = '分析失败';
+            } finally {
                 document.getElementById('analysis-status').classList.remove('ai-thinking');
-            }, 1200);
+                isAnalyzing = false;
+            }
         }
 
-        function renderAnalysisResult() {
-            const funds = allFundsData.filter(f => selectedFunds.includes(f.code));
-            
+        function getAnalysisTypeName(type) {
+            const map = { comprehensive: '综合分析', value: '估值分析', risk: '风险评估', dividend: '分红预测', compare: '横向对比' };
+            return map[type] || '分析';
+        }
+
+        function renderSkeletonLoading() {
             const conclusion = document.getElementById('ai-conclusion');
             conclusion.innerHTML = `
-                <div class="p-3 bg-blue-50 border border-blue-100 rounded-lg">
-                    <div class="font-medium text-blue-700 mb-1">🎯 投资亮点</div>
-                    <p class="text-sm text-blue-600">${funds[0]?.name} 近期表现稳健，派息率达到 ${funds[0]?.yield.toFixed(2)}%，在同类型基金中处于前30%水平。</p>
-                </div>
-                <div class="p-3 bg-yellow-50 border border-yellow-100 rounded-lg">
-                    <div class="font-medium text-yellow-700 mb-1">⚠️ 风险提示</div>
-                    <p class="text-sm text-yellow-600">需关注利率变动对估值的影响，建议分散配置，单只基金仓位不超过20%。</p>
-                </div>
-                <div class="p-3 bg-green-50 border border-green-100 rounded-lg">
-                    <div class="font-medium text-green-700 mb-1">💡 操作建议</div>
-                    <p class="text-sm text-green-600">当前估值处于历史中位，可考虑分批建仓。建议关注即将发布的季度报告。</p>
-                </div>
+                <div class="p-3 bg-blue-50 border border-blue-100 rounded-lg animate-pulse"><div class="h-4 bg-blue-200 rounded w-1/3 mb-2"></div><div class="h-3 bg-blue-100 rounded w-full mb-1"></div><div class="h-3 bg-blue-100 rounded w-2/3"></div></div>
+                <div class="p-3 bg-yellow-50 border border-yellow-100 rounded-lg animate-pulse"><div class="h-4 bg-yellow-200 rounded w-1/3 mb-2"></div><div class="h-3 bg-yellow-100 rounded w-full mb-1"></div><div class="h-3 bg-yellow-100 rounded w-2/3"></div></div>
+                <div class="p-3 bg-green-50 border border-green-100 rounded-lg animate-pulse"><div class="h-4 bg-green-200 rounded w-1/3 mb-2"></div><div class="h-3 bg-green-100 rounded w-full mb-1"></div><div class="h-3 bg-green-100 rounded w-2/3"></div></div>
             `;
-            
-            renderRadarChart(funds);
-        }
-
-        function renderRadarChart(funds) {
             if (radarChart) radarChart.dispose();
             radarChart = echarts.init(document.getElementById('radar-chart'));
+            radarChart.setOption({ radar: { indicator: [{name:'估值与回报',max:100},{name:'运营质量',max:100},{name:'财务健康',max:100},{name:'资产质量',max:100},{name:'成长潜力',max:100},{name:'市场与流动性',max:100}] }, series: [] });
+        }
+
+        function renderAnalysisResult(data) {
+            const m = data.metrics || {};
+            document.getElementById('score-value').textContent = m['综合评分'] || '--';
+            document.getElementById('return-value').textContent = m['预期年化收益'] || '--';
+            document.getElementById('risk-value').textContent = m['风险等级'] || '--';
+            document.getElementById('dividend-value').textContent = m['分红稳定性'] || '--';
             
+            const c = data.conclusion || {};
+            const conclusion = document.getElementById('ai-conclusion');
+            conclusion.innerHTML = `
+                <div class="p-3 bg-blue-50 border border-blue-100 rounded-lg"><div class="font-medium text-blue-700 mb-1">🎯 投资亮点</div><p class="text-sm text-blue-600">${c.highlights || '暂无数据'}</p></div>
+                <div class="p-3 bg-yellow-50 border border-yellow-100 rounded-lg"><div class="font-medium text-yellow-700 mb-1">⚠️ 风险提示</div><p class="text-sm text-yellow-600">${c.risks || '暂无数据'}</p></div>
+                <div class="p-3 bg-green-50 border border-green-100 rounded-lg"><div class="font-medium text-green-700 mb-1">💡 操作建议</div><p class="text-sm text-green-600">${c.suggestion || '暂无数据'}</p></div>
+            `;
+            renderRadarChart(data.scores);
+        }
+
+        function renderFallbackResult(message) {
+            document.getElementById('score-value').textContent = '--';
+            document.getElementById('return-value').textContent = '--';
+            document.getElementById('risk-value').textContent = '--';
+            document.getElementById('dividend-value').textContent = '--';
+            document.getElementById('ai-conclusion').innerHTML = `<div class="p-4 bg-gray-50 border border-gray-200 rounded-lg text-center"><div class="text-2xl mb-2">⚠️</div><div class="text-sm text-gray-600 font-medium">${message}</div><div class="text-xs text-gray-400 mt-1">请检查网络连接或联系管理员配置 API Key</div></div>`;
+            if (radarChart) radarChart.dispose();
+            radarChart = echarts.init(document.getElementById('radar-chart'));
+            radarChart.setOption({ series: [] });
+        }
+
+        function renderRadarChart(scores) {
+            if (radarChart) radarChart.dispose();
+            radarChart = echarts.init(document.getElementById('radar-chart'));
             const colors = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444'];
-            
-            // 使用与对比页相同的六维专业指标计算
-            const series = funds.map((fund, index) => {
-                // 模拟计算六维得分（与对比页逻辑一致）
-                const valuationReturn = Math.round(60 + Math.random() * 30); // 估值与回报
-                const operationQuality = Math.round(65 + Math.random() * 25); // 运营质量
-                const financialHealth = Math.round(70 + Math.random() * 20); // 财务健康
-                const assetQuality = Math.round(75 + Math.random() * 15); // 资产质量
-                const growthPotential = Math.round(55 + Math.random() * 30); // 成长潜力
-                const marketLiquidity = Math.round(50 + Math.random() * 35); // 市场与流动性
-                
-                return {
-                    name: fund.name,
-                    type: 'radar',
-                    data: [{
-                        value: [valuationReturn, operationQuality, financialHealth, assetQuality, growthPotential, marketLiquidity],
-                        name: fund.name
-                    }],
-                    lineStyle: { color: colors[index % colors.length], width: 2 },
-                    areaStyle: { color: colors[index % colors.length], opacity: 0.1 },
-                    itemStyle: { color: colors[index % colors.length] }
-                };
-            });
-            
+            const funds = allFundsData.filter(f => selectedFunds.includes(f.code));
+            const s = scores || {};
+            const values = [s['估值与回报']||70, s['运营质量']||70, s['财务健康']||70, s['资产质量']||70, s['成长潜力']||70, s['市场与流动性']||70];
+            const series = funds.map((fund, i) => ({ name: fund.name, type: 'radar', data: [{ value: values, name: fund.name }], lineStyle: { color: colors[i%colors.length], width: 2 }, areaStyle: { color: colors[i%colors.length], opacity: 0.1 }, itemStyle: { color: colors[i%colors.length] } }));
             radarChart.setOption({
-                tooltip: {
-                    trigger: 'item',
-                    backgroundColor: 'rgba(255,255,255,0.95)',
-                    borderColor: '#e2e8f0',
-                    textStyle: { color: '#1f2937' }
-                },
-                legend: {
-                    data: funds.map(f => f.name),
-                    textStyle: { color: '#4b5563', fontSize: 11 },
-                    bottom: 0,
-                    itemWidth: 12,
-                    itemHeight: 12
-                },
-                radar: {
-                    indicator: [
-                        { name: '估值与回报', max: 100 },
-                        { name: '运营质量', max: 100 },
-                        { name: '财务健康', max: 100 },
-                        { name: '资产质量', max: 100 },
-                        { name: '成长潜力', max: 100 },
-                        { name: '市场与流动性', max: 100 }
-                    ],
-                    shape: 'polygon',
-                    splitNumber: 4,
-                    axisName: { color: '#6b7280', fontSize: 11 },
-                    splitLine: { lineStyle: { color: '#e5e7eb' } },
-                    splitArea: {
-                        show: true,
-                        areaStyle: { color: ['#f9fafb', '#fff'] }
-                    },
-                    axisLine: { lineStyle: { color: '#e5e7eb' } }
-                },
+                tooltip: { trigger: 'item', backgroundColor: 'rgba(255,255,255,0.95)', borderColor: '#e2e8f0', textStyle: { color: '#1f2937' } },
+                legend: { data: funds.map(f => f.name), textStyle: { color: '#4b5563', fontSize: 11 }, bottom: 0, itemWidth: 12, itemHeight: 12 },
+                radar: { indicator: [{name:'估值与回报',max:100},{name:'运营质量',max:100},{name:'财务健康',max:100},{name:'资产质量',max:100},{name:'成长潜力',max:100},{name:'市场与流动性',max:100}], shape: 'polygon', splitNumber: 4, axisName: { color: '#6b7280', fontSize: 11 }, splitLine: { lineStyle: { color: '#e5e7eb' } }, splitArea: { show: true, areaStyle: { color: ['#f9fafb', '#fff'] } }, axisLine: { lineStyle: { color: '#e5e7eb' } } },
                 series
             });
         }
@@ -523,48 +531,65 @@
             sendChat();
         }
 
-        function sendChat() {
+        async function sendChat() {
             const input = document.getElementById('chat-input');
             const message = input.value.trim();
             if (!message) return;
-            
             addMessage(message, 'user');
             input.value = '';
-            
-            setTimeout(() => {
-                addMessage('基于当前数据分析，该REITs在同类产品中表现良好。建议关注其季度报告中的NOI数据变化。', 'ai');
-            }, 800);
+            const funds = allFundsData.filter(f => selectedFunds.includes(f.code));
+            const fundContext = funds.map(f => `${f.code} ${f.name}`).join('、');
+            const thinkingId = addThinkingIndicator();
+            try {
+                const response = await fetch(`${AI_API_BASE}/chat-reits`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: message, agent_name: 'AI投研助手', fund_context: fundContext || undefined })
+                });
+                removeThinkingIndicator(thinkingId);
+                if (!response.ok) { addMessage('抱歉，AI服务暂时不可用。请检查 API Key 是否已配置。', 'ai'); return; }
+                const data = await response.json();
+                if (data.content) { typewriterMessage(data.content); }
+                else if (data.message) { addMessage(data.message, 'ai'); }
+                else { addMessage('抱歉，没有收到有效回复。', 'ai'); }
+            } catch (error) {
+                removeThinkingIndicator(thinkingId);
+                console.error('聊天请求失败:', error);
+                addMessage('网络连接失败，请稍后重试。', 'ai');
+            }
         }
 
+        let msgCounter = 0;
+        function addThinkingIndicator() {
+            const container = document.getElementById('chat-messages');
+            const id = 'thinking-' + (++msgCounter);
+            const div = document.createElement('div'); div.id = id; div.className = 'flex gap-3';
+            div.innerHTML = `<div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0"><svg class="w-4 h-4 text-white animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg></div><div class="flex-1"><div class="text-sm text-gray-400 ai-thinking">AI思考中...</div></div>`;
+            container.appendChild(div); container.scrollTop = container.scrollHeight;
+            return id;
+        }
+        function removeThinkingIndicator(id) { const el = document.getElementById(id); if (el) el.remove(); }
+        function typewriterMessage(text) {
+            const container = document.getElementById('chat-messages');
+            const div = document.createElement('div'); div.className = 'flex gap-3';
+            const msgId = 'msg-' + (++msgCounter);
+            div.innerHTML = `<div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0"><svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></div><div class="flex-1"><div id="${msgId}" class="text-sm text-gray-600 leading-relaxed"></div></div>`;
+            container.appendChild(div); container.scrollTop = container.scrollHeight;
+            const el = document.getElementById(msgId); let i = 0;
+            function typeChar() { if (i < text.length) { el.textContent += text.charAt(i); i++; container.scrollTop = container.scrollHeight; setTimeout(typeChar, 15); } }
+            typeChar();
+        }
         function addMessage(text, type) {
             const container = document.getElementById('chat-messages');
-            const div = document.createElement('div');
-            div.className = 'flex gap-3';
-            
+            const div = document.createElement('div'); div.className = 'flex gap-3';
             if (type === 'user') {
-                div.innerHTML = `
-                    <div class="flex-1 text-right">
-                        <div class="inline-block text-left bg-blue-600 text-white rounded-lg px-3 py-2 text-sm max-w-[90%]">
-                            ${text}
-                        </div>
-                    </div>
-                `;
+                div.innerHTML = `<div class="flex-1 text-right"><div class="inline-block text-left bg-blue-600 text-white rounded-lg px-3 py-2 text-sm max-w-[90%]">${escapeHtml(text)}</div></div>`;
             } else {
-                div.innerHTML = `
-                    <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                        </svg>
-                    </div>
-                    <div class="flex-1">
-                        <div class="text-sm text-gray-600 leading-relaxed">${text}</div>
-                    </div>
-                `;
+                div.innerHTML = `<div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0"><svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></div><div class="flex-1"><div class="text-sm text-gray-600 leading-relaxed">${escapeHtml(text)}</div></div>`;
             }
-            
-            container.appendChild(div);
-            container.scrollTop = container.scrollHeight;
+            container.appendChild(div); container.scrollTop = container.scrollHeight;
         }
+        function escapeHtml(text) { const div = document.createElement('div'); div.textContent = text; return div.innerHTML; }
 
         // 基金数据（优先API，降级Mock）
         let allFundsData = ALL_FUNDS || [];

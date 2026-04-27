@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="./css/tailwind.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="./css/common.css">
+    <script src="./js/app-core.js?v=1"></script>
     <style>
         body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background-color: #f8fafc; }
         .mono { font-family: 'JetBrains Mono', monospace; }
@@ -394,18 +395,18 @@
                 const result = await response.json();
                 
                 if (result.success) {
-                    showToast('巨潮资讯网爬虫已启动，正在后台爬取全部79只REIT公告...', 'success');
+                    REITS.showToast('巨潮资讯网爬虫已启动，正在后台爬取全部79只REIT公告...', 'success');
                     // 5秒后刷新数据
                     setTimeout(async () => {
                         await loadAnnouncements();
-                        showToast('公告数据已更新！', 'success');
+                        REITS.showToast('公告数据已更新！', 'success');
                     }, 5000);
                 } else {
-                    showToast('爬取失败: ' + result.error, 'error');
+                    REITS.showToast('爬取失败: ' + result.error, 'error');
                 }
             } catch (error) {
                 console.error('爬取失败:', error);
-                showToast('爬取失败，请稍后重试', 'error');
+                REITS.showToast('爬取失败，请稍后重试', 'error');
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> 刷新';
@@ -732,7 +733,7 @@
             } else {
                 // 未选中
                 if (selectedAnnouncementIds.length >= 3) {
-                    showToast('最多选择3条公告', 'warning');
+                    REITS.showToast('最多选择3条公告', 'warning');
                     return;
                 }
                 selectedAnnouncementIds.push(id);
@@ -930,13 +931,13 @@
                 });
                 const result = await response.json();
                 if (result.success) {
-                    showToast('状态已更新', 'success');
+                    REITS.showToast('状态已更新', 'success');
                     await loadAnnouncements();
                 } else {
-                    showToast(result.message || '更新失败', 'error');
+                    REITS.showToast(result.message || '更新失败', 'error');
                 }
             } catch (error) {
-                showToast('更新失败: ' + error.message, 'error');
+                REITS.showToast('更新失败: ' + error.message, 'error');
             }
         }
 

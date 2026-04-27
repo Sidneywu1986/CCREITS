@@ -37,19 +37,23 @@ REITS_CODES = [
     '180701', '180801', '180901'
 ]
 
-# 公告分类关键词
+# 公告分类关键词（按精确度排序，优先匹配高确定性分类）
 CATEGORY_KEYWORDS = {
+    'inquiry': ['问询函', '关注函', '监管工作函', '审核问询函', '反馈意见'],   # 高确定性，优先匹配
     'dividend': ['分红', '派息', '收益分配', '权益分派', '红利', '分配'],
-    'operation': ['运营', '管理', '租赁', '出租率', '车流量', '收入', '物业', '经营', '项目', '季度', '经营数据', '运营数据'],
-    'financial': ['年报', '季报', '半年报', '审计', '财务报告', '业绩预告', '报告书', '报告期', '评估报告'],
-    'inquiry': ['问询函', '关注函', '回复', '说明', '问询'],
     'listing': ['上市', '发售', '认购', '招募说明书', '扩募'],
-    'disclosure': ['信息披露', '澄清', '风险提示', '停牌', '复牌']
+    'disclosure': ['信息披露', '澄清', '风险提示', '停牌', '复牌'],
+    'financial': ['年报', '季报', '半年报', '审计', '财务报告', '业绩预告', '报告书', '报告期', '评估报告'],
+    'operation': ['运营', '租赁', '出租率', '车流量', '物业', '经营数据', '运营数据']   # 移除过于宽泛的"管理""项目""季度"
 }
 
 
 def classify_announcement(title: str) -> str:
     """根据标题分类公告"""
+    # 高确定性财务报告标识（优先匹配，避免被分红/运营等次要关键词覆盖）
+    for kw in ('季度报告', '年度报告', '半年度报告'):
+        if kw in title:
+            return 'financial'
     for category, keywords in CATEGORY_KEYWORDS.items():
         for keyword in keywords:
             if keyword in title:
@@ -297,7 +301,7 @@ def get_cached_announcements(limit: int = 100) -> List[Dict]:
                    f.ipo_date, f.total_shares,
                    (SELECT open_price FROM fund_prices WHERE fund_code = a.fund_code ORDER BY trade_date ASC LIMIT 1) as first_open_price,
                    (SELECT close_price FROM fund_prices WHERE fund_code = a.fund_code ORDER BY trade_date DESC LIMIT 1) as latest_price,
-                   a.status, a.status_changed_at
+                   a.status, a.status_changed_at, a.is_suspicious
             FROM announcements a
             LEFT JOIN funds f ON a.fund_code = f.fund_code
             ORDER BY a.publish_date DESC
@@ -315,6 +319,7 @@ def get_cached_announcements(limit: int = 100) -> List[Dict]:
             latest_price = row[17] or 0  # 元
             status = row[18] or 'draft'
             status_changed_at = row[19] or ''
+            is_suspicious = row[20] if row[20] is not None else 0
 
             # 发行市值 = 首日开盘价 × 总份额（亿元）
             ipo_market_cap = first_open_price * total_shares if first_open_price and total_shares else 0
@@ -340,7 +345,8 @@ def get_cached_announcements(limit: int = 100) -> List[Dict]:
                 'ipo_market_cap': round(ipo_market_cap, 2),   # 发行市值（亿元）
                 'current_market_cap': round(current_market_cap, 2),  # 今日市值（亿元）
                 'status': status,
-                'status_changed_at': status_changed_at
+                'status_changed_at': status_changed_at,
+                'is_suspicious': is_suspicious
             })
 
         return announcements
@@ -404,7 +410,7 @@ def get_announcements_by_fund(code: str, limit: int = 20) -> List[Dict]:
         cursor.execute("""
             SELECT id, fund_code, fund_name, title, category, publish_date,
                    source_url, pdf_url, exchange, confidence, source,
-                   manager, publisher, status, status_changed_at
+                   manager, publisher, status, status_changed_at, is_suspicious
             FROM announcements
             WHERE fund_code = ?
             ORDER BY publish_date DESC
@@ -429,7 +435,8 @@ def get_announcements_by_fund(code: str, limit: int = 20) -> List[Dict]:
             'manager': row[11] or '',
             'publisher': row[12] or '',
             'status': row[13] or 'draft',
-            'status_changed_at': row[14] or ''
+            'status_changed_at': row[14] or '',
+            'is_suspicious': row[15] if row[15] is not None else 0
         } for row in rows]
     except Exception as e:
         print(f"获取基金公告失败: {e}")
@@ -445,7 +452,7 @@ def get_announcements_by_category(category: str, limit: int = 50) -> List[Dict]:
         cursor.execute("""
             SELECT id, fund_code, fund_name, title, category, publish_date,
                    source_url, pdf_url, exchange, confidence, source,
-                   manager, publisher, status, status_changed_at
+                   manager, publisher, status, status_changed_at, is_suspicious
             FROM announcements
             WHERE category = ?
             ORDER BY publish_date DESC
@@ -470,7 +477,8 @@ def get_announcements_by_category(category: str, limit: int = 50) -> List[Dict]:
             'manager': row[11] or '',
             'publisher': row[12] or '',
             'status': row[13] or 'draft',
-            'status_changed_at': row[14] or ''
+            'status_changed_at': row[14] or '',
+            'is_suspicious': row[15] if row[15] is not None else 0
         } for row in rows]
     except Exception as e:
         print(f"按分类获取公告失败: {e}")

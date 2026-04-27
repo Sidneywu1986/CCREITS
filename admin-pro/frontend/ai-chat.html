@@ -3,9 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI聊REIT - REITs数据平台</title>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>AI聊REIT V2 - REITs数据平台</title>
     <link rel="stylesheet" href="./css/tailwind.css">
     <link rel="stylesheet" href="./css/common.css">
+    <script src="./js/app-core.js?v=1"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
     <style>
         .chat-container {
@@ -28,15 +32,30 @@
             50% { opacity: 1; }
         }
         .hot-topic-tag {
-            animation: pulse 2s infinite;
+            animation: pulse-soft 3s infinite;
+            box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.15);
         }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
+        @keyframes pulse-soft {
+            0%, 100% { opacity: 1; box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.15); }
+            50% { opacity: 0.92; box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.08); }
         }
         .chat-message:hover .message-actions {
             opacity: 1;
         }
+        /* 剧场侧屏：脉冲动画 */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+        /* 立场标签 */
+        .stance-tag-bullish { background: #d1fae5; color: #065f46; }
+        .stance-tag-bearish { background: #fee2e2; color: #991b1b; }
+        .stance-tag-neutral { background: #f3f4f6; color: #4b5563; }
+        .stance-tag-cautious { background: #fef3c7; color: #92400e; }
+        .stance-bar-bullish { border-left: 3px solid #059669; }
+        .stance-bar-bearish { border-left: 3px solid #dc2626; }
+        .stance-bar-neutral { border-left: 3px solid #6b7280; }
+        .stance-bar-cautious { border-left: 3px solid #d97706; }
         .scrollbar-thin::-webkit-scrollbar {
             width: 4px;
         }
@@ -44,6 +63,73 @@
             background: #cbd5e1;
             border-radius: 2px;
         }
+        /* AI头像尺寸兜底 - 防止SVG原始尺寸闪烁 */
+        #ai-personas img {
+            width: 28px !important;
+            height: 28px !important;
+        }
+
+        /* 飞行嘉宾样式 */
+        @keyframes flashIn {
+            0% { transform: translateX(-20px); opacity: 0; }
+            100% { transform: translateX(0); opacity: 1; }
+        }
+        .guest-message {
+            animation: flashIn 0.4s ease;
+        }
+        .guest-flash-notice {
+            animation: flashIn 0.3s ease;
+            transition: opacity 1s ease;
+        }
+
+        /* ========== 对戏系统特效 ========== */
+        .chat-message.duet-chain {
+            position: relative;
+        }
+        /* 片警消息：底部虚线，表示"抛出质问" */
+        .chat-message.duet-start {
+            border-bottom: 2px dashed #fecaca;
+            padding-bottom: 8px;
+            margin-bottom: 2px;
+        }
+        /* 朝阳群众接招：顶部虚线+滑入动画，表示"接话" */
+        .chat-message.duet-reply {
+            border-top: 2px dashed #fcd34d;
+            padding-top: 8px;
+            margin-top: 2px;
+            animation: duetSlideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        /* 对戏连线（伪元素） */
+        .chat-message.duet-start::after {
+            content: '⚡';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #fff;
+            padding: 0 6px;
+            font-size: 12px;
+            z-index: 2;
+        }
+        @keyframes duetSlideIn {
+            0% { transform: translateX(20px); opacity: 0; }
+            100% { transform: translateX(0); opacity: 1; }
+        }
+        /* 对戏阶段标签 */
+        .duet-stage-label {
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-left: 6px;
+            display: inline-flex;
+            align-items: center;
+            gap: 2px;
+        }
+        .duet-stage-label.stage-1 { background: #fee2e2; color: #991b1b; }
+        .duet-stage-label.stage-2 { background: #fef3c7; color: #92400e; }
+        .duet-stage-label.stage-3 { background: #fee2e2; color: #991b1b; }
+        .duet-stage-label.stage-4 { background: #e0e7ff; color: #3730a3; }
     </style>
 </head>
 <body class="h-screen flex flex-col overflow-hidden bg-gray-50">
@@ -98,11 +184,66 @@
                     </svg>
                     AI投资天团
                 </h3>
-                <p class="text-xs text-gray-500 mt-1">三位AI专家实时交流</p>
+                <p class="text-xs text-gray-500 mt-1">五位AI专家实时交流</p>
             </div>
             
-            <div class="flex-1 overflow-y-auto p-4 space-y-4" id="ai-personas">
-                <!-- AI角色卡片 - 动态生成 -->
+            <div class="flex-1 overflow-y-auto p-3 space-y-2" id="ai-personas">
+                <!-- AI角色卡片 - 硬编码保底 + JS动态覆盖 -->
+                <div class="flex items-center gap-2.5 p-2 rounded-lg hover:bg-gray-50 cursor-pointer" onclick="selectAgent('老李')">
+                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=laoli&backgroundColor=b6e3f4" class="rounded-full bg-gray-100 flex-none" style="width:28px;height:28px">
+                    <div class="flex-1 min-w-0 overflow-hidden">
+                        <div class="flex items-center gap-1.5">
+                            <span class="font-semibold text-sm text-gray-900 truncate">老李</span>
+                            <span class="text-[10px] px-1 py-0.5 bg-blue-100 text-blue-700 rounded whitespace-nowrap">资深分析师</span>
+                        </div>
+                        <p class="text-[11px] text-gray-500 truncate">稳重专业 · 宏观经济 政策解读</p>
+                    </div>
+                    <div class="w-1.5 h-1.5 bg-purple-500 rounded-full animate-pulse flex-none"></div>
+                </div>
+                <div class="flex items-center gap-2.5 p-2 rounded-lg hover:bg-gray-50 cursor-pointer" onclick="selectAgent('小陈')">
+                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=xiaochen&backgroundColor=ffd5dc" class="rounded-full bg-gray-100 flex-none" style="width:28px;height:28px">
+                    <div class="flex-1 min-w-0 overflow-hidden">
+                        <div class="flex items-center gap-1.5">
+                            <span class="font-semibold text-sm text-gray-900 truncate">小陈</span>
+                            <span class="text-[10px] px-1 py-0.5 bg-pink-100 text-pink-700 rounded whitespace-nowrap">活跃投资者</span>
+                        </div>
+                        <p class="text-[11px] text-gray-500 truncate">活泼直接 · 技术分析 短线操作</p>
+                    </div>
+                    <div class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse flex-none"></div>
+                </div>
+                <div class="flex items-center gap-2.5 p-2 rounded-lg hover:bg-gray-50 cursor-pointer" onclick="selectAgent('王博')">
+                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=wangbo&backgroundColor=c0aede" class="rounded-full bg-gray-100 flex-none" style="width:28px;height:28px">
+                    <div class="flex-1 min-w-0 overflow-hidden">
+                        <div class="flex items-center gap-1.5">
+                            <span class="font-semibold text-sm text-gray-900 truncate">王博</span>
+                            <span class="text-[10px] px-1 py-0.5 bg-purple-100 text-purple-700 rounded whitespace-nowrap">学术研究员</span>
+                        </div>
+                        <p class="text-[11px] text-gray-500 truncate">严谨学术 · 资产评估 财务报表</p>
+                    </div>
+                    <div class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse flex-none"></div>
+                </div>
+                <div class="flex items-center gap-2.5 p-2 rounded-lg bg-purple-50 border border-purple-200 cursor-pointer" onclick="selectAgent('老K')">
+                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=laok&backgroundColor=d4f5d4" class="rounded-full bg-gray-100 flex-none" style="width:28px;height:28px">
+                    <div class="flex-1 min-w-0 overflow-hidden">
+                        <div class="flex items-center gap-1.5">
+                            <span class="font-semibold text-sm text-gray-900 truncate">老K</span>
+                            <span class="text-[10px] px-1 py-0.5 bg-green-100 text-green-700 rounded whitespace-nowrap">北方糙汉</span>
+                        </div>
+                        <p class="text-[11px] text-gray-500 truncate">硬核分析 · 基础设施 高速公路</p>
+                    </div>
+                    <div class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse flex-none"></div>
+                </div>
+                <div class="flex items-center gap-2.5 p-2 rounded-lg hover:bg-gray-50 cursor-pointer" onclick="selectAgent('苏苏')">
+                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=susu&backgroundColor=ffe4e1" class="rounded-full bg-gray-100 flex-none" style="width:28px;height:28px">
+                    <div class="flex-1 min-w-0 overflow-hidden">
+                        <div class="flex items-center gap-1.5">
+                            <span class="font-semibold text-sm text-gray-900 truncate">苏苏</span>
+                            <span class="text-[10px] px-1 py-0.5 bg-rose-100 text-rose-700 rounded whitespace-nowrap">江南软妹</span>
+                        </div>
+                        <p class="text-[11px] text-gray-500 truncate">细腻观察 · 产业园 仓储物流</p>
+                    </div>
+                    <div class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse flex-none"></div>
+                </div>
             </div>
 
             <!-- 热点话题 -->
@@ -146,6 +287,21 @@
             </div>
 
             <!-- Messages Area -->
+            <!-- 模式横幅（动态切换） -->
+            <div id="mode-banner" class="mode-banner freestyle" style="display:flex;align-items:center;justify-content:space-between;padding:10px 20px;border-radius:10px;margin-bottom:12px;font-size:13px;transition:all 0.3s ease;background:#f8fafc;color:#475569;border:1px solid #cbd5e1;">
+                <div class="mode-left" style="display:flex;align-items:center;gap:8px;">
+                    <span class="mode-icon" style="font-size:18px;line-height:1;">💬</span>
+                    <span class="mode-name" style="font-weight:700;font-size:14px;">浏览者大厅</span>
+                    <span class="slot-time" style="font-size:11px;opacity:0.7;margin-left:4px;"></span>
+                </div>
+                <div class="mode-center" style="font-size:12px;">
+                    <span class="freestyle-hint" style="font-style:italic;opacity:0.8;">自由交流中 · 提问将触发AI分歧讨论</span>
+                </div>
+                <div class="mode-right" style="display:flex;align-items:center;gap:12px;font-size:11px;">
+                    <span class="online-badge" style="opacity:0.8;">👥 <span id="mode-online-count">1</span>人在线</span>
+                    <span class="butterfly-rate" id="mode-butterfly" style="background:rgba(245,158,11,0.15);color:#92400e;padding:2px 8px;border-radius:10px;font-weight:500;display:none;">🦋 自发讨论概率 <span id="mode-butterfly-pct">80</span>%</span>
+                </div>
+            </div>
             <div id="chat-messages" class="flex-1 overflow-y-auto p-6 space-y-4 scrollbar-thin">
                 <!-- 欢迎消息 -->
                 <div class="flex justify-center">
@@ -155,7 +311,7 @@
                 </div>
                 <div class="flex justify-center">
                     <div class="bg-blue-50 rounded-lg px-4 py-2 text-xs text-blue-600 max-w-lg text-center">
-                        💡 三位AI投资专家正在讨论今日市场热点，您可以随时加入对话
+                        💡 五位AI投资专家正在讨论今日REITs市场热点，您可以随时加入对话
                     </div>
                 </div>
             </div>
@@ -163,6 +319,17 @@
             <!-- Input Area -->
             <div class="p-4 bg-white border-t border-gray-200">
                 <div class="max-w-4xl mx-auto">
+                    <!-- 板块选择面板 -->
+                    <div id="sector-panel" class="hidden mb-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200 p-2.5">
+                        <div class="flex items-center gap-2">
+                            <span class="text-[11px] font-semibold text-blue-700 whitespace-nowrap">选择板块</span>
+                            <div id="sector-grid" class="flex gap-2 overflow-x-auto pb-1 flex-1">
+                                <!-- 动态填充 -->
+                            </div>
+                            <button onclick="toggleSectorPanel()" class="text-blue-400 hover:text-blue-600 text-xs leading-none whitespace-nowrap">✕</button>
+                        </div>
+                    </div>
+
                     <!-- Quick Actions -->
                     <div class="flex gap-2 mb-3 overflow-x-auto pb-2">
                         <button onclick="askAI('今日REITs市场表现如何？')" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-full text-xs text-gray-600 whitespace-nowrap transition-all">
@@ -174,15 +341,40 @@
                         <button onclick="askAI('最近有什么政策利好？')" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-full text-xs text-gray-600 whitespace-nowrap transition-all">
                             📰 政策解读
                         </button>
-                        <button onclick="askAI('分析一下仓储物流板块')" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-full text-xs text-gray-600 whitespace-nowrap transition-all">
+                        <button id="sector-btn" onclick="toggleSectorPanel()" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-full text-xs text-gray-600 whitespace-nowrap transition-all">
                             🏭 板块分析
                         </button>
                     </div>
                     
+                    <!-- AI快捷@头像 -->
+                    <div class="flex items-center gap-2 mb-2 px-1">
+                        <span class="text-[10px] text-gray-400 mr-1">@提问:</span>
+                        <button onclick="mentionAI('老K')" class="flex items-center gap-1 px-2 py-1 rounded-full bg-green-50 border border-green-200 hover:bg-green-100 transition-all group" title="@老K">
+                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=laok&backgroundColor=d4f5d4" class="w-5 h-5 rounded-full">
+                            <span class="text-[10px] text-green-700 font-medium">老K</span>
+                        </button>
+                        <button onclick="mentionAI('苏苏')" class="flex items-center gap-1 px-2 py-1 rounded-full bg-rose-50 border border-rose-200 hover:bg-rose-100 transition-all group" title="@苏苏">
+                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=susu&backgroundColor=ffe4e1" class="w-5 h-5 rounded-full">
+                            <span class="text-[10px] text-rose-700 font-medium">苏苏</span>
+                        </button>
+                        <button onclick="mentionAI('老李')" class="flex items-center gap-1 px-2 py-1 rounded-full bg-blue-50 border border-blue-200 hover:bg-blue-100 transition-all group" title="@老李">
+                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=laoli&backgroundColor=b6e3f4" class="w-5 h-5 rounded-full">
+                            <span class="text-[10px] text-blue-700 font-medium">老李</span>
+                        </button>
+                        <button onclick="mentionAI('小陈')" class="flex items-center gap-1 px-2 py-1 rounded-full bg-pink-50 border border-pink-200 hover:bg-pink-100 transition-all group" title="@小陈">
+                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=xiaochen&backgroundColor=ffd5dc" class="w-5 h-5 rounded-full">
+                            <span class="text-[10px] text-pink-700 font-medium">小陈</span>
+                        </button>
+                        <button onclick="mentionAI('王博')" class="flex items-center gap-1 px-2 py-1 rounded-full bg-purple-50 border border-purple-200 hover:bg-purple-100 transition-all group" title="@王博">
+                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=wangbo&backgroundColor=c0aede" class="w-5 h-5 rounded-full">
+                            <span class="text-[10px] text-purple-700 font-medium">王博</span>
+                        </button>
+                    </div>
+
                     <div class="flex gap-3">
                         <div class="flex-1 relative">
                             <input type="text" id="message-input" 
-                                placeholder="输入消息参与讨论，或@某位AI专家提问..." 
+                                placeholder="输入消息参与讨论，或点击上方头像@专家提问..." 
                                 class="w-full pl-4 pr-12 py-3 bg-gray-100 border border-transparent rounded-xl focus:outline-none focus:bg-white focus:border-blue-500 transition-all"
                                 onkeypress="handleKeyPress(event)">
                             <button onclick="sendMessage()" 
@@ -193,57 +385,84 @@
                             </button>
                         </div>
                     </div>
-                    <p class="text-xs text-gray-400 mt-2 text-center">
-                        💡 提示：输入 @老李 @小陈 @王博士 可以向特定AI提问
-                    </p>
                 </div>
             </div>
         </main>
 
-        <!-- Right Sidebar - Info Panel -->
-        <aside class="w-72 bg-white border-l border-gray-200 flex flex-col hidden xl:flex">
-            <div class="p-4 border-b border-gray-200">
-                <h3 class="font-semibold text-gray-900 flex items-center gap-2">
-                    <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                    讨论摘要
-                </h3>
-            </div>
+        <!-- Right Sidebar - 剧场侧屏 -->
+        <aside id="right-sidebar" style="width:280px;background:#f8f9fa;border-left:1px solid #e9ecef;display:flex;flex-direction:column;overflow-y:auto;padding:12px;gap:12px;flex-shrink:0;">
             
-            <div class="flex-1 overflow-y-auto p-4 space-y-4">
-                <!-- 今日重点 -->
-                <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-4">
-                    <h4 class="text-sm font-semibold text-blue-900 mb-2">📌 今日重点</h4>
-                    <ul class="text-xs text-blue-800 space-y-1.5" id="today-highlights">
-                        <li class="flex items-start gap-1.5">
-                            <span class="text-blue-400">•</span>
-                            <span>市场开盘震荡上行</span>
-                        </li>
-                        <li class="flex items-start gap-1.5">
-                            <span class="text-blue-400">•</span>
-                            <span>仓储物流板块活跃</span>
-                        </li>
-                    </ul>
+            <!-- 模块1：当前话题 -->
+            <div style="background:#fff;border-radius:12px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,0.04);background:linear-gradient(135deg,#fff5f5 0%,#fff 100%);border:1px solid #fecaca;flex-shrink:0;">
+                <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#dc2626;font-weight:600;margin-bottom:8px;">
+                    <span style="width:8px;height:8px;background:#dc2626;border-radius:50%;animation:pulse 2s infinite;"></span>
+                    正在讨论
                 </div>
-
-                <!--  mentioned REITs -->
-                <div>
-                    <h4 class="text-sm font-semibold text-gray-700 mb-2">💬 热门REITs</h4>
-                    <div class="flex flex-wrap gap-2" id="mentioned-funds">
-                        <span class="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-lg">中金普洛斯</span>
-                        <span class="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-lg">华夏越秀</span>
+                <h3 id="rs-topic-title" style="font-size:15px;font-weight:700;color:#1f2937;margin:0 0 4px 0;line-height:1.4;">REITs市场热点</h3>
+                <p id="rs-topic-desc" style="font-size:11px;color:#6b7280;margin:0 0 8px 0;">等待专家切入话题...</p>
+                <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:#9ca3af;">
+                    <div style="height:4px;background:#e5e7eb;border-radius:2px;flex:1;overflow:hidden;">
+                        <div id="rs-topic-progress" style="height:100%;background:#dc2626;border-radius:2px;transition:width 0.3s;width:20%;"></div>
                     </div>
+                    <span id="rs-topic-round">1/6 轮</span>
                 </div>
+            </div>
 
-                <!-- 情绪指标 -->
-                <div>
-                    <h4 class="text-sm font-semibold text-gray-700 mb-2">📊 市场情绪</h4>
-                    <div class="flex items-center gap-3">
-                        <div class="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
-                            <div class="h-full bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 rounded-full" style="width: 65%"></div>
-                        </div>
-                        <span class="text-xs font-medium text-green-600">乐观</span>
+            <!-- 模块2：AI立场实时板 -->
+            <div style="background:#fff;border-radius:12px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,0.04);flex-shrink:0;">
+                <h4 style="font-size:12px;font-weight:600;color:#495057;margin:0 0 10px 0;letter-spacing:0.3px;">专家立场</h4>
+                <div id="rs-stance-list" style="display:flex;flex-direction:column;gap:6px;">
+                    <!-- JS动态生成 -->
+                </div>
+                <div id="rs-conflict-alert" onclick="scrollToConflict()" style="margin-top:10px;padding:8px;background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;font-size:11px;color:#92400e;cursor:pointer;display:none;">
+                    观点冲突，点击看交锋
+                </div>
+            </div>
+
+            <!-- 模块3：观众互动（竞猜） -->
+            <div style="background:#fff;border-radius:12px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,0.04);flex-shrink:0;">
+                <h4 style="font-size:12px;font-weight:600;color:#495057;margin:0 0 10px 0;letter-spacing:0.3px;">你觉得呢？</h4>
+                <div style="text-align:center;">
+                    <p id="rs-quiz-q" style="font-size:12px;color:#374151;margin:0 0 10px 0;font-weight:500;">普洛斯今天收盘涨跌？</p>
+                    <div style="display:flex;gap:8px;">
+                        <button onclick="voteQuiz('up')" id="rs-vote-up" style="flex:1;padding:8px;border:1px solid #e5e7eb;background:#fff;border-radius:8px;cursor:pointer;font-size:13px;transition:all 0.2s;color:#374151;">
+                            涨
+                            <span id="rs-pct-up" style="display:block;font-size:11px;color:#9ca3af;margin-top:2px;"></span>
+                        </button>
+                        <button onclick="voteQuiz('down')" id="rs-vote-down" style="flex:1;padding:8px;border:1px solid #e5e7eb;background:#fff;border-radius:8px;cursor:pointer;font-size:13px;transition:all 0.2s;color:#374151;">
+                            跌
+                            <span id="rs-pct-down" style="display:block;font-size:11px;color:#9ca3af;margin-top:2px;"></span>
+                        </button>
+                    </div>
+                    <div id="rs-quiz-result" style="display:none;font-size:11px;color:#6b7280;margin-top:6px;"></div>
+                </div>
+            </div>
+
+            <!-- 模块4：话题排队 -->
+            <div style="background:#fff;border-radius:12px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,0.04);flex-shrink:0;">
+                <h4 style="font-size:12px;font-weight:600;color:#495057;margin:0 0 10px 0;letter-spacing:0.3px;">下一场聊什么</h4>
+                <div id="rs-queue-list" style="display:flex;flex-direction:column;gap:6px;">
+                    <!-- JS动态生成 -->
+                </div>
+            </div>
+
+            <!-- 模块5：情绪分歧板 -->
+            <div style="background:#fff;border-radius:12px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,0.04);flex-shrink:0;">
+                <h4 style="font-size:12px;font-weight:600;color:#495057;margin:0 0 10px 0;letter-spacing:0.3px;">情绪分歧</h4>
+                <div style="margin-bottom:10px;">
+                    <div style="height:6px;background:#e5e7eb;border-radius:3px;overflow:hidden;">
+                        <div id="rs-temp-fill" style="height:100%;border-radius:3px;transition:width 0.3s;background:#f97316;width:65%;"></div>
+                    </div>
+                    <span id="rs-temp-label" style="display:block;font-size:11px;color:#6b7280;margin-top:4px;">65° 乐观</span>
+                </div>
+                <div id="rs-split-opinions" style="display:flex;flex-direction:column;gap:6px;">
+                    <div style="display:flex;gap:6px;font-size:11px;padding:6px;border-radius:6px;background:#fef2f2;">
+                        <span style="font-weight:600;color:#374151;">老K</span>
+                        <span style="color:#6b7280;font-style:italic;">"虚高，有水分"</span>
+                    </div>
+                    <div style="display:flex;gap:6px;font-size:11px;padding:6px;border-radius:6px;background:#f0fdf4;">
+                        <span style="font-weight:600;color:#374151;">苏苏</span>
+                        <span style="color:#6b7280;font-style:italic;">"春天到了暖和正常"</span>
                     </div>
                 </div>
             </div>
@@ -253,124 +472,1057 @@
     <script src="./js/common.js"></script>
     <script src="./js/api.js"></script>
     <script>
-        // AI角色数据
-        const AI_PERSONAS = [
-            {
-                id: 'laoli',
-                name: '老李',
-                role: '资深分析师',
-                avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=laoli&backgroundColor=b6e3f4',
-                style: '稳重专业',
-                color: 'blue',
-                expertise: ['宏观经济', '政策解读', '风险评估']
-            },
-            {
-                id: 'xiaochen',
-                name: '小陈',
-                role: '活跃投资者',
-                avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=xiaochen&backgroundColor=ffd5dc',
-                style: '活泼直接',
-                color: 'pink',
-                expertise: ['技术分析', '短线操作', '情绪判断']
-            },
-            {
-                id: 'wang',
-                name: '王博士',
-                role: '学术研究员',
-                avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=wang&backgroundColor=c0aede',
-                style: '严谨学术',
-                color: 'purple',
-                expertise: ['资产评估', '财务报表', '长期价值']
-            }
-        ];
+        // API配置
+        const AI_API_BASE = (typeof REITS !== 'undefined' && REITS.API_BASE_URL) 
+            ? REITS.API_BASE_URL.replace('/api', '/api/ai') 
+            : 'http://localhost:5074/api/ai';
+        
+        // 会话状态
+        let chatSessionId = null;
+        let currentAgent = '老K';
+        let isLoading = false;
+        let agentsList = [];
 
-        // 热点话题
-        const HOT_TOPICS = [
-            { topic: '仓储物流板块大涨', heat: 95 },
-            { topic: '新能源REITs政策利好', heat: 88 },
-            { topic: '高速公路REITs分红', heat: 76 },
-            { topic: '产业园空置率讨论', heat: 72 }
-        ];
+        // WebSocket
+        let ws = null;
+        let wsConnected = false;
+        let wsReconnectTimer = null;
+        const WS_URL = 'ws://localhost:5074/ws/chat';
+
+        function connectWebSocket() {
+            if (ws && (ws.readyState === WebSocket.CONNECTING || ws.readyState === WebSocket.OPEN)) return;
+            ws = new WebSocket(WS_URL);
+            ws.onopen = () => {
+                wsConnected = true;
+                console.log('[WS] Connected');
+                // 请求初始状态
+                ws.send(JSON.stringify({ action: 'init_state' }));
+            };
+            ws.onclose = () => {
+                wsConnected = false;
+                console.log('[WS] Disconnected');
+                if (!wsReconnectTimer) wsReconnectTimer = setTimeout(() => { wsReconnectTimer = null; connectWebSocket(); }, 3000);
+            };
+            ws.onerror = (e) => { console.error('[WS] Error:', e); };
+            ws.onmessage = handleWSMessage;
+        }
+
+        // 流式消息缓冲区
+        let streamBuffer = { content: '', element: null, sender: '' };
+        // 当前用户昵称（由服务器分配）
+        let myNickname = '';
+
+        // ========== 对戏系统 ==========
+        const displayMessages = [];
+
+        function isDuetStart(msg, idx) {
+            if (msg.agent !== 'police' && msg.persona !== 'REITs片警') return false;
+            const next = displayMessages[idx + 1];
+            return next && (next.agent === 'chaoyang' || next.persona === '朝阳群众');
+        }
+
+        function isDuetReply(msg, idx) {
+            if (msg.agent !== 'chaoyang' && msg.persona !== '朝阳群众') return false;
+            const prev = displayMessages[idx - 1];
+            return prev && (prev.agent === 'police' || prev.persona === 'REITs片警');
+        }
+
+        function getDuetStageLabel(stage) {
+            if (stage === 1) return '⚡ 质问';
+            if (stage === 2) return '💬 接招';
+            if (stage === 3) return '⚡ 再追';
+            if (stage === 4) return '🔚 收尾';
+            return '';
+        }
+
+        function computeDuetClasses(meta, idx) {
+            const classes = [];
+            if (meta && meta.duet_mode) classes.push('duet-chain');
+            if (isDuetStart(meta || {}, idx)) classes.push('duet-start');
+            if (isDuetReply(meta || {}, idx)) classes.push('duet-reply');
+            return classes;
+        }
+
+        function pushDisplayMessage(data) {
+            displayMessages.push(data);
+            if (displayMessages.length > 200) displayMessages.shift();
+            const idx = displayMessages.length - 1;
+            // 后向更新：如果当前是朝阳群众接招，给上一条片警消息补 duet-start
+            if ((data.agent === 'chaoyang' || data.persona === '朝阳群众') && idx > 0) {
+                const prev = displayMessages[idx - 1];
+                if (prev && (prev.agent === 'police' || prev.persona === 'REITs片警')) {
+                    const chatEls = document.querySelectorAll('#chat-messages > .chat-message');
+                    if (chatEls.length >= 2) {
+                        const prevEl = chatEls[chatEls.length - 2];
+                        prevEl.classList.add('duet-start');
+                    }
+                }
+            }
+            return idx;
+        }
+
+        function handleWSMessage(event) {
+            const msg = JSON.parse(event.data);
+            switch (msg.type) {
+                case 'HISTORY_SYNC':
+                    // 历史消息同步：新用户进入时推送最近N条
+                    if (msg.messages && msg.messages.length > 0) {
+                        document.getElementById('chat-messages').innerHTML = `
+                            <div class="flex justify-center my-2">
+                                <div class="bg-gray-100 rounded-full px-4 py-1.5 text-xs text-gray-500">
+                                    —— 以上是历史消息 ——
+                                </div>
+                            </div>
+                        `;
+                        msg.messages.forEach(m => {
+                            if (m.type === 'user_message') {
+                                const isMe = m.sender === myNickname;
+                                addMessage(m.sender || '观众', m.content, isMe ? 'human' : 'other');
+                            } else if (m.type === 'ai_message') {
+                                const histMeta = { persona: m.persona, content: m.content, duet_mode: m.duet_mode, duet_stage: m.duet_stage, beat_type: m.beat_type, agent: m.agent };
+                                addMessage(m.persona, m.content, 'ai', m.sources, histMeta);
+                            } else if (m.type === 'system') {
+                                addSystemMessage(m.content);
+                            }
+                        });
+                    }
+                    break;
+                case 'user_message':
+                    // 其他用户（或自己）的发言广播
+                    {
+                        const isMe = msg.sender === myNickname;
+                        addMessage(msg.sender || '观众', msg.content, isMe ? 'human' : 'other');
+                    }
+                    break;
+                case 'ai_message':
+                    // AI回复广播（全员可见）
+                    isLoading = false;
+                    const aiMeta = { persona: msg.persona, content: msg.content, duet_mode: msg.duet_mode, duet_stage: msg.duet_stage, beat_type: msg.beat_type, agent: msg.agent };
+                    addMessage(msg.persona, msg.content, 'ai', msg.sources, aiMeta);
+                    // 更新右侧立场板
+                    parseStanceFromMessage(msg.persona, msg.content);
+                    updateTopicProgress(currentRound + 1, msg.persona + '正在分析...', '');
+                    break;
+                case 'guest_flash':
+                    // 飞行嘉宾出场提示（系统消息形式）
+                    addGuestFlashNotice(msg.guest_name, msg.reason);
+                    break;
+                case 'guest_message':
+                    // 飞行嘉宾发言
+                    isLoading = false;
+                    const guestMeta = { persona: msg.persona, content: msg.content, duet_mode: msg.duet_mode, duet_stage: msg.duet_stage, beat_type: msg.beat_type, agent: msg.agent };
+                    addGuestMessage(msg.persona, msg.content, msg.guest_type, msg.sources, guestMeta);
+                    break;
+                case 'system':
+                    // 系统消息（用户进入/离开）
+                    addSystemMessage(msg.content);
+                    break;
+                case 'persona_switch':
+                    currentAgent = msg.persona;
+                    renderAIPersonas();
+                    break;
+                case 'message_start':
+                    isLoading = true;
+                    streamBuffer = { content: '', element: null, sender: msg.persona };
+                    // 创建空消息元素（仅提问者可见的流式体验）
+                    streamBuffer.element = document.createElement('div');
+                    streamBuffer.element.className = 'chat-message flex gap-3';
+                    streamBuffer.element.innerHTML = `
+                        <img src="${(AGENT_DISPLAY_CONFIG[msg.persona] || {}).avatar || ''}" class="w-8 h-8 rounded-full bg-gray-100 flex-none">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="font-semibold text-sm text-gray-900">${msg.persona}</span>
+                                <span class="text-xs text-gray-400">${new Date().toLocaleTimeString()}</span>
+                            </div>
+                            <div class="message-bubble bg-white border border-gray-200 rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm">
+                                <div class="text-sm text-gray-800 leading-relaxed ws-stream-content"></div>
+                            </div>
+                        </div>
+                    `;
+                    document.getElementById('chat-messages').appendChild(streamBuffer.element);
+                    scrollToBottom();
+                    break;
+                case 'message_chunk':
+                    // 兜底：如果后端没发 message_start，收到 chunk 时自动创建元素
+                    if (!streamBuffer.element) {
+                        const senderName = AGENT_ID_TO_NAME[msg.persona_id] || msg.persona || 'AI';
+                        streamBuffer = { content: '', element: null, sender: senderName };
+                        streamBuffer.element = document.createElement('div');
+                        streamBuffer.element.className = 'chat-message flex gap-3';
+                        streamBuffer.element.innerHTML = `
+                            <img src="${(AGENT_DISPLAY_CONFIG[senderName] || {}).avatar || ''}" class="w-8 h-8 rounded-full bg-gray-100 flex-none">
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="font-semibold text-sm text-gray-900">${senderName}</span>
+                                    <span class="text-xs text-gray-400">${new Date().toLocaleTimeString()}</span>
+                                </div>
+                                <div class="message-bubble bg-white border border-gray-200 rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm">
+                                    <div class="text-sm text-gray-800 leading-relaxed ws-stream-content"></div>
+                                </div>
+                            </div>
+                        `;
+                        document.getElementById('chat-messages').appendChild(streamBuffer.element);
+                    }
+                    const contentDiv = streamBuffer.element.querySelector('.ws-stream-content');
+                    contentDiv.textContent += msg.chunk;
+                    streamBuffer.content += msg.chunk;
+                    scrollToBottom();
+                    break;
+                case 'message_end':
+                    isLoading = false;
+                    // 兜底：如果后端没发 message_start，但 content 非空，直接 addMessage
+                    if (!streamBuffer.element && msg.content) {
+                        const senderName = AGENT_ID_TO_NAME[msg.persona_id] || msg.persona || 'AI';
+                        addMessage(senderName, msg.content, 'ai', msg.sources);
+                    } else if (streamBuffer.element) {
+                        const finalContent = msg.content || streamBuffer.content;
+                        streamBuffer.element.remove();
+                        if (finalContent) {
+                            addMessage(streamBuffer.sender, finalContent, 'ai', msg.sources);
+                        }
+                    }
+                    streamBuffer = { content: '', element: null, sender: '' };
+                    break;
+                case 'director_beat':
+                    // 导演续场提示
+                    {
+                        const beatEl = document.createElement('div');
+                        beatEl.className = 'flex justify-center my-2';
+                        beatEl.innerHTML = `
+                            <div class="bg-gradient-to-r from-purple-50 to-pink-50 rounded-full px-4 py-1.5 text-xs text-purple-600 flex items-center gap-1.5 animate-pulse">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg>
+                                ${msg.speaker_cn} 接话 · ${msg.beat_type === 'challenge' ? '不同角度' : msg.beat_type === 'support' ? '补充支撑' : msg.beat_type === 'punchline' ? '翻包袱' : '冷静'}
+                            </div>
+                        `;
+                        document.getElementById('chat-messages').appendChild(beatEl);
+                        scrollToBottom();
+                    }
+                    break;
+                case 'AI_DIALOGUE':
+                    // Supervisor状态机广播的AI对话（含对戏元数据）
+                    isLoading = false;
+                    const payload = msg.payload || {};
+                    const dialogueName = AGENT_ID_TO_NAME[payload.agent] || payload.agent;
+                    const dialogueMeta = { agent: payload.agent, duet_mode: payload.duet_mode, duet_stage: payload.duet_stage, beat_type: payload.beat_type };
+                    addMessage(dialogueName, payload.content, 'ai', payload.citations, dialogueMeta);
+                    parseStanceFromMessage(dialogueName, payload.content);
+                    break;
+                case 'GUEST_FLASH':
+                    // Supervisor状态机广播的嘉宾闪现
+                    isLoading = false;
+                    const gPayload = msg.payload || {};
+                    const gDisplayName = AGENT_ID_TO_NAME[gPayload.agent] || gPayload.agent;
+                    const gMeta = { agent: gPayload.agent, duet_mode: gPayload.duet_mode, duet_stage: gPayload.duet_stage, beat_type: gPayload.beat_type };
+                    addGuestMessage(gDisplayName, gPayload.content, gPayload.agent === 'police' ? 'guest_compliance' : 'guest_gossip', gPayload.citations, gMeta);
+                    break;
+                case 'sentiment_update':
+                    updateSentiment(msg.temp, msg.emotion, msg.splits);
+                    break;
+                case 'topic_update':
+                    if (msg.current_round !== undefined) currentRound = msg.current_round;
+                    if (msg.topic_queue !== undefined) topicQueue = msg.topic_queue;
+                    updateTopicProgress(currentRound, msg.current_topic || 'REITs市场热点', msg.topic_desc || '');
+                    renderTopicQueue();
+                    break;
+                case 'quiz_update':
+                    if (msg.up !== undefined) quizVotes.up = msg.up;
+                    if (msg.down !== undefined) quizVotes.down = msg.down;
+                    _renderQuizResult();
+                    break;
+                case 'stance_sync':
+                    if (msg.stances) {
+                        Object.entries(msg.stances).forEach(([name, cfg]) => {
+                            if (AGENT_STANCES[name]) {
+                                AGENT_STANCES[name].stance = cfg.stance || 'neutral';
+                                if (cfg.quote) AGENT_STANCES[name].quote = cfg.quote;
+                            }
+                        });
+                        renderStanceBoard();
+                    }
+                    break;
+                case 'DEBATE_RESULT':
+                    renderDebatePanel(msg.payload);
+                    break;
+                case 'SYSTEM_NOTICE':
+                    {
+                        const notice = msg.payload?.notice || msg.content || '系统通知';
+                        addSystemMessage(notice);
+                        // 配额提示 toast
+                        if (msg.payload?.notice && msg.payload.notice.includes('额度')) {
+                            showQuotaToast(msg.payload.notice);
+                        }
+                    }
+                    break;
+                case 'QUICK_DEBATE':
+                    renderQuickDebate(msg.payload);
+                    break;
+                case 'MORNING_NEWS_BULLETIN':
+                    renderNewsBulletin(msg.payload);
+                    break;
+                case 'LUNCH_WHISPER_START':
+                    enterLunchMode(msg.payload);
+                    break;
+                case 'MODE_CHANGE':
+                    if (msg.payload?.mode) switchMode(msg.payload.mode);
+                    break;
+                case 'QUOTA_UPDATE':
+                    if (msg.payload) updateQuotaDisplay(msg.payload);
+                    break;
+                case 'error':
+                    isLoading = false;
+                    addMessage('系统', '抱歉: ' + msg.message, 'ai');
+                    break;
+            }
+        }
+
+        // 添加系统消息（居中灰色提示）
+        function addSystemMessage(content) {
+            const container = document.getElementById('chat-messages');
+            const div = document.createElement('div');
+            div.className = 'flex justify-center my-2';
+            div.innerHTML = `
+                <div class="bg-gray-100 rounded-full px-3 py-1 text-xs text-gray-400">
+                    ${escapeHtml(content)}
+                </div>
+            `;
+            container.appendChild(div);
+            scrollToBottom();
+        }
+
+        // 添加嘉宾出场提示
+        function addGuestFlashNotice(guestName, reason) {
+            const container = document.getElementById('chat-messages');
+            const div = document.createElement('div');
+            div.className = 'flex justify-center my-2 guest-flash-notice';
+            const badgeColor = guestName === 'REITs片警' ? 'text-red-600 bg-red-50' : 'text-amber-600 bg-amber-50';
+            const icon = guestName === 'REITs片警' ? '👮' : '👀';
+            div.innerHTML = `
+                <div class="${badgeColor} rounded-full px-3 py-1 text-xs flex items-center gap-1.5 animate-pulse">
+                    <span>${icon}</span>
+                    <span class="font-medium">${escapeHtml(guestName)}</span>
+                    <span class="opacity-70">· ${escapeHtml(reason)}</span>
+                </div>
+            `;
+            container.appendChild(div);
+            scrollToBottom();
+            // 2秒后淡出
+            setTimeout(() => { div.style.opacity = '0.5'; }, 2000);
+        }
+
+        // 添加嘉宾消息
+        function addGuestMessage(sender, content, guestType, sources, meta = {}) {
+            const container = document.getElementById('chat-messages');
+            const isPolice = guestType === 'guest_compliance';
+
+            const idx = pushDisplayMessage({ sender, content, guestType, sources, ...meta });
+            const duetClasses = computeDuetClasses(meta, idx);
+
+            const div = document.createElement('div');
+            div.className = `chat-message flex gap-3 guest-message ${duetClasses.join(' ')}`;
+            div.style.animation = 'flashIn 0.4s ease';
+
+            const bgClass = isPolice ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200';
+            const textClass = isPolice ? 'text-red-800' : 'text-amber-800';
+            const badgeClass = isPolice ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700';
+            const badgeText = isPolice ? '⚡ 合规提示' : '⚡ 坊间情报';
+            const avatar = isPolice
+                ? 'https://api.dicebear.com/7.x/avataaars/svg?seed=police&backgroundColor=fee2e2'
+                : 'https://api.dicebear.com/7.x/avataaars/svg?seed=chaoyang&backgroundColor=fef3c7';
+
+            // 对戏阶段标签
+            let duetLabelHtml = '';
+            if (meta && meta.duet_stage) {
+                const label = getDuetStageLabel(meta.duet_stage);
+                if (label) {
+                    duetLabelHtml = `<span class="duet-stage-label stage-${meta.duet_stage}">${label}</span>`;
+                }
+            }
+
+            div.innerHTML = `
+                <img src="${avatar}" class="w-8 h-8 rounded-full bg-gray-100 flex-none">
+                <div class="message-bubble ${bgClass} border rounded-2xl px-4 py-3 shadow-sm max-w-[80%]">
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="font-semibold text-sm ${textClass}">${sender}</span>
+                        <span class="text-[10px] px-1.5 py-0.5 ${badgeClass} rounded-full">${badgeText}</span>
+                        ${duetLabelHtml}
+                        <span class="text-xs text-gray-400">${new Date().toLocaleTimeString('zh-CN', {hour: '2-digit', minute: '2-digit'})}</span>
+                    </div>
+                    <div class="text-sm ${textClass} leading-relaxed" style="white-space: pre-wrap;">${escapeHtml(content)}</div>
+                </div>
+            `;
+            container.appendChild(div);
+            scrollToBottom();
+        }
+
+        connectWebSocket();
+
+        // AI角色展示配置（后端没有avatar/color等字段，前端补充映射）
+        const AGENT_DISPLAY_CONFIG = {
+            '老李': { avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=laoli&backgroundColor=b6e3f4', color: 'blue', style: '稳重专业', expertise: ['宏观经济', '政策解读', '风险评估'] },
+            '小陈': { avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=xiaochen&backgroundColor=ffd5dc', color: 'pink', style: '活泼直接', expertise: ['技术分析', '短线操作', '情绪判断'] },
+            '王博': { avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=wangbo&backgroundColor=c0aede', color: 'purple', style: '严谨学术', expertise: ['资产评估', '财务报表', '长期价值'] },
+            '老K': { avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=laok&backgroundColor=d4f5d4', color: 'green', style: '北方糙汉', expertise: ['基础设施', '高速公路', '硬核分析'] },
+            '苏苏': { avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=susu&backgroundColor=ffe4e1', color: 'rose', style: '江南软妹', expertise: ['产业园', '仓储物流', '细腻观察'] },
+            'REITs片警': { avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=police&backgroundColor=fee2e2', color: 'red', style: '合规观察员', expertise: ['条文守护', '风险提示', '红线警示'] },
+            '朝阳群众': { avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=chaoyang&backgroundColor=fef3c7', color: 'yellow', style: '民间情报', expertise: ['坊间传闻', '散户情绪', '八卦爆料'] }
+        };
+
+        // 后端agent_id → 前端显示名映射（对戏系统需要）
+        const AGENT_ID_TO_NAME = {
+            'lao_k': '老K', 'su_su': '苏苏', 'lao_li': '老李',
+            'xiao_chen': '小陈', 'wang_bo': '王博', 'wang_bo_shi': '王博',
+            'police': 'REITs片警', 'chaoyang': '朝阳群众'
+        };
+
+        // ============================================
+        // 剧场侧屏：数据与状态
+        // ============================================
+        const AGENT_STANCES = {
+            '老K': { id: 'lao_k', name: '老K', stance: 'bearish', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=laok&backgroundColor=d4f5d4', quote: '"虚高，有水分"' },
+            '苏苏': { id: 'su_su', name: '苏苏', stance: 'neutral', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=susu&backgroundColor=ffe4e1', quote: '"春天到了暖和正常"' },
+            '老李': { id: 'lao_li', name: '老李', stance: 'bullish', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=laoli&backgroundColor=b6e3f4', quote: '"数据支撑，长期看好"' },
+            '小陈': { id: 'xiao_chen', name: '小陈', stance: 'neutral', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=xiaochen&backgroundColor=ffd5dc', quote: '"短期波动，等等看"' },
+            '王博': { id: 'wang_bo', name: '王博', stance: 'cautious', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=wangbo&backgroundColor=c0aede', quote: '"模型显示中性偏谨慎"' }
+        };
+        const STANCE_LABEL = { bullish: '看多', bearish: '看空', neutral: '中性', cautious: '谨慎' };
+        const STANCE_COLOR = { bullish: '#059669', bearish: '#dc2626', neutral: '#6b7280', cautious: '#d97706' };
+
+        let topicQueue = [];
+        let currentRound = 1;
+        let myVote = null;
+        let quizVotes = { up: 0, down: 0 };
+
+        // 渲染AI立场板
+        function renderStanceBoard() {
+            const container = document.getElementById('rs-stance-list');
+            if (!container) return;
+            container.innerHTML = '';
+            let hasBullish = false, hasBearish = false;
+
+            Object.values(AGENT_STANCES).forEach(agent => {
+                if (agent.stance === 'bullish') hasBullish = true;
+                if (agent.stance === 'bearish') hasBearish = true;
+
+                const div = document.createElement('div');
+                div.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;cursor:pointer;transition:all 0.2s;border-left:3px solid ' + STANCE_COLOR[agent.stance] + ';background:#fafafa;';
+                div.onmouseover = () => { div.style.background = '#f3f4f6'; };
+                div.onmouseout = () => { div.style.background = '#fafafa'; };
+                div.onclick = () => scrollToAgentMsg(agent.name);
+                div.innerHTML = `
+                    <img src="${agent.avatar}" style="width:24px;height:24px;border-radius:50%;flex-shrink:0;">
+                    <div style="flex:1;display:flex;flex-direction:column;min-width:0;">
+                        <span style="font-size:12px;font-weight:500;color:#374151;">${agent.name}</span>
+                    </div>
+                    <span style="font-size:11px;padding:2px 8px;border-radius:4px;font-weight:500;background:${agent.stance === 'bullish' ? '#d1fae5' : agent.stance === 'bearish' ? '#fee2e2' : agent.stance === 'cautious' ? '#fef3c7' : '#f3f4f6'};color:${agent.stance === 'bullish' ? '#065f46' : agent.stance === 'bearish' ? '#991b1b' : agent.stance === 'cautious' ? '#92400e' : '#4b5563'};">${STANCE_LABEL[agent.stance]}</span>
+                `;
+                container.appendChild(div);
+            });
+
+            // 冲突提示
+            const alert = document.getElementById('rs-conflict-alert');
+            if (alert) alert.style.display = (hasBullish && hasBearish) ? 'block' : 'none';
+        }
+
+        // 渲染话题排队
+        function renderTopicQueue() {
+            const container = document.getElementById('rs-queue-list');
+            if (!container) return;
+            container.innerHTML = '';
+            if (topicQueue.length === 0) {
+                container.innerHTML = '<div style="padding:12px;text-align:center;color:#9ca3af;font-size:12px;">暂无话题，等待专家切入...</div>';
+                return;
+            }
+            topicQueue.forEach((topic, idx) => {
+                const div = document.createElement('div');
+                div.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px;border-radius:8px;' + (topic.active ? 'background:#fff5f5;border:1px solid #fecaca;' : 'background:#f8f9fa;');
+                div.innerHTML = `
+                    <span style="width:20px;height:20px;display:flex;align-items:center;justify-content:center;background:${topic.active ? '#dc2626' : '#e5e7eb'};border-radius:50%;font-size:11px;font-weight:600;color:${topic.active ? '#fff' : '#6b7280'};flex-shrink:0;">${idx + 1}</span>
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-size:12px;font-weight:500;color:#374151;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${topic.title}</div>
+                        <div style="display:flex;gap:6px;font-size:11px;color:#9ca3af;margin-top:2px;">
+                            <span>${topic.active ? '即将开始' : '排队中'}</span>
+                            <span>${topic.votes} 人想听</span>
+                        </div>
+                    </div>
+                    ${!topic.active ? `<button onclick="bumpTopic(${topic.id})" style="padding:4px 10px;border:1px solid #e5e7eb;background:#fff;border-radius:6px;font-size:11px;cursor:pointer;color:#6b7280;flex-shrink:0;">想听</button>` : ''}
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        // 竞猜投票
+        function voteQuiz(val) {
+            if (myVote) return;
+            myVote = val;
+            // 先本地乐观更新
+            quizVotes[val]++;
+            _renderQuizResult();
+            // 发送到后端
+            if (wsConnected && ws) {
+                ws.send(JSON.stringify({ action: 'quiz_vote', vote: val }));
+            }
+        }
+
+        function _renderQuizResult() {
+            const total = quizVotes.up + quizVotes.down;
+            const upPct = total > 0 ? Math.round((quizVotes.up / total) * 100) : 50;
+            const downPct = 100 - upPct;
+            document.getElementById('rs-pct-up').textContent = upPct + '%';
+            document.getElementById('rs-pct-up').style.display = 'block';
+            document.getElementById('rs-pct-down').textContent = downPct + '%';
+            document.getElementById('rs-pct-down').style.display = 'block';
+            document.getElementById('rs-quiz-result').style.display = 'block';
+            document.getElementById('rs-quiz-result').textContent = total + ' 人参与 · 实时统计中';
+            const upBtn = document.getElementById('rs-vote-up');
+            const downBtn = document.getElementById('rs-vote-down');
+            if (upBtn) upBtn.style.cssText = 'flex:1;padding:8px;border-radius:8px;font-size:13px;transition:all 0.2s;border:1px solid ' + (myVote === 'up' ? '#22c55e' : '#e5e7eb') + ';background:' + (myVote === 'up' ? '#f0fdf4' : '#fff') + ';color:#374151;cursor:pointer;';
+            if (downBtn) downBtn.style.cssText = 'flex:1;padding:8px;border-radius:8px;font-size:13px;transition:all 0.2s;border:1px solid ' + (myVote === 'down' ? '#dc2626' : '#e5e7eb') + ';background:' + (myVote === 'down' ? '#fef2f2' : '#fff') + ';color:#374151;cursor:pointer;';
+        }
+
+        // 提升话题优先级
+        function bumpTopic(id) {
+            if (wsConnected && ws) {
+                ws.send(JSON.stringify({ action: 'topic_bump', topic_id: id }));
+            }
+        }
+
+        // 滚动到指定AI的发言
+        function scrollToAgentMsg(agentName) {
+            const msgs = document.querySelectorAll('.chat-message');
+            for (let i = msgs.length - 1; i >= 0; i--) {
+                const nameEl = msgs[i].querySelector('span.font-semibold');
+                if (nameEl && nameEl.textContent.trim() === agentName) {
+                    msgs[i].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    msgs[i].style.animation = 'messageSlide 0.5s ease';
+                    setTimeout(() => { msgs[i].style.animation = ''; }, 500);
+                    break;
+                }
+            }
+        }
+
+        function scrollToConflict() {
+            scrollToAgentMsg('老K');
+        }
+
+        // 更新话题进度
+        function updateTopicProgress(round, topic, desc) {
+            currentRound = round;
+            if (document.getElementById('rs-topic-title')) document.getElementById('rs-topic-title').textContent = topic || 'REITs市场热点';
+            if (document.getElementById('rs-topic-desc')) document.getElementById('rs-topic-desc').textContent = desc || '专家正在深入分析...';
+            if (document.getElementById('rs-topic-progress')) document.getElementById('rs-topic-progress').style.width = (round / 6 * 100) + '%';
+            if (document.getElementById('rs-topic-round')) document.getElementById('rs-topic-round').textContent = round + '/6 轮';
+        }
+
+        // 更新情绪温度
+        function updateSentiment(temp, emotion, splits) {
+            if (document.getElementById('rs-temp-fill')) {
+                document.getElementById('rs-temp-fill').style.width = temp + '%';
+                document.getElementById('rs-temp-fill').style.background = temp > 80 ? '#dc2626' : temp > 60 ? '#f97316' : temp > 40 ? '#eab308' : '#22c55e';
+            }
+            if (document.getElementById('rs-temp-label')) document.getElementById('rs-temp-label').textContent = temp + '° ' + (emotion || '中性');
+            if (splits && document.getElementById('rs-split-opinions')) {
+                const container = document.getElementById('rs-split-opinions');
+                container.innerHTML = splits.map(s => `
+                    <div style="display:flex;gap:6px;font-size:11px;padding:6px;border-radius:6px;background:${s.stance === 'bearish' ? '#fef2f2' : s.stance === 'bullish' ? '#f0fdf4' : '#f8f9fa'};">
+                        <span style="font-weight:600;color:#374151;">${s.who}</span>
+                        <span style="color:#6b7280;font-style:italic;">${s.says}</span>
+                    </div>
+                `).join('');
+            }
+        }
+
+        // 从AI消息中解析立场（简单关键词匹配）
+        function parseStanceFromMessage(agentName, content) {
+            const lower = content.toLowerCase();
+            const cfg = AGENT_STANCES[agentName];
+            if (!cfg) return;
+            if (lower.includes('看空') || lower.includes('看跌') || lower.includes('风险') || lower.includes('泡沫') || lower.includes('虚高')) cfg.stance = 'bearish';
+            else if (lower.includes('看多') || lower.includes('看涨') || lower.includes('机会') || lower.includes('底部') || lower.includes('价值')) cfg.stance = 'bullish';
+            else if (lower.includes('谨慎') || lower.includes('观望') || lower.includes('不确定')) cfg.stance = 'cautious';
+            else cfg.stance = 'neutral';
+            renderStanceBoard();
+        }
+
+        // 渲染辩论结果面板
+        function renderDebatePanel(payload) {
+            if (!payload) return;
+            let container = document.getElementById('debate-panel');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'debate-panel';
+                container.style.cssText = 'max-width:720px;background:#fff;border-radius:16px;border:1px solid #e8ecf1;box-shadow:0 4px 20px rgba(0,0,0,0.06);margin:0 auto 20px auto;overflow:hidden;';
+                const chatMessages = document.getElementById('chat-messages');
+                if (chatMessages) chatMessages.insertBefore(container, chatMessages.firstChild);
+            }
+
+            const proposals = payload.proposals || {};
+            const conflicts = payload.conflicts || [];
+            const consensus = payload.consensus || '';
+
+            // 立场标签
+            const stanceLabel = { bullish: '看多', bearish: '看空', neutral: '中性' };
+            const stanceColor = { bullish: '#059669', bearish: '#dc2626', neutral: '#6b7280' };
+            const stanceBg = { bullish: '#d1fae5', bearish: '#fee2e2', neutral: '#e2e8f0' };
+
+            // 构建冲突卡片
+            let conflictsHtml = '';
+            if (conflicts.length > 0) {
+                conflictsHtml = '<div style="padding:16px 20px;border-bottom:1px solid #f1f5f9;">' +
+                    '<div style="font-size:14px;font-weight:700;color:#1e293b;margin-bottom:12px;">⚔️ 核心分歧</div>' +
+                    conflicts.map(c => {
+                        const borderColor = c.type === '核心分歧' ? '#dc2626' : c.type === '估值差异' ? '#f59e0b' : '#3b82f6';
+                        return `<div style="background:#f8fafc;border-radius:12px;padding:16px;margin-bottom:12px;border-left:4px solid ${borderColor};">
+                            <div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">${c.type}</div>
+                            <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+                                <span style="font-weight:700;font-size:14px;color:#1e293b;">${c.between[0]}</span>
+                                <span style="font-size:12px;color:#94a3b8;font-weight:600;">VS</span>
+                                <span style="font-weight:700;font-size:14px;color:#1e293b;">${c.between[1]}</span>
+                            </div>
+                            <div style="display:flex;gap:12px;margin-bottom:12px;">
+                                <div style="flex:1;background:#fff;border-radius:8px;padding:10px;font-size:13px;color:#475569;line-height:1.6;">${c.side_a}</div>
+                                <div style="width:1px;background:#e2e8f0;"></div>
+                                <div style="flex:1;background:#fff;border-radius:8px;padding:10px;font-size:13px;color:#475569;line-height:1.6;">${c.side_b}</div>
+                            </div>
+                            <div style="font-size:12px;color:#64748b;font-style:italic;padding:8px;background:#fff;border-radius:6px;">💡 ${c.highlight}</div>
+                        </div>`;
+                    }).join('') +
+                '</div>';
+            }
+
+            // 构建备忘录卡片
+            let proposalsHtml = '';
+            const avatarGradients = {
+                lao_k: 'linear-gradient(135deg, #2563eb, #1e40af)',
+                su_su: 'linear-gradient(135deg, #db2777, #9d174d)',
+                lao_li: 'linear-gradient(135deg, #059669, #065f46)',
+                xiao_chen: 'linear-gradient(135deg, #d97706, #92400e)',
+                wang_bo: 'linear-gradient(135deg, #7c3aed, #5b21b6)',
+            };
+            const nameMap = { lao_k: '老K', su_su: '苏苏', lao_li: '老李', xiao_chen: '小陈', wang_bo: '王博士' };
+
+            proposalsHtml = '<div style="padding:16px 20px;">' +
+                '<div style="font-size:14px;font-weight:700;color:#1e293b;margin-bottom:12px;">📝 各方备忘录</div>' +
+                '<div style="display:flex;flex-direction:column;gap:12px;">' +
+                Object.entries(proposals).map(([aid, prop]) => {
+                    const borderColor = stanceColor[prop.stance] || '#6b7280';
+                    return `<div style="background:#f8fafc;border-radius:10px;padding:14px;border-left:3px solid ${borderColor};">
+                        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+                            <div style="width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;background:${avatarGradients[aid] || '#6b7280'};">${nameMap[aid] || aid}</div>
+                            <div style="display:flex;align-items:center;gap:8px;">
+                                <span style="font-weight:600;font-size:14px;color:#1e293b;">${prop.agent_name}</span>
+                                <span style="font-size:11px;padding:2px 8px;border-radius:12px;font-weight:500;background:${stanceBg[prop.stance] || '#e2e8f0'};color:${stanceColor[prop.stance] || '#475569'};">${stanceLabel[prop.stance] || '中性'}</span>
+                            </div>
+                        </div>
+                        <div style="margin-bottom:10px;">
+                            <div style="font-size:10px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Round 0 · 独立观点</div>
+                            <p style="font-size:13px;color:#475569;line-height:1.7;margin:0;">${prop.round_0}</p>
+                        </div>
+                        ${prop.round_1 ? `<div style="background:#fff;border-radius:6px;padding:10px;border:1px dashed #cbd5e1;">
+                            <div style="font-size:10px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Round 1 · 交换修正</div>
+                            <p style="font-size:13px;color:#475569;line-height:1.7;margin:0;">${prop.round_1}</p>
+                        </div>` : ''}
+                    </div>`;
+                }).join('') +
+                '</div>' +
+            '</div>';
+
+            container.innerHTML = `
+                <div style="background:linear-gradient(135deg, #1e293b 0%, #334155 100%);color:#fff;padding:20px;">
+                    <div style="display:inline-block;font-size:12px;font-weight:600;padding:4px 10px;background:rgba(255,255,255,0.15);border-radius:20px;margin-bottom:10px;">🎙️ 投研辩论会</div>
+                    <h3 style="font-size:18px;font-weight:700;margin:0 0 10px 0;line-height:1.4;">${payload.topic}</h3>
+                    ${consensus ? `<div style="font-size:13px;color:#cbd5e1;background:rgba(255,255,255,0.08);padding:8px 12px;border-radius:8px;">💡 共识：${consensus}</div>` : ''}
+                </div>
+                ${conflictsHtml}
+                ${proposalsHtml}
+                <button onclick="document.getElementById('debate-panel').style.display='none'" style="width:100%;padding:12px;border:none;background:#f1f5f9;color:#64748b;font-size:13px;cursor:pointer;transition:all 0.2s;">收起辩论结果</button>
+            `;
+            container.style.display = 'block';
+            scrollToBottom();
+        }
+
+        // ===== 5时段模式系统 =====
+        let currentMode = 'freestyle';
+        let userQuota = { used: 0, total: 1, remaining: 1, can_ask: true };
+        let butterflyRate = 0.8;
+        let nextSlotName = '下一场';
+        let modeCountdown = '';
+
+        function switchMode(mode) {
+            if (currentMode === mode) return;
+            document.body.classList.remove(currentMode + '-theme');
+            currentMode = mode;
+            document.body.classList.add(mode + '-theme');
+            updateModeBanner();
+            addSystemMessage('模式切换：' + ({showtime:'🎭 日盘剧场', freestyle:'💬 浏览者大厅', lunch:'🌿 午间悄悄话', morning_news:'🌍 晨间通讯社'}[mode] || mode));
+        }
+
+        function updateModeBanner() {
+            const banner = document.getElementById('mode-banner');
+            if (!banner) return;
+            const cfg = {
+                showtime: { icon: '🎭', name: '日盘剧场', bg: 'linear-gradient(90deg, #1e293b 0%, #334155 100%)', color: '#e2e8f0', border: '1px solid #475569' },
+                freestyle: { icon: '💬', name: '浏览者大厅', bg: '#f8fafc', color: '#475569', border: '1px solid #cbd5e1' },
+                lunch: { icon: '🌿', name: '午间悄悄话', bg: 'linear-gradient(90deg, #ecfdf5 0%, #d1fae5 100%)', color: '#065f46', border: '1px solid #a7f3d0' },
+                morning_news: { icon: '🌍', name: '晨间通讯社', bg: 'linear-gradient(90deg, #1e3a5f 0%, #2d5a87 100%)', color: '#bfdbfe', border: '1px solid #3b82f6' },
+            }[currentMode] || cfg.freestyle;
+
+            banner.style.background = cfg.bg;
+            banner.style.color = cfg.color;
+            banner.style.border = cfg.border;
+
+            let centerHtml = '';
+            if (currentMode === 'showtime') {
+                centerHtml = `<span style="background:rgba(255,255,255,0.1);padding:4px 12px;border-radius:12px;display:inline-block;">本场每人限${userQuota.total}问 · 您剩余 ${userQuota.remaining}/${userQuota.total}</span>`;
+            } else if (modeCountdown) {
+                centerHtml = `<span style="font-family:monospace;font-weight:600;letter-spacing:0.5px;">⏱️ 距${nextSlotName}还有 ${modeCountdown}</span>`;
+            } else {
+                centerHtml = `<span style="font-style:italic;opacity:0.8;">💬 自由交流中 · 提问将触发AI分歧讨论</span>`;
+            }
+
+            const butterflyEl = document.getElementById('mode-butterfly');
+            if (butterflyEl) {
+                if (butterflyRate && butterflyRate > 0) {
+                    butterflyEl.style.display = 'inline-block';
+                    document.getElementById('mode-butterfly-pct').textContent = Math.round(butterflyRate * 100);
+                } else {
+                    butterflyEl.style.display = 'none';
+                }
+            }
+
+            banner.innerHTML = `
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <span style="font-size:18px;line-height:1;">${cfg.icon}</span>
+                    <span style="font-weight:700;font-size:14px;">${cfg.name}</span>
+                </div>
+                <div style="font-size:12px;">${centerHtml}</div>
+                <div style="display:flex;align-items:center;gap:12px;font-size:11px;">
+                    <span style="opacity:0.8;">👥 <span id="mode-online-count">1</span>人在线</span>
+                    <span id="mode-butterfly" style="background:rgba(245,158,11,0.15);color:#92400e;padding:2px 8px;border-radius:10px;font-weight:500;display:none;">🦋 自发讨论概率 <span id="mode-butterfly-pct">80</span>%</span>
+                </div>
+            `;
+        }
+
+        function updateQuotaDisplay(quota) {
+            userQuota = quota;
+            updateModeBanner();
+        }
+
+        function showQuotaToast(notice) {
+            let toast = document.getElementById('quota-toast');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'quota-toast';
+                toast.style.cssText = 'position:fixed;top:60px;left:50%;transform:translateX(-50%);background:#1e293b;color:#e2e8f0;padding:10px 20px;border-radius:20px;font-size:13px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.15);z-index:100;';
+                document.body.appendChild(toast);
+            }
+            toast.textContent = notice;
+            toast.style.display = 'block';
+            setTimeout(() => { toast.style.display = 'none'; }, 5000);
+        }
+
+        // 双人快辩渲染
+        function renderQuickDebate(payload) {
+            const container = document.getElementById('chat-messages');
+            if (!container) return;
+            const names = { lao_k: '老K', su_su: '苏苏', lao_li: '老李', xiao_chen: '小陈', wang_bo: '王博士' };
+            const div = document.createElement('div');
+            div.style.cssText = 'max-width:680px;background:#fff;border-radius:12px;border:1px solid #e2e8f0;box-shadow:0 2px 12px rgba(0,0,0,0.06);margin-bottom:16px;overflow:hidden;';
+            div.innerHTML = `
+                <div style="background:linear-gradient(135deg, #1e293b 0%, #334155 100%);color:#fff;padding:12px 16px;font-size:13px;font-weight:600;">
+                    <span>🎭 双人快辩 · </span><span style="font-style:italic;opacity:0.9;">${escapeHtml(payload.question || '')}</span>
+                </div>
+                <div style="display:flex;gap:0;">
+                    <div style="flex:1;padding:16px;background:linear-gradient(180deg, #f0fdf4 0%, #fff 100%);border-right:1px solid #e2e8f0;position:relative;">
+                        <div style="display:inline-block;font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px;margin-bottom:8px;background:#d1fae5;color:#065f46;">看多</div>
+                        <div style="font-size:13px;font-weight:600;color:#1e293b;margin-bottom:6px;">${names[payload.side_a?.agent] || payload.side_a?.agent}</div>
+                        <div style="font-size:13px;color:#475569;line-height:1.7;">${escapeHtml(payload.side_a?.content || '')}</div>
+                    </div>
+                    <div style="position:absolute;left:50%;top:50%;transform:translate(-50%, -50%);background:#fff;border:2px solid #e2e8f0;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#94a3b8;z-index:2;">VS</div>
+                    <div style="flex:1;padding:16px;background:linear-gradient(180deg, #fef2f2 0%, #fff 100%);position:relative;">
+                        <div style="display:inline-block;font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px;margin-bottom:8px;background:#fee2e2;color:#991b1b;">看空</div>
+                        <div style="font-size:13px;font-weight:600;color:#1e293b;margin-bottom:6px;">${names[payload.side_b?.agent] || payload.side_b?.agent}</div>
+                        <div style="font-size:13px;color:#475569;line-height:1.7;">${escapeHtml(payload.side_b?.content || '')}</div>
+                    </div>
+                </div>
+                <div style="background:#f8fafc;padding:10px 16px;font-size:11px;color:#64748b;text-align:center;border-top:1px solid #e2e8f0;">用户提问触发 · 30秒快辩 · 回归正常讨论</div>
+            `;
+            container.appendChild(div);
+            scrollToBottom();
+        }
+
+        // 晨间新闻渲染
+        function renderNewsBulletin(payload) {
+            const container = document.getElementById('chat-messages');
+            if (!container) return;
+            if (!payload.has_news) {
+                addSystemMessage(payload.notice || '部分国际新闻源暂时无法获取');
+                return;
+            }
+            const div = document.createElement('div');
+            div.style.cssText = 'max-width:720px;background:#fff;border-radius:12px;border:1px solid #bfdbfe;margin-bottom:16px;overflow:hidden;';
+            let itemsHtml = (payload.items || []).map(item => `
+                <div style="padding:12px 16px;border-bottom:1px solid #f1f5f9;">
+                    <div style="font-size:14px;font-weight:600;color:#1e293b;margin-bottom:4px;">${escapeHtml(item.title)}</div>
+                    <div style="font-size:12px;color:#475569;line-height:1.6;margin-bottom:6px;">${escapeHtml(item.summary)}</div>
+                    <div style="font-size:11px;color:#64748b;">📰 ${item.source} <span style="display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;margin-left:8px;background:${item.market==='US'?'#dbeafe':item.market==='SG'?'#fef3c7':'#f1f5f9'};color:${item.market==='US'?'#1e40af':item.market==='SG'?'#92400e':'#475569'};">${item.market}</span> <a href="${item.source_url}" target="_blank" rel="noopener" style="color:#3b82f6;text-decoration:none;">查看原文 →</a></div>
+                </div>
+            `).join('');
+            div.innerHTML = `
+                <div style="background:linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%);color:#bfdbfe;padding:12px 16px;display:flex;align-items:center;gap:8px;">
+                    <span style="font-size:16px;">🌍</span>
+                    <span style="font-size:14px;font-weight:700;">晨间通讯社 · 国际REITs要闻</span>
+                </div>
+                ${itemsHtml}
+            `;
+            container.appendChild(div);
+            scrollToBottom();
+        }
+
+        // 午间模式
+        function enterLunchMode(payload) {
+            switchMode('lunch');
+            addSystemMessage(`🌿 午间悄悄话开始 · 今日话题：${payload.topic || '轻松聊聊'}`);
+        }
+
+        // 轮询当前模式
+        async function pollCurrentMode() {
+            try {
+                const res = await fetch('/api/ai/current-mode');
+                if (!res.ok) return;
+                const data = await res.json();
+                if (data.mode && data.mode !== currentMode) {
+                    switchMode(data.mode);
+                }
+                if (data.countdown !== undefined) modeCountdown = data.countdown;
+                if (data.next_slot) nextSlotName = data.next_slot.name;
+                if (data.butterfly_rate !== undefined) butterflyRate = data.butterfly_rate;
+                if (data.slot) userQuota.total = data.slot.user_quota || 0;
+                updateModeBanner();
+            } catch (e) { /* ignore */ }
+        }
 
         // 初始化页面
-        document.addEventListener('DOMContentLoaded', () => {
-            renderAIPersonas();
-            renderHotTopics();
-            startAIConversation();
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (typeof initGlobalSearchDropdown === 'function') initGlobalSearchDropdown();
+            await loadAgents();
+            await loadHotspots();
+            await loadSectors();
+            renderStanceBoard();
+            renderTopicQueue();
+            updateTopicProgress(1, '连接中...', '正在同步直播间状态...');
+            updateModeBanner();
+            pollCurrentMode();
+            setInterval(pollCurrentMode, 30000);
             
             // 模拟实时在线人数变化
             setInterval(() => {
                 const count = Math.floor(Math.random() * 5) + 3;
                 document.getElementById('online-count').textContent = count;
+                const modeCount = document.getElementById('mode-online-count');
+                if (modeCount) modeCount.textContent = count;
             }, 30000);
         });
+
+        // 获取AI角色列表
+        async function loadAgents() {
+            try {
+                const res = await fetch(`${AI_API_BASE}/agents`);
+                if (!res.ok) throw new Error('Failed to load agents');
+                const data = await res.json();
+                agentsList = data.agents || [];
+                if (agentsList.length > 0 && !currentAgent) {
+                    currentAgent = agentsList[0].agent_name;
+                }
+                renderAIPersonas();
+            } catch (e) {
+                console.warn('Load agents failed, using fallback:', e);
+                // Fallback to hardcoded personas
+                agentsList = [
+                    { agent_name: '老K', agent_desc: '北方糙汉·价值老兵', system_prompt: '浸淫REITs市场20年，刀子嘴豆腐心，专治各种不服' },
+                    { agent_name: '苏苏', agent_desc: '上海软妹·生活哲学家', system_prompt: '弄堂里悟出的投资直觉，温柔一刀，软糯但有刺' },
+                    { agent_name: '老李', agent_desc: '稳健价值派·数据控', system_prompt: '15年价值派老手，分红率守护者，每个数字都有出处' },
+                    { agent_name: '小陈', agent_desc: '敏锐研究派·季报挖掘机', system_prompt: '金融工程背景，擅长季报拆解、板块轮动、政策窗口期捕捉' },
+                    { agent_name: '王博', agent_desc: '宏观策略派·模型构建者', system_prompt: '经济学博士，专注REITs与宏观利率、资产配置的关系' }
+                ];
+                renderAIPersonas();
+            }
+        }
+
+        // REITs 市场热点（mock 数据，后续可接入后端实时数据）
+        const REITS_HOTSPOTS = [
+            { title: '中金普洛斯REIT年报：营收增长12%', content: '95', source: '年报' },
+            { title: '华夏越秀高速REIT：车流量恢复超预期', content: '88', source: '运营' },
+            { title: '红土创新盐田港REIT扩募获受理', content: '92', source: '扩募' },
+            { title: '博时蛇口产园REIT：出租率提升至97%', content: '85', source: '运营' },
+            { title: '平安广州广河REIT分红方案公布', content: '78', source: '分红' },
+            { title: '易方达广开产园REIT新签约租户', content: '72', source: '租赁' },
+            { title: '华夏合肥高新REIT：园区入驻率创新高', content: '80', source: '运营' },
+            { title: '嘉实京东仓储REIT：双11备货旺季', content: '75', source: ' seasonal' },
+        ];
+
+        // 获取热点数据
+        async function loadHotspots() {
+            try {
+                const res = await fetch(`${AI_API_BASE}/hotspots?limit=10`);
+                if (!res.ok) throw new Error('Failed to load hotspots: ' + res.status);
+                const data = await res.json();
+                console.log('[Hotspots] loaded', data.hotspots?.length || 0, 'items');
+                // 后端已做REITs过滤，前端直接显示
+                const hotspots = data.hotspots || [];
+                if (hotspots.length > 0) {
+                    renderHotTopics(hotspots);
+                } else {
+                    console.warn('[Hotspots] empty, using fallback');
+                    renderHotTopics(REITS_HOTSPOTS);
+                }
+            } catch (e) {
+                console.warn('Load hotspots failed, using fallback:', e);
+                renderHotTopics(REITS_HOTSPOTS);
+            }
+        }
+
+        // 名字映射（后端旧数据兼容）
+        const NAME_MAP = { '王博士': '王博' };
+        function normalizeName(name) { return NAME_MAP[name] || name; }
 
         // 渲染AI角色
         function renderAIPersonas() {
             const container = document.getElementById('ai-personas');
-            container.innerHTML = AI_PERSONAS.map(ai => `
-                <div class="flex items-start gap-3 p-3 rounded-xl hover:bg-gray-50 transition-all cursor-pointer group" onclick="mentionAI('${ai.name}')">
-                    <img src="${ai.avatar}" alt="${ai.name}" class="w-12 h-12 rounded-full bg-gray-100">
-                    <div class="flex-1 min-w-0">
-                        <div class="flex items-center gap-2">
-                            <span class="font-semibold text-gray-900">${ai.name}</span>
-                            <span class="text-xs px-1.5 py-0.5 bg-${ai.color}-100 text-${ai.color}-700 rounded">${ai.role}</span>
+            if (!agentsList.length) {
+                container.innerHTML = '<div class="p-4 text-xs text-gray-400 text-center">加载中...</div>';
+                return;
+            }
+            container.innerHTML = agentsList.map((ai, idx) => {
+                const displayName = normalizeName(ai.agent_name);
+                const config = AGENT_DISPLAY_CONFIG[displayName] || { 
+                    avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${displayName}&backgroundColor=c0aede`, 
+                    color: 'gray', 
+                    style: '专业分析师', 
+                    expertise: ['投资分析'] 
+                };
+                const isActive = displayName === currentAgent;
+                return `
+                <div class="flex items-center gap-2.5 p-2 rounded-lg hover:bg-gray-50 transition-all cursor-pointer group ${isActive ? 'bg-purple-50 border border-purple-200' : ''}" 
+                     onclick="selectAgent('${displayName}')">
+                    <img src="${config.avatar}" alt="${displayName}" class="rounded-full bg-gray-100 flex-none" style="width:28px;height:28px">
+                    <div class="flex-1 min-w-0 overflow-hidden">
+                        <div class="flex items-center gap-1.5">
+                            <span class="font-semibold text-sm text-gray-900 truncate">${displayName}</span>
+                            <span class="text-[10px] px-1 py-0.5 bg-${config.color}-100 text-${config.color}-700 rounded whitespace-nowrap">${ai.agent_desc || 'AI分析师'}</span>
                         </div>
-                        <p class="text-xs text-gray-500 mt-0.5">${ai.style}</p>
-                        <div class="flex flex-wrap gap-1 mt-1.5">
-                            ${ai.expertise.map(e => `<span class="text-[10px] text-gray-400">#${e}</span>`).join('')}
-                        </div>
+                        <p class="text-[11px] text-gray-500 truncate">${config.style} · ${config.expertise.slice(0,2).join(' ')}</p>
                     </div>
-                    <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <div class="w-1.5 h-1.5 ${isActive ? 'bg-purple-500' : 'bg-green-500'} rounded-full animate-pulse flex-none"></div>
                 </div>
-            `).join('');
+            `}).join('');
+        }
+
+        // 选择AI角色
+        function selectAgent(agentName) {
+            currentAgent = agentName;
+            renderAIPersonas();
+            // Update chat header
+            const headerTitle = document.querySelector('main h2');
+            if (headerTitle) {
+                headerTitle.textContent = `与 ${agentName} 对话中`;
+            }
         }
 
         // 渲染热点话题
-        function renderHotTopics() {
+        function renderHotTopics(hotspots) {
             const container = document.getElementById('hot-topics');
-            container.innerHTML = HOT_TOPICS.map((topic, index) => `
-                <div class="flex items-center justify-between p-2 rounded-lg hover:bg-gray-100 cursor-pointer transition-all" onclick="askAI('${topic.topic}')">
-                    <span class="text-xs text-gray-700 truncate flex-1">${index + 1}. ${topic.topic}</span>
-                    <span class="text-[10px] px-1.5 py-0.5 ${topic.heat > 80 ? 'bg-red-100 text-red-600 hot-topic-tag' : 'bg-gray-100 text-gray-500'} rounded">
-                        ${topic.heat}°
+            if (!hotspots || !hotspots.length) {
+                container.innerHTML = '<div class="p-2 text-xs text-gray-400">暂无热点数据</div>';
+                return;
+            }
+            container.innerHTML = hotspots.map((h, index) => {
+                const tag = h.source || 'REITs';
+                // 情感标签配色（四档分色 + heat 极高时 subtle 高亮）
+                let tagClass = 'bg-gray-100 text-gray-500';
+                const heat = parseInt(h.content) || 0;
+                if (tag === '利好') {
+                    tagClass = heat >= 95 ? 'bg-red-100 text-red-600 hot-topic-tag' : 'bg-red-100 text-red-600';
+                } else if (tag === '偏暖') {
+                    tagClass = 'bg-orange-100 text-orange-600';
+                } else if (tag === '利空') {
+                    tagClass = 'bg-green-100 text-green-600';
+                } else if (tag === '中性') {
+                    tagClass = 'bg-gray-100 text-gray-500';
+                }
+                return `
+                <div class="flex items-center justify-between p-2 rounded-lg hover:bg-gray-100 cursor-pointer transition-all" onclick="askAI('${h.title.replace(/'/g, "\\'")}')">
+                    <span class="text-xs text-gray-700 truncate flex-1">${index + 1}. ${h.title}</span>
+                    <span class="text-[10px] px-1.5 py-0.5 ${tagClass} rounded">
+                        ${tag}
                     </span>
                 </div>
-            `).join('');
+            `}).join('');
         }
 
         // 添加消息到聊天区
-        function addMessage(sender, content, type = 'ai') {
+        function addMessage(sender, content, type = 'ai', sources, meta = {}) {
             const container = document.getElementById('chat-messages');
-            const ai = AI_PERSONAS.find(a => a.name === sender);
+            const config = AGENT_DISPLAY_CONFIG[sender];
             const isAI = type === 'ai';
-            
+            const isMe = type === 'human';
+            const isOther = type === 'other';
+
+            const idx = pushDisplayMessage({ sender, content, type, sources, ...meta });
+            const duetClasses = computeDuetClasses(meta, idx);
+
             const messageDiv = document.createElement('div');
-            messageDiv.className = `chat-message flex gap-3 ${isAI ? '' : 'flex-row-reverse'}`;
+            messageDiv.className = `chat-message flex gap-3 ${isAI ? '' : 'flex-row-reverse'} ${duetClasses.join(' ')}`;
             
-            const avatarHtml = isAI && ai ? 
-                `<img src="${ai.avatar}" class="w-10 h-10 rounded-full bg-gray-100 flex-none">` :
-                `<div class="w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-teal-500 flex items-center justify-center text-white font-bold flex-none">我</div>`;
+            let avatarHtml;
+            if (isAI && config) {
+                avatarHtml = `<img src="${config.avatar}" class="w-8 h-8 rounded-full bg-gray-100 flex-none">`;
+            } else if (isMe) {
+                avatarHtml = `<div class="w-8 h-8 rounded-full bg-gradient-to-br from-green-500 to-teal-500 flex items-center justify-center text-white font-bold flex-none">我</div>`;
+            } else {
+                // 其他用户
+                avatarHtml = `<div class="w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-red-400 flex items-center justify-center text-white font-bold flex-none text-xs">${sender.substring(0, 1)}</div>`;
+            }
             
-            const bubbleColor = isAI && ai ? `bg-${ai.color}-50 border-${ai.color}-200` : 'bg-blue-600 text-white';
-            const textColor = isAI ? 'text-gray-800' : 'text-white';
-            const senderColor = isAI && ai ? `text-${ai.color}-700` : 'text-blue-200';
+            const bubbleColor = isAI && config ? `bg-${config.color}-50 border-${config.color}-200` : (isMe ? 'bg-blue-600 text-white' : 'bg-orange-50 border border-orange-200 text-gray-800');
+            const textColor = isAI || isOther ? 'text-gray-800' : 'text-white';
+            const senderColor = isAI && config ? `text-${config.color}-700` : (isMe ? 'text-blue-200' : 'text-orange-600');
+
+            // 对戏阶段标签
+            let duetLabelHtml = '';
+            if (meta && meta.duet_stage) {
+                const label = getDuetStageLabel(meta.duet_stage);
+                if (label) {
+                    duetLabelHtml = `<span class="duet-stage-label stage-${meta.duet_stage}">${label}</span>`;
+                }
+            }
+
+            let sourcesHtml = '';
+            if (isAI && sources && sources.length) {
+                sourcesHtml = `<div class="mt-2 pt-2 border-t border-gray-100">
+                    <p class="text-[10px] text-gray-400 mb-1">参考来源:</p>
+                    <div class="flex flex-wrap gap-1">
+                        ${sources.map(s => `<span class="text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded">${(s.title || s.content || '参考').substring(0, 20)}</span>`).join('')}
+                    </div>
+                </div>`;
+            }
             
             messageDiv.innerHTML = `
                 ${avatarHtml}
-                <div class="message-bubble ${isAI ? 'bg-white border border-gray-200' : 'bg-blue-600'} rounded-2xl px-4 py-3 shadow-sm">
+                <div class="message-bubble ${isAI ? 'bg-white border border-gray-200' : (isMe ? 'bg-blue-600' : 'bg-orange-50 border border-orange-200')} rounded-2xl px-4 py-3 shadow-sm max-w-[80%]">
                     <div class="flex items-center gap-2 mb-1">
-                        <span class="font-semibold text-sm ${isAI ? senderColor : 'text-blue-100'}">${sender}</span>
-                        <span class="text-xs ${isAI ? 'text-gray-400' : 'text-blue-200'}">${new Date().toLocaleTimeString('zh-CN', {hour: '2-digit', minute: '2-digit'})}</span>
+                        <span class="font-semibold text-sm ${isAI ? senderColor : (isMe ? 'text-blue-100' : 'text-orange-600')}">${sender}</span>
+                        ${duetLabelHtml}
+                        <span class="text-xs ${isAI ? 'text-gray-400' : (isMe ? 'text-blue-200' : 'text-orange-300')}">${new Date().toLocaleTimeString('zh-CN', {hour: '2-digit', minute: '2-digit'})}</span>
                     </div>
-                    <p class="text-sm ${textColor} leading-relaxed">${content}</p>
+                    <div class="text-sm ${textColor} leading-relaxed" style="white-space: pre-wrap;">${escapeHtml(content)}</div>
+                    ${sourcesHtml}
                     ${isAI ? `
                     <div class="message-actions opacity-0 transition-opacity flex gap-2 mt-2 pt-2 border-t border-gray-100">
                         <button onclick="likeMessage(this)" class="text-xs text-gray-400 hover:text-blue-600 flex items-center gap-1">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5"/></svg>
                             赞同
                         </button>
-                        <button onclick="askFollowUp('${sender}', '${content?.replace(/'/g, '\\\'')}')" class="text-xs text-gray-400 hover:text-blue-600 flex items-center gap-1">
+                        <button onclick="askFollowUp('${sender}', '${content.replace(/'/g, "\\'")}')" class="text-xs text-gray-400 hover:text-blue-600 flex items-center gap-1">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
                             追问
                         </button>
@@ -383,57 +1535,181 @@
             scrollToBottom();
         }
 
-        // AI对话模拟
-        async function startAIConversation() {
-            const conversations = [
-                { sender: '老李', content: '大家早上好！今天REITs市场整体表现平稳，但仓储物流板块有明显异动，值得重点关注。' },
-                { sender: '小陈', content: '老李老师，我发现中金普洛斯今天成交量放大了很多，是不是有什么消息？' },
-                { sender: '王博士', content: '从基本面来看，近期电商物流需求持续增长，仓储类资产的出租率确实在提升。不过我们也要关注估值是否合理。' },
-                { sender: '老李', content: '王博士说得对。另外，政策面也有利好，发改委最近释放了支持REITs扩容的信号。' },
-                { sender: '小陈', content: '那是不是可以逢低布局一些仓储物流的REITs？老李老师有什么建议吗？' }
-            ];
-
-            for (const msg of conversations) {
-                await new Promise(r => setTimeout(r, 2000));
-                addMessage(msg.sender, msg.content, 'ai');
-            }
-
-            // 模拟AI之间的互动
-            setInterval(() => {
-                const randomAI = AI_PERSONAS[Math.floor(Math.random() * AI_PERSONAS.length)];
-                const randomMessages = [
-                    '最近产业园板块的分化比较明显，大家在选择时需要更加谨慎。',
-                    '高速公路REITs的分红率还是很稳定的，适合长期持有。',
-                    '新能源REITs虽然估值高，但成长性确实不错。',
-                    '大家怎么看保障性租赁住房这个赛道？',
-                    '提醒一下，明天有几只REITs要发布季报，注意关注。'
-                ];
-                const randomMsg = randomMessages[Math.floor(Math.random() * randomMessages.length)];
-                addMessage(randomAI.name, randomMsg, 'ai');
-            }, 15000);
+        // 添加加载中消息
+        function addLoadingMessage(agentName) {
+            const container = document.getElementById('chat-messages');
+            const config = AGENT_DISPLAY_CONFIG[agentName] || { avatar: '', color: 'gray' };
+            const id = 'loading-' + Date.now();
+            
+            const div = document.createElement('div');
+            div.id = id;
+            div.className = 'chat-message flex gap-3';
+            div.innerHTML = `
+                ${config.avatar ? `<img src="${config.avatar}" class="w-8 h-8 rounded-full bg-gray-100 flex-none">` : '<div class="w-8 h-8 rounded-full bg-gray-200 flex-none"></div>'}
+                <div class="message-bubble bg-white border border-gray-200 rounded-2xl px-4 py-3 shadow-sm">
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="font-semibold text-sm text-${config.color}-700">${agentName}</span>
+                        <span class="text-xs text-gray-400">思考中...</span>
+                    </div>
+                    <div class="flex gap-1 items-center h-6">
+                        <div class="w-2 h-2 bg-gray-300 rounded-full animate-bounce" style="animation-delay:0s"></div>
+                        <div class="w-2 h-2 bg-gray-300 rounded-full animate-bounce" style="animation-delay:0.1s"></div>
+                        <div class="w-2 h-2 bg-gray-300 rounded-full animate-bounce" style="animation-delay:0.2s"></div>
+                    </div>
+                </div>
+            `;
+            container.appendChild(div);
+            scrollToBottom();
+            return id;
         }
 
-        // 发送消息
+        function removeLoadingMessage(id) {
+            const el = document.getElementById(id);
+            if (el) el.remove();
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 发送消息（WebSocket）
         function sendMessage() {
             const input = document.getElementById('message-input');
             const content = input.value.trim();
-            if (!content) return;
-            
-            addMessage('我', content, 'human');
-            input.value = '';
-            
-            // 模拟AI回复
-            setTimeout(() => {
-                const mentionedAI = AI_PERSONAS.find(ai => content.includes('@' + ai.name));
-                if (mentionedAI) {
-                    const replies = [
-                        `@${mentionedAI.name} 感谢您的提问！这个问题很有意思...`,
-                        `从${mentionedAI.expertise[0]}的角度来看，我认为...`,
-                        `这个问题我正想分享一些观点...`
-                    ];
-                    addMessage(mentionedAI.name, replies[Math.floor(Math.random() * replies.length)], 'ai');
+            if (!content || isLoading) return;
+
+            // 检测@提及（支持中文名、英文名、昵称别名）
+            const personaMap = {
+                '老李': 'lao_li', '老K': 'lao_k', '小陈': 'xiao_chen',
+                '王博': 'wang_bo', '王博士': 'wang_bo', '博士': 'wang_bo',
+                '苏苏': 'su_su',
+                // 英文ID直接透传
+                'lao_li': 'lao_li', 'lao_k': 'lao_k', 'xiao_chen': 'xiao_chen',
+                'wang_bo': 'wang_bo', 'su_su': 'su_su'
+            };
+            let personaId = null;
+            // 按agentsList顺序匹配第一个被@的角色
+            for (const agent of agentsList) {
+                const name = agent.agent_name;
+                if (content.includes('@' + name)) {
+                    personaId = personaMap[name] || name || null;
+                    break;
                 }
-            }, 1000);
+                // 也尝试匹配英文名（如果agent_name是中文但数据库返回的是英文）
+                const enName = Object.keys(personaMap).find(k => personaMap[k] === name);
+                if (enName && content.includes('@' + enName)) {
+                    personaId = name;
+                    break;
+                }
+            }
+            // fallback：如果没在agentsList中匹配到，直接扫描personaMap中的别名
+            if (!personaId) {
+                for (const [alias, pid] of Object.entries(personaMap)) {
+                    if (content.includes('@' + alias)) {
+                        personaId = pid;
+                        break;
+                    }
+                }
+            }
+
+            // ❌ 不再本地立即渲染！统一由服务器广播后渲染
+            // 这样确保所有用户看到完全一致的聊天流
+            input.value = '';
+            isLoading = true;
+
+            if (!wsConnected || !ws) {
+                addMessage('系统', '正在连接服务器...', 'ai');
+                connectWebSocket();
+                setTimeout(() => {
+                    if (wsConnected) {
+                        ws.send(JSON.stringify({ action: 'chat', message: content, persona: personaId }));
+                    } else {
+                        isLoading = false;
+                        addMessage('系统', '连接失败，请刷新页面重试', 'ai');
+                    }
+                }, 1500);
+                return;
+            }
+
+            ws.send(JSON.stringify({ action: 'chat', message: content, persona: personaId }));
+        }
+
+        // 板块列表（从API加载）
+        let SECTORS = [];
+        let lastSectorIdx = -1;
+
+        // 加载板块列表
+        async function loadSectors() {
+            try {
+                const res = await fetch('http://localhost:5074/api/funds/sectors');
+                if (!res.ok) throw new Error('Failed to load sectors');
+                const data = await res.json();
+                if (data.success && data.data && data.data.length > 0) {
+                    SECTORS = data.data;
+                } else {
+                    // fallback
+                    SECTORS = ['仓储物流','交通基础设施','产业园区','市政设施','数据中心','水利设施','消费基础设施','生态环保','租赁住房','能源基础设施'];
+                }
+            } catch (e) {
+                console.warn('Load sectors failed, using fallback:', e);
+                SECTORS = ['仓储物流','交通基础设施','产业园区','市政设施','数据中心','水利设施','消费基础设施','生态环保','租赁住房','能源基础设施'];
+            }
+            renderSectorPanel();
+        }
+
+        // 渲染板块面板
+        function renderSectorPanel() {
+            const grid = document.getElementById('sector-grid');
+            if (!grid) return;
+            grid.innerHTML = SECTORS.map((sector, i) => {
+                const short = sector.slice(0, 2);
+                return `<button onclick="selectSector(${i})" class="px-3 py-1 bg-white hover:bg-blue-500 hover:text-white border border-blue-200 rounded-full text-xs text-blue-700 transition-all shadow-sm">${short}</button>`;
+            }).join('');
+        }
+
+        // 显示/隐藏板块面板
+        function toggleSectorPanel() {
+            const panel = document.getElementById('sector-panel');
+            if (!panel) return;
+            if (panel.classList.contains('hidden')) {
+                panel.classList.remove('hidden');
+                // 点击外部关闭
+                setTimeout(() => {
+                    document.addEventListener('click', closeSectorPanelOnOutside);
+                }, 10);
+            } else {
+                panel.classList.add('hidden');
+                document.removeEventListener('click', closeSectorPanelOnOutside);
+            }
+        }
+
+        function closeSectorPanelOnOutside(e) {
+            const panel = document.getElementById('sector-panel');
+            const btn = document.getElementById('sector-btn');
+            if (panel && !panel.contains(e.target) && !btn.contains(e.target)) {
+                panel.classList.add('hidden');
+                document.removeEventListener('click', closeSectorPanelOnOutside);
+            }
+        }
+
+        // 选择板块
+        function selectSector(idx) {
+            const sector = SECTORS[idx];
+            if (!sector) return;
+            lastSectorIdx = idx;
+            document.getElementById('sector-panel').classList.add('hidden');
+            document.removeEventListener('click', closeSectorPanelOnOutside);
+            const questions = [
+                `分析一下${sector}板块的投资机会`,
+                `${sector}板块最近有什么变化？`,
+                `各位怎么看${sector}板块？`,
+                `${sector}板块的风险和机会`,
+                `最近${sector}值得关注吗？`
+            ];
+            const q = questions[Math.floor(Math.random() * questions.length)];
+            askAI(q);
         }
 
         // 快速提问
@@ -502,5 +1778,7 @@
             alert('REITs数据平台 - 开放式金融数据平台\n\n无需登录，直接使用全部功能！');
         }
     </script>
+
+    <!-- 剧场侧屏已集成到右侧边栏 -->
 </body>
 </html>

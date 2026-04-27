@@ -8,6 +8,7 @@
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="./css/common.css">
+    <script src="./js/app-core.js?v=1"></script>
     <style>
         body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background-color: #f8fafc; }
         .mono { font-family: 'JetBrains Mono', monospace; }
@@ -718,7 +719,7 @@
             } catch (e) { /* 实时行情可选，失败不影响 */ }
             
             if (!currentFund) {
-                showToast('基金不存在', 'error');
+                REITS.showToast('基金不存在', 'error');
                 window.location.href = './market.html';
                 return;
             }
@@ -1248,15 +1249,15 @@
         function addCurrentToCompare() {
             const list = getCompareList();
             if (list.length >= 4) {
-                showToast('对比栏已满（最多4只）', 'warning');
+                REITS.showToast('对比栏已满（最多4只）', 'warning');
                 return;
             }
             if (!list.find(i => i.code === currentCode)) {
                 list.push({ code: currentCode, name: currentFund.name });
                 saveCompareList(list);
-                showToast(`已将 ${currentFund.name} 加入对比栏`, 'success');
+                REITS.showToast(`已将 ${currentFund.name} 加入对比栏`, 'success');
             } else {
-                showToast('该基金已在对比栏中', 'info');
+                REITS.showToast('该基金已在对比栏中', 'info');
             }
             updateCompareBar();
         }
@@ -1539,7 +1540,7 @@
         
         // 切换基金筛选面板
         function toggleFilterPanel() {
-            showToast('筛选功能开发中', 'info');
+            REITS.showToast('筛选功能开发中', 'info');
         }
         
         // 按板块筛选

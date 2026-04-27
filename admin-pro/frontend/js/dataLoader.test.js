@@ -1,7 +1,6 @@
 /**
  * dataLoader模块测试
- * 使用TDD方式验证所有功能
- */
+ * 使用TDD方式验证所有功�? */
 
 /**
  * @jest-environment jsdom
@@ -16,7 +15,7 @@ global.console.warn = jest.fn();
 const MOCK_FUNDS = [
   {
     code: '508001',
-    name: '中金普洛斯',
+    name: '中金普洛�?,
     price: 3.456,
     change: 1.23,
     volume: 1234567,
@@ -141,14 +140,14 @@ describe('dataLoader模块测试', () => {
   });
 
   describe('filterFunds函数', () => {
-    test('应该按板块筛选基金', () => {
+    test('应该按板块筛选基�?, () => {
       const filtered = dataLoader.filterFunds(MOCK_FUNDS, { sector: 'logistics' });
 
       expect(filtered).toHaveLength(1);
       expect(filtered[0].sector).toBe('logistics');
     });
 
-    test('sector为all时不应该筛选', () => {
+    test('sector为all时不应该筛�?, () => {
       const filtered = dataLoader.filterFunds(MOCK_FUNDS, { sector: 'all' });
 
       expect(filtered).toHaveLength(3);
@@ -178,18 +177,18 @@ describe('dataLoader模块测试', () => {
       expect(filtered.map(f => f.code)).toContain('508002');
     });
 
-    test('应该组合板块和关键词筛选', () => {
+    test('应该组合板块和关键词筛�?, () => {
       const filtered = dataLoader.filterFunds(MOCK_FUNDS, {
         sector: 'logistics',
-        keyword: '普洛斯'
+        keyword: '普洛�?
       });
 
       expect(filtered).toHaveLength(1);
       expect(filtered[0].sector).toBe('logistics');
-      expect(filtered[0].name).toContain('普洛斯');
+      expect(filtered[0].name).toContain('普洛�?);
     });
 
-    test('空关键词不应该影响结果', () => {
+    test('空关键词不应该影响结�?, () => {
       const filtered = dataLoader.filterFunds(MOCK_FUNDS, { keyword: '' });
 
       expect(filtered).toHaveLength(3);
@@ -218,14 +217,14 @@ describe('dataLoader模块测试', () => {
       expect(volumes).toEqual([1234567, 987654, 555555]);
     });
 
-    test('应该按价格降序排序', () => {
+    test('应该按价格降序排�?, () => {
       const sorted = dataLoader.sortFunds(MOCK_FUNDS, 'price-desc');
 
       const prices = sorted.map(f => f.price);
       expect(prices).toEqual([3.456, 2.789, 1.987]);
     });
 
-    test('应该处理undefined字段值', () => {
+    test('应该处理undefined字段�?, () => {
       const fundsWithUndefined = [
         ...MOCK_FUNDS,
         { code: '999999', name: '测试基金', price: undefined, change: undefined }
@@ -233,11 +232,10 @@ describe('dataLoader模块测试', () => {
 
       const sorted = dataLoader.sortFunds(fundsWithUndefined, 'change-desc');
 
-      // undefined应该被视为0，排在后面
-      expect(sorted[sorted.length - 1].code).toBe('999999');
+      // undefined应该被视�?，排在后�?      expect(sorted[sorted.length - 1].code).toBe('999999');
     });
 
-    test('应该处理NaN字段值', () => {
+    test('应该处理NaN字段�?, () => {
       const fundsWithNaN = [
         ...MOCK_FUNDS,
         { code: '999999', name: '测试基金', price: NaN, change: NaN }
@@ -245,8 +243,7 @@ describe('dataLoader模块测试', () => {
 
       const sorted = dataLoader.sortFunds(fundsWithNaN, 'change-desc');
 
-      // NaN应该被视为0，排在后面
-      expect(sorted[sorted.length - 1].code).toBe('999999');
+      // NaN应该被视�?，排在后�?      expect(sorted[sorted.length - 1].code).toBe('999999');
     });
 
     test('默认排序应该是change-desc', () => {
@@ -258,46 +255,46 @@ describe('dataLoader模块测试', () => {
   });
 
   describe('formatValueText函数', () => {
-    test('应该格式化亿元级别的数值', () => {
-      expect(dataLoader.formatValueText(123456789)).toBe('1.23亿');
-      expect(dataLoader.formatValueText(100000000)).toBe('1.00亿');
+    test('应该格式化亿元级别的数�?, () => {
+      expect(dataLoader.formatValueText(123456789)).toBe('1.23�?);
+      expect(dataLoader.formatValueText(100000000)).toBe('1.00�?);
       // 999999999 / 100000000 = 9.99999999, rounded to 2 decimal places = 10.00
-      expect(dataLoader.formatValueText(999999999)).toBe('10.00亿');
+      expect(dataLoader.formatValueText(999999999)).toBe('10.00�?);
     });
 
-    test('应该格式化万元级别的数值', () => {
-      expect(dataLoader.formatValueText(12345)).toBe('1.23万');
-      expect(dataLoader.formatValueText(10000)).toBe('1.00万');
+    test('应该格式化万元级别的数�?, () => {
+      expect(dataLoader.formatValueText(12345)).toBe('1.23�?);
+      expect(dataLoader.formatValueText(10000)).toBe('1.00�?);
       // 99999 / 10000 = 9.9999, rounded to 2 decimal places = 10.00
-      expect(dataLoader.formatValueText(99999)).toBe('10.00万');
+      expect(dataLoader.formatValueText(99999)).toBe('10.00�?);
     });
 
-    test('应该格式化普通数值', () => {
+    test('应该格式化普通数�?, () => {
       expect(dataLoader.formatValueText(1234)).toBe('1,234');
       expect(dataLoader.formatValueText(123)).toBe('123');
       expect(dataLoader.formatValueText(0)).toBe('0');
     });
 
     test('应该处理负数', () => {
-      expect(dataLoader.formatValueText(-12345)).toBe('-1.23万');
-      expect(dataLoader.formatValueText(-123456789)).toBe('-1.23亿');
+      expect(dataLoader.formatValueText(-12345)).toBe('-1.23�?);
+      expect(dataLoader.formatValueText(-123456789)).toBe('-1.23�?);
     });
   });
 
   describe('formatChange函数', () => {
-    test('应该格式化正涨跌幅', () => {
+    test('应该格式化正涨跌�?, () => {
       expect(dataLoader.formatChange(1.23)).toBe('+1.23%');
       expect(dataLoader.formatChange(10)).toBe('+10%');
       expect(dataLoader.formatChange(0.01)).toBe('+0.01%');
     });
 
-    test('应该格式化负涨跌幅', () => {
+    test('应该格式化负涨跌�?, () => {
       expect(dataLoader.formatChange(-0.45)).toBe('-0.45%');
       expect(dataLoader.formatChange(-5)).toBe('-5%');
       expect(dataLoader.formatChange(-100)).toBe('-100%');
     });
 
-    test('应该格式化零涨跌幅', () => {
+    test('应该格式化零涨跌�?, () => {
       expect(dataLoader.formatChange(0)).toBe('0%');
     });
 
@@ -309,7 +306,7 @@ describe('dataLoader模块测试', () => {
 
   describe('isTradingTime函数', () => {
     test('应该在交易时间内返回true', () => {
-      // Mock交易时间: 工作日上午10:30
+      // Mock交易时间: 工作日上�?0:30
       jest.spyOn(global.Date.prototype, 'getHours').mockReturnValue(10);
       jest.spyOn(global.Date.prototype, 'getMinutes').mockReturnValue(30);
       jest.spyOn(global.Date.prototype, 'getDay').mockReturnValue(1); // 周一
@@ -318,7 +315,7 @@ describe('dataLoader模块测试', () => {
     });
 
     test('应该在下午交易时间返回true', () => {
-      // Mock交易时间: 工作日下午14:30
+      // Mock交易时间: 工作日下�?4:30
       jest.spyOn(global.Date.prototype, 'getHours').mockReturnValue(14);
       jest.spyOn(global.Date.prototype, 'getMinutes').mockReturnValue(30);
       jest.spyOn(global.Date.prototype, 'getDay').mockReturnValue(2); // 周二
@@ -327,7 +324,7 @@ describe('dataLoader模块测试', () => {
     });
 
     test('应该在非交易时间返回false', () => {
-      // Mock非交易时间: 工作日上午8:00
+      // Mock非交易时�? 工作日上�?:00
       jest.spyOn(global.Date.prototype, 'getHours').mockReturnValue(8);
       jest.spyOn(global.Date.prototype, 'getMinutes').mockReturnValue(0);
       jest.spyOn(global.Date.prototype, 'getDay').mockReturnValue(3); // 周三
@@ -336,7 +333,7 @@ describe('dataLoader模块测试', () => {
     });
 
     test('应该在午间休市返回false', () => {
-      // Mock午间休市: 工作日上午12:00
+      // Mock午间休市: 工作日上�?2:00
       jest.spyOn(global.Date.prototype, 'getHours').mockReturnValue(12);
       jest.spyOn(global.Date.prototype, 'getMinutes').mockReturnValue(0);
       jest.spyOn(global.Date.prototype, 'getDay').mockReturnValue(4); // 周四
@@ -345,7 +342,7 @@ describe('dataLoader模块测试', () => {
     });
 
     test('应该在收盘后返回false', () => {
-      // Mock收盘后: 工作日下午16:00
+      // Mock收盘�? 工作日下�?6:00
       jest.spyOn(global.Date.prototype, 'getHours').mockReturnValue(16);
       jest.spyOn(global.Date.prototype, 'getMinutes').mockReturnValue(0);
       jest.spyOn(global.Date.prototype, 'getDay').mockReturnValue(5); // 周五

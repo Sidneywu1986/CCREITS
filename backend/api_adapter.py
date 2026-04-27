@@ -16,6 +16,13 @@ import json
 import datetime
 import sqlite3
 
+# Tortoise ORM for PostgreSQL (ai_db)
+try:
+    from tortoise.contrib.fastapi import register_tortoise
+    TORTOISE_AVAILABLE = True
+except ImportError:
+    TORTOISE_AVAILABLE = False
+
 # 添加项目根目录到路径
 BASE_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BASE_DIR))
@@ -29,40 +36,56 @@ _BOND_CACHE = None
 _BOND_CACHE_TIME = 0
 _BOND_CACHE_TTL = 300  # 5分钟缓存
 
+# 市场指数缓存
+_INDICES_CACHE = None
+_INDICES_CACHE_TIME = 0
+_INDICES_CACHE_TTL = 60  # 1分钟缓存
+
 def get_bond_yield():
-    """从AKShare获取十年期国债收益率（带缓存）"""
+    """从AKShare获取十年期国债收益率（带缓存），带5秒超时防卡死"""
     global _BOND_CACHE, _BOND_CACHE_TIME
     import time
     now = time.time()
     if _BOND_CACHE is not None and (now - _BOND_CACHE_TIME) < _BOND_CACHE_TTL:
         return _BOND_CACHE
     try:
+        import concurrent.futures
         import akshare as ak
-        df = ak.bond_zh_us_rate()
-        latest = df.iloc[-1]
-        date_str = str(latest.iloc[0])
-        # 找中国10年期国债收益率列
-        col = [c for c in df.columns if '10' in str(c) and '中国' in str(c) and '-' not in str(c)][0]
-        value = float(latest[col])
-        # 用前一行计算涨跌
-        prev = df.iloc[-2]
-        prev_value = float(prev[col])
-        change = round(value - prev_value, 4)
-        change_pct = round((change / prev_value) * 100, 2) if prev_value else 0
-        result = {
-            'date': date_str,
-            'value': value,
-            'change': change,
-            'changePercent': change_pct
-        }
-        _BOND_CACHE = result
-        _BOND_CACHE_TIME = now
-        return result
+        
+        def _fetch():
+            df = ak.bond_zh_us_rate()
+            latest = df.iloc[-1]
+            date_str = str(latest.iloc[0])
+            col = [c for c in df.columns if '10' in str(c) and '中国' in str(c) and '-' not in str(c)][0]
+            value = float(latest[col])
+            prev = df.iloc[-2]
+            prev_value = float(prev[col])
+            change = round(value - prev_value, 4)
+            change_pct = round((change / prev_value) * 100, 2) if prev_value else 0
+            return {
+                'date': date_str,
+                'value': value,
+                'change': change,
+                'changePercent': change_pct
+            }
+        
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+        future = executor.submit(_fetch)
+        try:
+            result = future.result(timeout=5)
+            _BOND_CACHE = result
+            _BOND_CACHE_TIME = now
+            return result
+        except concurrent.futures.TimeoutError:
+            pass
+        finally:
+            executor.shutdown(wait=False)
     except Exception:
-        # 缓存失效时返回旧缓存（如果有）
-        if _BOND_CACHE is not None:
-            return _BOND_CACHE
-        return None
+        pass
+    # 超时或异常时返回旧缓存（如果有）
+    if _BOND_CACHE is not None:
+        return _BOND_CACHE
+    return None
 
 # 创建API适配层应用
 adapter_app = FastAPI(
@@ -81,19 +104,81 @@ adapter_app.add_middleware(
 )
 
 # AI API 路由注册
-from api import chat_reits_router, chat_announcement_router, research_router
+from api import chat_reits_router, chat_announcement_router, research_router, search_router, fund_analysis_router
+from api.ws_chat import router as ws_chat_router
+from api.schedule import router as schedule_router
 
 adapter_app.include_router(chat_reits_router)
 adapter_app.include_router(chat_announcement_router)
 adapter_app.include_router(research_router)
+adapter_app.include_router(search_router)
+adapter_app.include_router(ws_chat_router)
+adapter_app.include_router(fund_analysis_router)
+adapter_app.include_router(schedule_router)
+
+# Register Tortoise ORM for PostgreSQL (ai_db)
+if TORTOISE_AVAILABLE:
+    try:
+        register_tortoise(
+            adapter_app,
+            config=settings.AI_DB_CONFIG,
+            generate_schemas=False,  # Tables already exist
+            add_exception_handlers=True,
+        )
+        print("[Tortoise] Registered ai_db (PostgreSQL)")
+    except Exception as e:
+        print(f"[Tortoise] Registration failed: {e}")
+
+# 启动后台定时任务（每30分钟同步一次）
+try:
+    from scheduler.tasks import start_scheduler
+    start_scheduler(interval_minutes=30)
+    print("[Scheduler] Auto-sync every 30 minutes enabled")
+except Exception as e:
+    print(f"[Scheduler] Failed to start: {e}")
 
 # 数据库路径 - 基于项目根目录的动态路径
 DB_PATH = str(BASE_DIR / 'backend' / 'database' / 'reits.db')
 
 
+# ==================== 缓存系统 ====================
+import time
+from functools import wraps
+
+# 内存缓存: {key: (value, expire_at)}
+_memory_cache: dict = {}
+
+def cache_get(key: str):
+    """获取缓存值，过期返回None"""
+    if key in _memory_cache:
+        value, expire_at = _memory_cache[key]
+        if time.time() < expire_at:
+            return value
+        del _memory_cache[key]
+    return None
+
+def cache_set(key: str, value, ttl: int = 60):
+    """设置缓存，ttl单位秒"""
+    _memory_cache[key] = (value, time.time() + ttl)
+
+def cache_clear(pattern: str = ""):
+    """清除缓存，空字符串清除全部"""
+    global _memory_cache
+    if not pattern:
+        _memory_cache.clear()
+    else:
+        _memory_cache = {k: v for k, v in _memory_cache.items() if pattern not in k}
+
+
 def get_db_connection():
-    """获取数据库连接"""
-    return sqlite3.connect(DB_PATH)
+    """获取数据库连接（带性能优化PRAGMA）"""
+    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA synchronous=NORMAL")
+    conn.execute("PRAGMA cache_size=10000")
+    conn.execute("PRAGMA temp_store=MEMORY")
+    conn.execute("PRAGMA mmap_size=268435456")
+    return conn
 
 
 def convert_code_to_org_id(code: str) -> str:
@@ -110,7 +195,18 @@ def convert_code_to_org_id(code: str) -> str:
 
 @adapter_app.get("/api/funds/list")
 async def get_funds_list():
-    """获取基金列表"""
+    """获取基金列表（带缓存，TTL=60秒）"""
+    cache_key = "funds:list"
+    cached = cache_get(cache_key)
+    if cached is not None:
+        return {
+            "success": True,
+            "data": cached["data"],
+            "total": cached["total"],
+            "message": "获取基金列表成功（缓存）",
+            "cached": True
+        }
+
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -146,12 +242,15 @@ async def get_funds_list():
                 "listing_date": row[15] or row[3] or ""
             })
 
-        return {
+        result = {
             "success": True,
             "data": funds,
             "total": len(funds),
-            "message": "获取基金列表成功"
+            "message": "获取基金列表成功",
+            "cached": False
         }
+        cache_set(cache_key, {"data": funds, "total": len(funds)}, ttl=60)
+        return result
     except Exception as e:
         return {
             "success": False,
@@ -221,6 +320,46 @@ async def funds_detail_adapter(code: str = Query(..., description="基金代码"
             "success": False,
             "data": None,
             "message": f"获取基金详情失败: {str(e)}"
+        }
+
+
+@adapter_app.get("/api/funds/sectors")
+async def get_sectors_list():
+    """获取板块分类列表（带缓存，TTL=300秒）"""
+    cache_key = "funds:sectors"
+    cached = cache_get(cache_key)
+    if cached is not None:
+        return {
+            "success": True,
+            "data": cached,
+            "message": "获取板块列表成功（缓存）",
+            "cached": True
+        }
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT DISTINCT sector_name FROM funds
+            WHERE sector_name IS NOT NULL AND sector_name != ''
+            ORDER BY sector_name
+        """)
+        rows = cursor.fetchall()
+        conn.close()
+
+        sectors = [row[0] for row in rows]
+        cache_set(cache_key, sectors, ttl=300)
+        return {
+            "success": True,
+            "data": sectors,
+            "message": f"获取板块列表成功（{len(sectors)}个板块）",
+            "cached": False
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "data": [],
+            "message": f"获取板块列表失败: {str(e)}"
         }
 
 
@@ -666,10 +805,13 @@ def parse_sina_index(data: str) -> Optional[dict]:
             return None
         price = float(parts[3]) if parts[3] else 0
         prev = float(parts[2]) if parts[2] else 0
-        change = price - prev
-        change_pct = (change / prev * 100) if prev > 0 else 0
+        # 盘前/盘后 price 为 0 时回退使用 prev
+        is_pre = (price == 0 and prev > 0)
+        display_price = prev if is_pre else price
+        change = 0.0 if is_pre else (price - prev)
+        change_pct = 0.0 if is_pre else ((change / prev * 100) if prev > 0 else 0)
         return {
-            "value": round(price, 2),
+            "value": round(display_price, 2),
             "change": round(change, 3),
             "changePercent": round(change_pct, 2)
         }
@@ -721,10 +863,14 @@ def get_dividend_index_from_eastmoney() -> dict:
             price = (d.get('f43') or 0) / 100
             prev = (d.get('f60') or 0) / 100
             change_pct = (d.get('f170') or 0) / 100
-            if price > 0:
-                change = price - prev
+            # 盘前/盘后 price 为 0 时回退使用 prev
+            is_pre = (price == 0 and prev > 0)
+            display_price = prev if is_pre else price
+            change = 0.0 if is_pre else (display_price - prev)
+            change_pct = 0.0 if is_pre else change_pct
+            if display_price > 0:
                 return {
-                    "value": round(price, 2),
+                    "value": round(display_price, 2),
                     "change": round(change, 3),
                     "changePercent": round(change_pct, 2)
                 }
@@ -778,7 +924,13 @@ def calculate_reits_index() -> dict:
 
 @adapter_app.get("/api/market-indices/list")
 async def market_indices_list():
-    """获取市场指数列表"""
+    """获取市场指数列表（带1分钟缓存）"""
+    global _INDICES_CACHE, _INDICES_CACHE_TIME
+    import time
+    now_ts = time.time()
+    if _INDICES_CACHE is not None and (now_ts - _INDICES_CACHE_TIME) < _INDICES_CACHE_TTL:
+        return _INDICES_CACHE
+    
     try:
         # 从新浪获取实时数据
         sina_indices = get_all_indices_from_sina()
@@ -875,21 +1027,25 @@ async def market_indices_list():
                 "updateTime": now
             })
         else:
+            # 获取失败时使用默认值，避免前端显示 "--"
             indices.append({
                 "code": "bond_yield",
                 "name": "10年期国债收益率",
-                "value": None,
+                "value": 1.83,
                 "change": 0,
                 "changePercent": 0,
-                "source": "获取失败",
+                "source": "基准值",
                 "updateTime": now
             })
 
-        return {
+        result = {
             "success": True,
             "data": indices,
             "message": f"获取市场指数成功 ({len(indices)}个)"
         }
+        _INDICES_CACHE = result
+        _INDICES_CACHE_TIME = now_ts
+        return result
 
     except Exception as e:
         return {

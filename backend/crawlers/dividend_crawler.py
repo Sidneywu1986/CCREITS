@@ -269,7 +269,7 @@ class REITsDividendManager:
         return pd.DataFrame()
     
     def save_to_db(self, df: pd.DataFrame):
-        """保存分红公告到数据库"""
+        """保存分红公告到数据库（announcements + dividends 双写）"""
         if df.empty:
             return
         
@@ -278,6 +278,7 @@ class REITsDividendManager:
         
         for _, row in df.iterrows():
             try:
+                # 1. 保存到 announcements
                 cursor.execute("""
                     INSERT OR REPLACE INTO announcements 
                     (fund_code, title, category, publish_date, source_url, exchange, created_at)
@@ -290,6 +291,37 @@ class REITsDividendManager:
                     row['url'],
                     row['exchange']
                 ))
+                
+                # 2. 如果解析出了分红金额，同时写入 dividends 表
+                amount = row.get('dividend_per_share')
+                if amount and amount > 0:
+                    # 尝试从标题提取日期
+                    ex_date = row.get('ex_dividend_date')
+                    record_date = row.get('record_date')
+                    pub_date = row.get('publish_date', '')
+                    
+                    # 日期标准化
+                    def normalize_date(d):
+                        if not d:
+                            return None
+                        d = str(d).replace('/', '-').replace('.', '-')
+                        if len(d) == 8 and d.isdigit():
+                            return f"{d[:4]}-{d[4:6]}-{d[6:]}"
+                        return d if len(d) >= 8 else None
+                    
+                    dividend_date = normalize_date(ex_date) or normalize_date(record_date) or normalize_date(pub_date)
+                    if dividend_date:
+                        cursor.execute("""
+                            INSERT OR IGNORE INTO dividends 
+                            (fund_code, dividend_date, dividend_amount, record_date, ex_dividend_date, created_at)
+                            VALUES (?, ?, ?, ?, ?, datetime('now'))
+                        """, (
+                            row['fund_code'],
+                            dividend_date,
+                            amount,
+                            normalize_date(record_date),
+                            normalize_date(ex_date)
+                        ))
             except Exception as e:
                 print(f"[ERROR] 保存失败 {row['fund_code']}: {e}")
         

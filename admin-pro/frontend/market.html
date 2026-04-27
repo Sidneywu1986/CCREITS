@@ -8,6 +8,12 @@
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="./css/common.css">
+    <!-- 核心共享模块（Phase 1: 统一工具函数 + API + 数据加载） -->
+    <script src="./js/app-core.js?v=1"></script>
+    <!-- 统一导航栏组件（Phase 2） -->
+    <script src="./js/header-component.js?v=1"></script>
+    <!-- 统一对比栏组件（Phase 3） -->
+    <script src="./js/compare-bar.js?v=1"></script>
     <style>
         body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background-color: #f8fafc; }
         .mono { font-family: 'JetBrains Mono', monospace; }
@@ -80,13 +86,16 @@
             </nav>
         </div>
         
-        <div class="w-40 mx-2">
-            <div class="relative">
+        <div class="w-48 mx-2">
+            <div class="relative flex items-center">
                 <input type="text" id="global-search" placeholder="搜索基金代码或名称..." 
-                    class="w-full pl-10 pr-4 py-2 bg-gray-100 border border-transparent rounded-lg text-sm focus:outline-none focus:bg-white focus:border-blue-500 transition-all">
+                    class="w-full pl-10 pr-16 py-2 bg-gray-100 border border-transparent rounded-lg text-sm focus:outline-none focus:bg-white focus:border-blue-500 transition-all">
                 <svg class="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                 </svg>
+                <button id="search-btn" class="absolute right-1 top-1/2 -translate-y-1/2 px-2 py-1 bg-blue-600 text-white text-xs rounded-md hover:bg-blue-700 transition-colors">
+                    搜索
+                </button>
             </div>
         </div>
         
@@ -516,7 +525,12 @@
             
             if (searchKeyword) {
                 const kw = searchKeyword.toLowerCase();
-                data = data.filter(f => f.code.toLowerCase().includes(kw) || f.name.toLowerCase().includes(kw));
+                data = data.filter(f => {
+                    const codeMatch = f.code && f.code.toLowerCase().includes(kw);
+                    const nameMatch = f.name && f.name.toLowerCase().includes(kw);
+                    const sectorMatch = f.sectorName && f.sectorName.toLowerCase().includes(kw);
+                    return codeMatch || nameMatch || sectorMatch;
+                });
             }
             
             // 排序
@@ -581,14 +595,25 @@
         // 渲染表格
         function renderTable() {
             const tbody = document.getElementById('fund-list');
+            
+            // 分页保护：如果当前页超出范围，重置为有效页码
+            const totalPages = Math.max(1, Math.ceil(filteredData.length / pageSize));
+            if (currentPage > totalPages) {
+                console.warn(`页码保护: currentPage=${currentPage} > totalPages=${totalPages}，重置为 ${totalPages}`);
+                currentPage = totalPages;
+            }
+            if (currentPage < 1) currentPage = 1;
+            
             const start = (currentPage - 1) * pageSize;
             const end = Math.min(start + pageSize, filteredData.length);
             const pageData = filteredData.slice(start, end);
             const compareList = getCompareList();
             
-            console.log('renderTable:', { filteredDataLength: filteredData.length, pageDataLength: pageData.length, start, end });
+            console.log('renderTable:', { filteredDataLength: filteredData.length, pageDataLength: pageData.length, start, end, currentPage, totalPages, searchKeyword });
             
-            document.getElementById('list-info').textContent = `显示 ${start + 1}-${end} 条，共 ${filteredData.length} 条`;
+            document.getElementById('list-info').textContent = filteredData.length > 0 
+                ? `显示 ${start + 1}-${end} 条，共 ${filteredData.length} 条` 
+                : '共 0 条';
             
             if (!pageData || pageData.length === 0) {
                 console.warn('pageData 为空，不渲染表格');
@@ -685,7 +710,7 @@
                 removeFromCompare(code);
             } else {
                 if (list.length >= 4) {
-                    showToast('对比栏已满（最多4只）', 'warning');
+                    REITS.showToast('对比栏已满（最多4只）', 'warning');
                     return;
                 }
                 console.log('添加对比:', code, name);
@@ -704,7 +729,7 @@
         function goToCompare() {
             const list = getCompareList();
             if (list.length < 2) {
-                showToast('请至少选择2只基金进行对比', 'warning');
+                REITS.showToast('请至少选择2只基金进行对比', 'warning');
                 return;
             }
             window.location.href = './compare.html';
@@ -965,16 +990,6 @@
             document.getElementById('update-time').textContent = now.toLocaleTimeString('zh-CN', { hour12: false });
         }
 
-        // 搜索 - 由 common.js 接管下拉框功能
-        // 这里额外添加实时过滤功能（不影响下拉框）
-        const searchInput = document.getElementById('global-search');
-        if (searchInput) {
-            searchInput.addEventListener('input', debounce((e) => {
-                searchKeyword = e.target.value.trim();
-                applyFilters();
-            }, 300));
-        }
-
         // 周期切换
         function changePeriod(days) {
             currentTreemapPeriod = days;
@@ -997,7 +1012,7 @@
                 });
             }
             
-            showToast(`已切换${days}日涨跌幅视图`, 'info');
+            REITS.showToast(`已切换${days}日涨跌幅视图`, 'info');
         }
 
         // 切换热力图大小模式
@@ -1028,7 +1043,7 @@
                 }, { notMerge: true });  // 强制完全重新渲染
             }
             
-            showToast(`已切换为按${treemapSizeMode === 'turnover' ? '成交额' : '市值'}显示`, 'info');
+            REITS.showToast(`已切换为按${treemapSizeMode === 'turnover' ? '成交额' : '市值'}显示`, 'info');
         }
 
         // 加入自选
@@ -1042,10 +1057,10 @@
                 list.push({ code, name, addTime: new Date().toISOString() });
                 localStorage.setItem('watchlist', JSON.stringify(list));
                 console.log('[addToWatchlist] saved:', localStorage.getItem('watchlist'));
-                showToast(`已添加 ${name} 到自选`, 'success');
+                REITS.showToast(`已添加 ${name} 到自选`, 'success');
                 renderTable();
             } else {
-                showToast(`${name} 已在自选`, 'info');
+                REITS.showToast(`${name} 已在自选`, 'info');
             }
         }
 
@@ -1104,27 +1119,32 @@
 
                 if (quotesResult.success && quotesResult.data && quotesResult.data.length > 0) {
                     // 转换为前端期望的格式
-                    allFundsData = quotesResult.data.map(q => ({
-                        code: q.fund_code,
-                        name: q.name,
-                        sector: q.sector,
-                        price: q.current_price,
-                        change: q.change,
-                        change_percent: q.change_pct,
-                        change_5d: q.change_5d,
-                        change_20d: q.change_20d,
-                        volume: q.volume,
-                        amount: q.amount,
-                        market_cap: q.market_cap,
-                        turnover: q.amount,
-                        open: q.open_price,
-                        prev_close: q.prev_close,
-                        high: q.high_price,
-                        low: q.low_price,
-                        dividend_yield: q.dividend_yield,
-                        yield: q.yield,
-                        updateTime: q.timestamp
-                    }));
+                    allFundsData = quotesResult.data.map(q => {
+                        const mockFund = ALL_FUNDS.find(mf => mf.code === q.fund_code);
+                        const sectorKey = q.sector || (mockFund && mockFund.sector) || 'other';
+                        return {
+                            code: q.fund_code,
+                            name: (mockFund && mockFund.name) || q.name,
+                            sector: sectorKey,
+                            sectorName: SECTOR_CONFIG[sectorKey]?.name || (mockFund && mockFund.sectorName) || '',
+                            price: q.current_price,
+                            change: q.change,
+                            change_percent: q.change_pct,
+                            change_5d: q.change_5d,
+                            change_20d: q.change_20d,
+                            volume: q.volume,
+                            amount: q.amount,
+                            market_cap: q.market_cap,
+                            turnover: q.amount,
+                            open: q.open_price,
+                            prev_close: q.prev_close,
+                            high: q.high_price,
+                            low: q.low_price,
+                            dividend_yield: q.dividend_yield,
+                            yield: q.yield,
+                            updateTime: q.timestamp
+                        };
+                    });
                     filteredData = [...allFundsData];
                     currentDataSource = 'api'; // 标记为API数据
                     console.log(`✅ 实时行情加载成功: ${allFundsData.length} 只基金`);
@@ -1168,6 +1188,22 @@
 
         // 初始化
         window.onload = function() {
+            // === 新组件初始化（重构 Phase 2-3）===
+            if (window.REITS_Header) {
+                window.REITS_Header.render('app-header', {
+                    searchMode: 'table-filter',
+                    onSearch: (kw) => {
+                        searchKeyword = kw;
+                        applyFilters();
+                    }
+                });
+            }
+            if (window.REITS_CompareBar) {
+                window.REITS_CompareBar.render('compare-bar-container');
+                // 覆盖更新函数，让页面逻辑能触发对比栏更新
+                window.REITS.updateCompareBarUI = window.REITS_CompareBar.update;
+            }
+
             loadData();
             updateTime();
             setInterval(updateTime, 1000);
@@ -1182,7 +1218,42 @@
             updateCompareBar();  // 页面加载时恢复对比栏状态
             // 检查公告未读（模拟）
             if (Math.random() > 0.5) {
-                document.getElementById('nav-badge').classList.remove('hidden');
+                const badge = document.getElementById('nav-badge');
+                if (badge) badge.classList.remove('hidden');
+            }
+
+            // 搜索事件绑定（必须在 DOM 加载后）
+            const searchInput = document.getElementById('global-search');
+            const searchBtn = document.getElementById('search-btn');
+            
+            function doSearch() {
+                const val = searchInput ? searchInput.value.trim() : '';
+                console.log('🔍 搜索触发:', val, '| 之前关键词:', searchKeyword);
+                searchKeyword = val;
+                applyFilters();
+            }
+            
+            if (searchInput) {
+                // input 事件（实时搜索）
+                searchInput.addEventListener('input', debounce((e) => {
+                    console.log('📝 input 事件触发:', e.target.value);
+                    doSearch();
+                }, 300));
+                
+                // 回车键搜索
+                searchInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        console.log('⌨️ Enter 键搜索');
+                        doSearch();
+                    }
+                });
+            }
+            
+            if (searchBtn) {
+                searchBtn.addEventListener('click', () => {
+                    console.log('🖱️ 搜索按钮点击');
+                    doSearch();
+                });
             }
 
             // 处理 URL search 参数

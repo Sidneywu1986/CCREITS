@@ -59,7 +59,7 @@ async function getFundDetail(code) {
     }
 }
 
-// 获取K线数据
+// 获取K线数�?
 async function getKline(code, period = '1d', limit = 100) {
     try {
         return await request(`/funds/${code}/kline?period=${period}&limit=${limit}`);

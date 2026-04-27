@@ -9,6 +9,7 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="./css/common.css">
+    <script src="./js/app-core.js?v=1"></script>
     <style>
         body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background-color: #f8fafc; }
         .mono { font-family: 'JetBrains Mono', monospace; }
@@ -290,7 +291,7 @@
                     });
                     saveCompareList();
                     localStorage.removeItem('ai_selected_funds'); // 清除临时数据
-                    showToast(`已从AI投研导入 ${compareList.length} 只基金`, 'success');
+                    REITS.showToast(`已从AI投研导入 ${compareList.length} 只基金`, 'success');
                     renderPage();
                 } else {
                     loadCompareList();
@@ -302,7 +303,7 @@
                     // 从市场页跳转，优先使用市场带来的对比数据
                     compareList = JSON.parse(marketCompare);
                     saveCompareList();
-                    showToast(`已从市场导入 ${compareList.length} 只基金`, 'success');
+                    REITS.showToast(`已从市场导入 ${compareList.length} 只基金`, 'success');
                     renderPage();
                 } else if (!stored || stored === '[]') {
                     // 默认加载2只热门基金做示例
@@ -311,7 +312,7 @@
                         { code: '508008', name: '华夏中国交建REIT', isDefault: true }
                     ];
                     saveCompareList();
-                    showToast('已默认加载2只热门基金示例', 'success');
+                    REITS.showToast('已默认加载2只热门基金示例', 'success');
                     renderPage();
                 } else {
                     loadCompareList();
@@ -342,7 +343,7 @@
                     });
                     saveCompareList();
                     localStorage.removeItem('ai_selected_funds');
-                    showToast(`已从AI投研导入 ${compareList.length} 只基金`, 'success');
+                    REITS.showToast(`已从AI投研导入 ${compareList.length} 只基金`, 'success');
                     renderPage();
                     return;
                 }
@@ -358,7 +359,7 @@
                 if (marketCompare) {
                     compareList = JSON.parse(marketCompare);
                     saveCompareList();
-                    showToast(`已从市场导入 ${compareList.length} 只基金`, 'success');
+                    REITS.showToast(`已从市场导入 ${compareList.length} 只基金`, 'success');
                 } else {
                     // 默认加载2只热门基金做示例
                     compareList = [
@@ -366,7 +367,7 @@
                         { code: '508008', name: '华夏中国交建REIT', isDefault: true }
                     ];
                     saveCompareList();
-                    showToast('已默认加载2只热门基金，您可以添加或替换', 'info');
+                    REITS.showToast('已默认加载2只热门基金，您可以添加或替换', 'info');
                 }
             }
             renderPage();
@@ -778,12 +779,12 @@
         // 交互操作
         function addToCompare(code, name) {
             if (compareList.find(i => i.code === code)) {
-                showToast('该基金已在对比栏中', 'warning');
+                REITS.showToast('该基金已在对比栏中', 'warning');
                 clearSearch();
                 return;
             }
             if (compareList.length >= 4) {
-                showToast('最多只能对比4只基金', 'warning');
+                REITS.showToast('最多只能对比4只基金', 'warning');
                 clearSearch();
                 return;
             }
@@ -797,7 +798,7 @@
             saveCompareList();
             renderPage();
             clearSearch();
-            showToast(`已添加 ${name}`, 'success');
+            REITS.showToast(`已添加 ${name}`, 'success');
         }
 
         function removeFromCompare(code) {
@@ -805,13 +806,13 @@
             compareList = compareList.filter(i => i.code !== code);
             saveCompareList();
             renderPage();
-            if (item) showToast(`已移除 ${item.name}`, 'info');
+            if (item) REITS.showToast(`已移除 ${item.name}`, 'info');
         }
 
         function focusSearch() {
             const input = document.getElementById('compare-search');
             input.focus();
-            showToast('请在上方搜索框输入基金代码或名称', 'info');
+            REITS.showToast('请在上方搜索框输入基金代码或名称', 'info');
         }
 
         function clearSearch() {
@@ -827,7 +828,7 @@
             const btn = document.getElementById('highlight-best-btn');
             if (highlightBest) {
                 btn.classList.add('ring-2', 'ring-yellow-300', 'bg-yellow-200');
-                showToast('已高亮最优指标', 'success');
+                REITS.showToast('已高亮最优指标', 'success');
             } else {
                 btn.classList.remove('ring-2', 'ring-yellow-300', 'bg-yellow-200');
             }
@@ -838,13 +839,13 @@
             highlightBest = false;
             document.getElementById('highlight-best-btn').classList.remove('ring-2', 'ring-yellow-300', 'bg-yellow-200');
             renderCompareTable();
-            showToast('已重置高亮', 'info');
+            REITS.showToast('已重置高亮', 'info');
         }
 
         // 导出
         function exportToExcel() {
             if (compareList.length === 0) {
-                showToast('暂无对比数据', 'warning');
+                REITS.showToast('暂无对比数据', 'warning');
                 return;
             }
             const funds = compareList.map(item => getFundData(item.code)).filter(f => f);
@@ -883,16 +884,16 @@
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, 'REITs专业指标对比');
             XLSX.writeFile(wb, `REITs专业指标对比_${new Date().toISOString().slice(0,10)}.xlsx`);
-            showToast('Excel导出成功', 'success');
+            REITS.showToast('Excel导出成功', 'success');
         }
 
         function exportToPDF() {
             if (compareList.length === 0) {
-                showToast('暂无对比数据', 'warning');
+                REITS.showToast('暂无对比数据', 'warning');
                 return;
             }
             window.print();
-            showToast('已唤起打印/PDF导出', 'info');
+            REITS.showToast('已唤起打印/PDF导出', 'info');
         }
 
         // 事件绑定

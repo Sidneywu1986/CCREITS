@@ -201,9 +201,13 @@ def parse_sina_data(code: str, data: str) -> Optional[Dict]:
         date_str = fields[30] if len(fields) > 30 else ''
         time_str = fields[31] if len(fields) > 31 else ''
 
-        # 计算涨跌
-        change = current_price - prev_close
-        change_pct = (change / prev_close * 100) if prev_close > 0 else 0
+        # 盘前/盘后/停牌时 current_price 为 0，回退使用 prev_close 展示
+        is_pre_market = (current_price == 0 and prev_close > 0)
+        display_price = prev_close if is_pre_market else current_price
+
+        # 计算涨跌（盘前/停牌时设为 0，避免 -100% 误导）
+        change = 0.0 if is_pre_market else (current_price - prev_close)
+        change_pct = 0.0 if is_pre_market else ((change / prev_close * 100) if prev_close > 0 else 0)
 
         # 去掉交易所前缀还原代码
         fund_code = code[2:] if code.startswith(('sh', 'sz')) else code
@@ -211,15 +215,15 @@ def parse_sina_data(code: str, data: str) -> Optional[Dict]:
         # 根据代码获取板块
         sector = get_sector(fund_code)
 
-        # 计算市值（亿元）：价格 × 份额
+        # 计算市值（亿元）：价格 × 份额（盘前用 prev_close）
         shares = get_shares(fund_code)
-        market_cap = round(current_price * shares, 2) if shares > 0 else 0
+        market_cap = round(display_price * shares, 2) if shares > 0 else 0
 
         return {
             'fund_code': fund_code,
             'name': name,
             'sector': sector,
-            'current_price': current_price,
+            'current_price': display_price,
             'open_price': open_price,
             'prev_close': prev_close,
             'high_price': high_price,
@@ -381,7 +385,7 @@ def save_to_database(quotes: List[Dict], db_path: str = None):
         return 0
 
     if db_path is None:
-        db_path = r"D:\tools\消费看板5（前端）\backend\database\reits.db"
+        db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'database', 'reits.db')
 
     try:
         conn = sqlite3.connect(db_path)

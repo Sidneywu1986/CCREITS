@@ -45,3 +45,28 @@ backend/reits_announcements/
 *.db-shm
 *.db-wal
 .gstack/
+
+# Debug files & screenshots
+*.png
+backend/debug_*
+backend/test.db
+backend/test_page.html
+backend/crawlers/test_*.pdf
+
+# OMC / AI agent state files
+.omc/
+admin-pro/frontend/.omc/
+backend/.omc/
+backend/crawlers/.omc/
+
+# Playwright MCP logs
+.playwright-mcp/
+
+# Archive directory (for deprecated crawlers)
+archive/
+
+# Analysis reports (generated)
+PROJECT_ANALYSIS.md
+
+# Announcement PDFs (generated data)
+announcements/

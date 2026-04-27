@@ -2,8 +2,8 @@
 Tests for ChatReits API
 """
 import pytest
-import sys
-sys.path.insert(0, 'D:\\tools\\消费看板5（前端）\\backend')
+import os, sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from api.chat_reits import router, ChatReitsRequest, ChatReitsResponse
 

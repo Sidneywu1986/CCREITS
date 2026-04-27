@@ -1,7 +1,5 @@
 /**
- * 数据加载器模块
- * 使用TDD方式开发，确保代码质量和可测试性
- */
+ * 数据加载器模�? * 使用TDD方式开发，确保代码质量和可测试�? */
 
 /**
  * 从API加载基金数据
@@ -29,8 +27,7 @@ async function loadFundsFromAPI() {
 }
 
 /**
- * 加载基金数据（带降级策略）
- * @param {Array} mockData - 降级使用的Mock数据
+ * 加载基金数据（带降级策略�? * @param {Array} mockData - 降级使用的Mock数据
  * @returns {Promise<Object>} { data: Array, source: string }
  */
 async function loadFunds(mockData = []) {
@@ -44,16 +41,12 @@ async function loadFunds(mockData = []) {
 }
 
 /**
- * 筛选基金数据
- * @param {Array} funds - 基金数据数组
- * @param {Object} filters - 筛选条件
- * @returns {Array} 筛选后的基金数据
- */
+ * 筛选基金数�? * @param {Array} funds - 基金数据数组
+ * @param {Object} filters - 筛选条�? * @returns {Array} 筛选后的基金数�? */
 function filterFunds(funds, filters = {}) {
   let filtered = [...funds];
 
-  // 按板块筛选
-  if (filters.sector && filters.sector !== 'all') {
+  // 按板块筛�?  if (filters.sector && filters.sector !== 'all') {
     filtered = filtered.filter(f => f.sector === filters.sector);
   }
 
@@ -92,8 +85,7 @@ function sortFunds(funds, sortBy = 'change-desc') {
     if (isVaInvalid && !isVbInvalid) return 1;
     // 如果b的值无效，排在前面
     if (!isVaInvalid && isVbInvalid) return -1;
-    // 如果都无效，保持原顺序
-    if (isVaInvalid && isVbInvalid) return 0;
+    // 如果都无效，保持原顺�?    if (isVaInvalid && isVbInvalid) return 0;
 
     // 正常比较
     return order === 'asc' ? va - vb : vb - va;
@@ -103,23 +95,18 @@ function sortFunds(funds, sortBy = 'change-desc') {
 }
 
 /**
- * 格式化数值文本
- * @param {number} value - 数值
- * @returns {string} 格式化后的文本
- */
+ * 格式化数值文�? * @param {number} value - 数�? * @returns {string} 格式化后的文�? */
 function formatValueText(value) {
   // 处理负数
   const absValue = Math.abs(value);
   const sign = value < 0 ? '-' : '';
 
-  // 先判断亿（100,000,000）
-  if (absValue >= 100000000) {
+  // 先判断亿�?00,000,000�?  if (absValue >= 100000000) {
     const billionValue = absValue / 100000000;
     return `${sign}${billionValue.toFixed(2)}亿`;
   }
 
-  // 再判断万（10,000）
-  if (absValue >= 10000) {
+  // 再判断万�?0,000�?  if (absValue >= 10000) {
     const tenThousandValue = absValue / 10000;
     return `${sign}${tenThousandValue.toFixed(2)}万`;
   }
@@ -129,9 +116,7 @@ function formatValueText(value) {
 
 /**
  * 格式化涨跌幅
- * @param {number} change - 涨跌幅
- * @returns {string} 格式化后的文本
- */
+ * @param {number} change - 涨跌�? * @returns {string} 格式化后的文�? */
 function formatChange(change) {
   if (change > 0) return `+${change}%`;
   if (change < 0) return `${change}%`;
@@ -139,9 +124,7 @@ function formatChange(change) {
 }
 
 /**
- * 判断当前是否在交易时间
- * @returns {boolean} 是否在交易时间
- */
+ * 判断当前是否在交易时�? * @returns {boolean} 是否在交易时�? */
 function isTradingTime() {
   const now = new Date();
   const day = now.getDay();
@@ -152,14 +135,15 @@ function isTradingTime() {
   // 周末休市
   if (day === 0 || day === 6) return false;
 
-  // 上午 9:30-11:30，下午 13:00-15:00
+  // 上午 9:30-11:30，下�?13:00-15:00
   const isMorning = time >= 930 && time <= 1130;
   const isAfternoon = time >= 1300 && time <= 1500;
 
   return isMorning || isAfternoon;
 }
 
-module.exports = {
+// 浏览器环境：直接暴露全局函数
+window.REITS_DataLoader = {
   loadFunds,
   filterFunds,
   sortFunds,

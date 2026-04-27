@@ -2,9 +2,11 @@
 # -*- coding: utf-8 -*-
 """
 Milvus Client - Vector Database Client
+Supports: Milvus Server (Docker) and Milvus Lite (local file)
 """
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -13,158 +15,139 @@ _milvus_client_instance: Optional['MilvusClient'] = None
 
 
 class MilvusClient:
-    """Milvus vector database client"""
+    """Milvus vector database client (Lite + Server dual mode)"""
 
-    def __init__(self, host: str = "localhost", port: int = 19530):
-        self.host = host
-        self.port = port
-        self._connected = False
+    def __init__(self, uri: str = "./milvus_reits.db", collection: str = "reit_wechat_articles"):
+        self.uri = uri
+        self.collection_name = collection
         self._client = None
-        self._collection = None
+        self._dim = int(os.environ.get("EMBEDDING_DIMENSION", "1536"))
 
     def connect(self) -> bool:
-        """Connect to Milvus server"""
+        """Connect to Milvus (Lite or Server)"""
         try:
-            from pymilvus import connections
-            connections.connect(host=self.host, port=self.port, alias="default")
-            self._connected = True
-            logger.info(f"Connected to Milvus at {self.host}:{self.port}")
+            from pymilvus import MilvusClient as PyMilvusClient
+            self._client = PyMilvusClient(self.uri)
+            logger.info(f"Connected to Milvus at {self.uri}")
             return True
         except Exception as e:
             logger.warning(f"Failed to connect to Milvus: {e}")
-            self._connected = False
             return False
 
     def disconnect(self):
-        """Disconnect from Milvus server"""
-        try:
-            from pymilvus import connections
-            if connections.has_connection("default"):
-                connections.disconnect("default")
-            self._connected = False
-            self._client = None
-            self._collection = None
-            logger.info("Disconnected from Milvus")
-        except Exception as e:
-            logger.warning(f"Error disconnecting from Milvus: {e}")
+        """Disconnect"""
+        self._client = None
 
     def is_healthy(self) -> bool:
-        """Check Milvus health - returns True if healthy, False otherwise"""
-        try:
-            from pymilvus import connections
-            if not connections.has_connection("default"):
-                self.connect()
-            if connections.has_connection("default"):
-                # Try a simple operation
-                from pymilvus import utility
-                return utility.has_collection("_health_check")
+        """Check if connected"""
+        return self._client is not None
+
+    def ensure_collection(self, dim: Optional[int] = None):
+        """Create collection if not exists"""
+        if dim:
+            self._dim = dim
+
+        if not self._client:
+            raise RuntimeError("Milvus not connected")
+
+        if self._client.has_collection(self.collection_name):
+            logger.info(f"Collection {self.collection_name} exists")
+            return
+
+        from pymilvus import DataType
+
+        schema = self._client.create_schema(
+            auto_id=True,
+            enable_dynamic_field=False,
+        )
+        schema.add_field(field_name="id", datatype=DataType.INT64, is_primary=True)
+        schema.add_field(field_name="article_id", datatype=DataType.INT64)
+        schema.add_field(field_name="source", datatype=DataType.VARCHAR, max_length=200)
+        schema.add_field(field_name="title", datatype=DataType.VARCHAR, max_length=500)
+        schema.add_field(field_name="publish_date", datatype=DataType.VARCHAR, max_length=20)
+        schema.add_field(field_name="chunk_index", datatype=DataType.INT64)
+        schema.add_field(field_name="chunk_text", datatype=DataType.VARCHAR, max_length=4000)
+        schema.add_field(field_name="embedding", datatype=DataType.FLOAT_VECTOR, dim=self._dim)
+
+        index_params = self._client.prepare_index_params()
+        index_params.add_index(
+            field_name="embedding",
+            index_type="IVF_FLAT",
+            metric_type="COSINE",
+            params={"nlist": 128}
+        )
+
+        self._client.create_collection(
+            collection_name=self.collection_name,
+            schema=schema,
+            index_params=index_params
+        )
+        logger.info(f"Collection {self.collection_name} created, dim={self._dim}")
+
+    def insert(self, data: List[Dict[str, Any]]) -> bool:
+        """Insert vectors"""
+        if not self._client:
             return False
-        except Exception as e:
-            logger.warning(f"Milvus health check failed: {e}")
-            return False
-
-    def create_collection_if_not_exists(self, collection_name: str, dimension: int = 1536) -> bool:
-        """Create collection if not exists with specified dimension"""
         try:
-            from pymilvus import connections, utility, Collection, CollectionSchema, FieldSchema, DataType
-
-            if not connections.has_connection("default"):
-                self.connect()
-
-            # Define schema
-            fields = [
-                FieldSchema(name="id", dtype=DataType.INT64, is_primary=True, auto_id=True),
-                FieldSchema(name="content", dtype=DataType.VARCHAR, max_length=2000),
-                FieldSchema(name="embedding", dtype=DataType.FLOAT_VECTOR, dim=dimension)
-            ]
-            schema = CollectionSchema(fields=fields, description=f"Collection {collection_name}")
-
-            if not utility.has_collection(collection_name):
-                collection = Collection(name=collection_name, schema=schema)
-                # Create index
-                index_params = {
-                    "index_type": "IVF_FLAT",
-                    "metric_type": "IP",
-                    "params": {"nlist": 128}
-                }
-                collection.create_index(field_name="embedding", index_params=index_params)
-                logger.info(f"Created collection: {collection_name}")
-            else:
-                collection = Collection(name=collection_name)
-                logger.info(f"Collection already exists: {collection_name}")
-
-            self._collection = collection
+            self._client.insert(collection_name=self.collection_name, data=data)
             return True
         except Exception as e:
-            logger.error(f"Failed to create collection: {e}")
+            logger.error(f"Insert error: {e}")
             return False
 
-    def insert(self, collection_name: str, data: List[dict]) -> List[int]:
-        """Insert data into collection. Each dict should have 'content' and 'embedding' keys."""
+    def search(self, vector: List[float], top_k: int = 5, filter_expr: str = "") -> List[Dict]:
+        """Search similar vectors"""
+        if not self._client:
+            return []
         try:
-            from pymilvus import Collection
-
-            if not connections.has_connection("default"):
-                self.connect()
-
-            collection = Collection(name=collection_name)
-            # Extract embeddings and contents
-            embeddings = [d["embedding"] for d in data]
-            contents = [d["content"] for d in data]
-            # pymilvus expects rows: list of lists with [[id, content, embedding], ...] or auto-id [[content, embedding], ...]
-            rows = [[content, embedding] for content, embedding in zip(contents, embeddings)]
-            result = collection.insert(rows)
-            collection.flush()
-            logger.info(f"Inserted {len(data)} records into {collection_name}")
-            return result.primary_keys
-        except Exception as e:
-            logger.error(f"Failed to insert: {e}")
-            return None
-
-    def search(self, collection_name: str, query_vector: List[float], top_k: int = 5) -> List[List]:
-        """Search vectors using ANN search with IP metric. Accepts a single query_vector."""
-        try:
-            from pymilvus import Collection
-
-            if not connections.has_connection("default"):
-                self.connect()
-
-            collection = Collection(name=collection_name)
-            collection.load()
-
-            search_params = {"metric_type": "IP", "params": {"nprobe": 10}}
-
-            results = collection.search(
-                data=[query_vector],
-                anns_field="embedding",
-                param=search_params,
+            res = self._client.search(
+                collection_name=self.collection_name,
+                data=[vector],
                 limit=top_k,
-                output_fields=["id", "content"]
+                output_fields=["article_id", "source", "title", "chunk_text", "publish_date"],
+                filter=filter_expr
             )
-
-            # Format results
-            formatted = []
-            for hits in results:
-                formatted.append([
-                    {"id": hit.id, "distance": hit.distance, "content": hit.entity.get("content", "")}
-                    for hit in hits
-                ])
-            return formatted
+            results = []
+            for hits in res:
+                for hit in hits:
+                    results.append({
+                        "id": hit.get("id"),
+                        "article_id": hit["entity"].get("article_id"),
+                        "source": hit["entity"].get("source"),
+                        "title": hit["entity"].get("title"),
+                        "chunk_text": hit["entity"].get("chunk_text"),
+                        "publish_date": hit["entity"].get("publish_date"),
+                        "distance": hit.get("distance", 0),
+                    })
+            return results
         except Exception as e:
-            logger.error(f"Failed to search: {e}")
+            logger.error(f"Search error: {e}")
             return []
 
-    def __enter__(self):
-        self.connect()
-        return self
+    def delete_by_article_ids(self, article_ids: List[int]) -> bool:
+        """Delete vectors by article_id"""
+        if not self._client:
+            return False
+        try:
+            ids_str = ",".join(str(i) for i in article_ids)
+            self._client.delete(
+                collection_name=self.collection_name,
+                filter=f"article_id in [{ids_str}]"
+            )
+            return True
+        except Exception as e:
+            logger.error(f"Delete error: {e}")
+            return False
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.disconnect()
 
-
-def get_milvus_client() -> MilvusClient:
+def get_milvus_client() -> Optional[MilvusClient]:
     """Get singleton MilvusClient instance"""
     global _milvus_client_instance
     if _milvus_client_instance is None:
-        _milvus_client_instance = MilvusClient()
+        # Load .env if not already loaded
+        from dotenv import load_dotenv
+        load_dotenv()
+        uri = os.environ.get("MILVUS_URI", "./milvus_reits.db")
+        collection = os.environ.get("MILVUS_COLLECTION", "reit_wechat_articles")
+        _milvus_client_instance = MilvusClient(uri, collection)
     return _milvus_client_instance

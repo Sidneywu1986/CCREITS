@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="./css/tailwind.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="./css/common.css">
+    <script src="./js/app-core.js?v=1"></script>
     <style>
         body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background-color: #f8fafc; }
         .mono { font-family: 'JetBrains Mono', monospace; }
@@ -418,13 +419,13 @@
             saveWatchlist();
             applyFilter();
             updateCompareBar();
-            showToast('已移除自选', 'info');
+            REITS.showToast('已移除自选', 'info');
         }
 
         // 批量删除
         function batchDelete() {
             if (selectedItems.size === 0) {
-                showToast('请先选择要删除的基金', 'warning');
+                REITS.showToast('请先选择要删除的基金', 'warning');
                 return;
             }
             if (confirm(`确定删除 ${selectedItems.size} 只自选基金吗？`)) {
@@ -433,7 +434,7 @@
                 saveWatchlist();
                 applyFilter();
                 updateCompareBar();
-                showToast('删除成功', 'success');
+                REITS.showToast('删除成功', 'success');
             }
         }
 
@@ -441,7 +442,7 @@
         function exportCSV() {
             const funds = getWatchlistFunds();
             if (funds.length === 0) {
-                showToast('暂无自选数据可导出', 'warning');
+                REITS.showToast('暂无自选数据可导出', 'warning');
                 return;
             }
             const headers = ['代码', '名称', '板块', '最新价', '涨跌幅', '派息率', '债务率', '市值'];
@@ -458,7 +459,7 @@
             link.click();
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
-            showToast('导出成功', 'success');
+            REITS.showToast('导出成功', 'success');
         }
 
         // 刷新行情
@@ -531,7 +532,7 @@
                         watchlist = newWatchlist;
                         saveWatchlist();
                         applyFilter();
-                        showToast('排序已保存', 'success');
+                        REITS.showToast('排序已保存', 'success');
                     }
                     item.classList.remove('drag-over');
                     if (dragSrc) dragSrc.style.opacity = '';
@@ -601,7 +602,7 @@
                 removeFromCompare(code);
             } else {
                 if (list.length >= 4) {
-                    showToast('对比栏已满（最多4只）', 'warning');
+                    REITS.showToast('对比栏已满（最多4只）', 'warning');
                     return;
                 }
                 addToCompare(code, name);
@@ -653,7 +654,7 @@
         document.getElementById('batch-delete-btn')?.addEventListener('click', batchDelete);
         document.getElementById('cancel-select-btn')?.addEventListener('click', toggleBatchMode);
         document.getElementById('export-btn')?.addEventListener('click', exportCSV);
-        document.getElementById('refresh-btn')?.addEventListener('click', () => { refreshQuotes(); showToast('行情已刷新', 'success'); });
+        document.getElementById('refresh-btn')?.addEventListener('click', () => { refreshQuotes(); REITS.showToast('行情已刷新', 'success'); });
         document.getElementById('select-all')?.addEventListener('change', toggleSelectAll);
 
         // 搜索 - 由 common.js 接管下拉框功能

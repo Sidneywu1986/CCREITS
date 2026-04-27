@@ -38,7 +38,9 @@ class Settings:
     # CORS
     ALLOWED_HOSTS = [
         "http://localhost:5173",   # Vite前端开发
-        "http://localhost:5174",   # 前端实际端口
+        "http://localhost:5174",   # 前端旧端口
+        "http://localhost:5175",   # 前端端口
+        "http://localhost:5176",   # 前端当前端口
         "http://localhost:3000",
         "http://localhost:4000",
         "http://localhost:8080",
@@ -67,7 +69,7 @@ class Settings:
         },
         "apps": {
             "ai_db": {
-                "models": ["ai_db.models", "aerich.models"],
+                "models": ["ai_db.models"],
                 "default_connection": "default",
             }
         }
@@ -90,10 +92,17 @@ class Settings:
     }
 
     # LLM配置（分层模型）
+    # flash: 轻量快速，用于摘要、简单回复
+    # pro: 增强推理，用于投研分析、人设聊天、复杂任务
     LLM_CONFIG = {
         "deepseek": {
             "api_key": os.getenv("DEEPSEEK_API_KEY", ""),
-            "model": os.getenv("DEEPSEEK_MODEL", "deepseek-chat"),
+            "model": os.getenv("DEEPSEEK_MODEL", "deepseek-v4-flash"),
+            "base_url": os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com"),
+        },
+        "deepseek_pro": {
+            "api_key": os.getenv("DEEPSEEK_API_KEY", ""),
+            "model": os.getenv("DEEPSEEK_PRO_MODEL", "deepseek-v4-pro"),
             "base_url": os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com"),
         },
         "gpt_4o_mini": {

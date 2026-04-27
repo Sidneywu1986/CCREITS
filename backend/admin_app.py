@@ -36,24 +36,25 @@ TORTOISE_ORM = {
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     from tortoise import Tortoise
-    from admin_models import UserAdmin
     from passlib.hash import bcrypt
     
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     
     await Tortoise.init(
         db_url=f"sqlite://{DB_PATH}",
-        modules={"models": ["admin_models"]}
+        modules={"models": ["admin_models"]},
+        _enable_global_fallback=True
     )
     
     await Tortoise.generate_schemas(safe=True)
     
+    from admin_models import UserAdmin
     count = await UserAdmin.filter(username="admin").count()
     if count == 0:
         await UserAdmin.create(
             username="admin",
             email="admin@example.com",
-            password=bcrypt.hash("admin123"),
+            password_hash=bcrypt.hash("admin123"),
             is_active=True,
             is_superuser=True,
         )
@@ -508,7 +509,7 @@ async def login(username: str = Form(...), password: str = Form(...)):
     from passlib.hash import bcrypt
     
     user = await UserAdmin.filter(username=username).first()
-    if not user or not bcrypt.verify(password, user.password):
+    if not user or not bcrypt.verify(password, user.password_hash):
         return HTMLResponse(content="<script>alert('用户名或密码错误');history.back();</script>")
     
     response = RedirectResponse(url="/admin/", status_code=302)
@@ -811,6 +812,293 @@ async def funds_list(request: Request, page: int = 1, limit: int = 20,
     return HTMLResponse(content=html)
 
 
+# ========== 基金创建页面 ==========
+@app.get("/admin/funds/create", response_class=HTMLResponse)
+async def fund_create_page(request: Request):
+    user = request.cookies.get("admin_user")
+    if not user:
+        return RedirectResponse(url="/admin/login")
+
+    html = render_admin_page("创建基金", f"""
+        <div class="page-header">
+            <h2>创建基金</h2>
+            <a href="/admin/funds/list" class="btn">返回列表</a>
+        </div>
+        <form method="POST" action="/admin/funds/create" class="data-form">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>基金代码 *</label>
+                    <input type="text" name="fund_code" required placeholder="例如: 508000" maxlength="10">
+                </div>
+                <div class="form-group">
+                    <label>基金名称 *</label>
+                    <input type="text" name="fund_name" required placeholder="基金简称" maxlength="100">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>完整名称</label>
+                <input type="text" name="full_name" placeholder="基金完整名称" maxlength="200">
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>交易所</label>
+                    <select name="exchange">
+                        <option value="">请选择</option>
+                        <option value="SH">上海证券交易所</option>
+                        <option value="SZ">深圳证券交易所</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>状态</label>
+                    <select name="status">
+                        <option value="listed">已上市</option>
+                        <option value="pending">待上市</option>
+                        <option value="delisted">已退市</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>IPO日期</label>
+                    <input type="text" name="ipo_date" placeholder="YYYY-MM-DD">
+                </div>
+                <div class="form-group">
+                    <label>IPO价格</label>
+                    <input type="number" name="ipo_price" step="0.01" placeholder="0.00">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>总份额（亿份）</label>
+                    <input type="number" name="total_shares" step="0.01" placeholder="0.00">
+                </div>
+                <div class="form-group">
+                    <label>净值</label>
+                    <input type="number" name="nav" step="0.0001" placeholder="0.0000">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>管理人</label>
+                    <input type="text" name="manager" placeholder="基金管理公司" maxlength="100">
+                </div>
+                <div class="form-group">
+                    <label>托管人</label>
+                    <input type="text" name="custodian" placeholder="基金托管银行" maxlength="100">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>资产类型</label>
+                <input type="text" name="asset_type" placeholder="例如: 产业园、高速公路、仓储物流" maxlength="50">
+            </div>
+            <div class="form-group">
+                <label>底层资产描述</label>
+                <textarea name="underlying_assets" rows="4" placeholder="描述基金持有的底层资产情况"></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">提交</button>
+        </form>
+    """, user)
+    return HTMLResponse(content=html)
+
+
+# 创建基金提交
+@app.post("/admin/funds/create")
+async def fund_create_submit(
+    fund_code: str = Form(...),
+    fund_name: str = Form(...),
+    full_name: str = Form(""),
+    exchange: str = Form(""),
+    ipo_date: str = Form(""),
+    ipo_price: str = Form(""),
+    total_shares: str = Form(""),
+    nav: str = Form(""),
+    manager: str = Form(""),
+    custodian: str = Form(""),
+    asset_type: str = Form(""),
+    underlying_assets: str = Form(""),
+    status: str = Form("listed")
+):
+    from admin_models import FundAdmin
+
+    await FundAdmin.create(
+        fund_code=fund_code,
+        fund_name=fund_name,
+        full_name=full_name or None,
+        exchange=exchange or None,
+        ipo_date=ipo_date or None,
+        ipo_price=float(ipo_price) if ipo_price else None,
+        total_shares=float(total_shares) if total_shares else None,
+        nav=float(nav) if nav else None,
+        manager=manager or None,
+        custodian=custodian or None,
+        asset_type=asset_type or None,
+        underlying_assets=underlying_assets or None,
+        status=status or None
+    )
+
+    return RedirectResponse(url="/admin/funds/list", status_code=302)
+
+
+# ========== 基金编辑页面 ==========
+@app.get("/admin/funds/edit/{fund_id}", response_class=HTMLResponse)
+async def fund_edit_page(request: Request, fund_id: int):
+    user = request.cookies.get("admin_user")
+    if not user:
+        return RedirectResponse(url="/admin/login")
+
+    from admin_models import FundAdmin
+    fund = await FundAdmin.filter(id=fund_id).first()
+
+    if not fund:
+        return HTMLResponse(content="<script>alert('基金不存在');history.back();</script>")
+
+    html = render_admin_page("编辑基金", f"""
+        <div class="page-header">
+            <h2>编辑基金</h2>
+            <a href="/admin/funds/list" class="btn">返回列表</a>
+        </div>
+        <form method="POST" action="/admin/funds/edit/{fund.id}" class="data-form">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>基金代码 *</label>
+                    <input type="text" name="fund_code" value="{fund.fund_code}" required maxlength="10">
+                </div>
+                <div class="form-group">
+                    <label>基金名称 *</label>
+                    <input type="text" name="fund_name" value="{fund.fund_name}" required maxlength="100">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>完整名称</label>
+                <input type="text" name="full_name" value="{fund.full_name or ''}" maxlength="200">
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>交易所</label>
+                    <select name="exchange">
+                        <option value="" {'selected' if not fund.exchange else ''}>请选择</option>
+                        <option value="SH" {'selected' if fund.exchange == 'SH' else ''}>上海证券交易所</option>
+                        <option value="SZ" {'selected' if fund.exchange == 'SZ' else ''}>深圳证券交易所</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>状态</label>
+                    <select name="status">
+                        <option value="listed" {'selected' if fund.status == 'listed' else ''}>已上市</option>
+                        <option value="pending" {'selected' if fund.status == 'pending' else ''}>待上市</option>
+                        <option value="delisted" {'selected' if fund.status == 'delisted' else ''}>已退市</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>IPO日期</label>
+                    <input type="text" name="ipo_date" value="{fund.ipo_date or ''}" placeholder="YYYY-MM-DD">
+                </div>
+                <div class="form-group">
+                    <label>IPO价格</label>
+                    <input type="number" name="ipo_price" step="0.01" value="{fund.ipo_price or ''}">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>总份额（亿份）</label>
+                    <input type="number" name="total_shares" step="0.01" value="{fund.total_shares or ''}">
+                </div>
+                <div class="form-group">
+                    <label>净值</label>
+                    <input type="number" name="nav" step="0.0001" value="{fund.nav or ''}">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>管理人</label>
+                    <input type="text" name="manager" value="{fund.manager or ''}" maxlength="100">
+                </div>
+                <div class="form-group">
+                    <label>托管人</label>
+                    <input type="text" name="custodian" value="{fund.custodian or ''}" maxlength="100">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>资产类型</label>
+                <input type="text" name="asset_type" value="{fund.asset_type or ''}" maxlength="50">
+            </div>
+            <div class="form-group">
+                <label>底层资产描述</label>
+                <textarea name="underlying_assets" rows="4">{fund.underlying_assets or ''}</textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">保存修改</button>
+        </form>
+    """, user)
+    return HTMLResponse(content=html)
+
+
+# 编辑基金提交
+@app.post("/admin/funds/edit/{fund_id}")
+async def fund_edit_submit(
+    fund_id: int,
+    fund_code: str = Form(...),
+    fund_name: str = Form(...),
+    full_name: str = Form(""),
+    exchange: str = Form(""),
+    ipo_date: str = Form(""),
+    ipo_price: str = Form(""),
+    total_shares: str = Form(""),
+    nav: str = Form(""),
+    manager: str = Form(""),
+    custodian: str = Form(""),
+    asset_type: str = Form(""),
+    underlying_assets: str = Form(""),
+    status: str = Form("listed")
+):
+    from admin_models import FundAdmin
+    fund = await FundAdmin.filter(id=fund_id).first()
+
+    if not fund:
+        return HTMLResponse(content="<script>alert('基金不存在');history.back();</script>")
+
+    fund.fund_code = fund_code
+    fund.fund_name = fund_name
+    fund.full_name = full_name or None
+    fund.exchange = exchange or None
+    fund.ipo_date = ipo_date or None
+    fund.ipo_price = float(ipo_price) if ipo_price else None
+    fund.total_shares = float(total_shares) if total_shares else None
+    fund.nav = float(nav) if nav else None
+    fund.manager = manager or None
+    fund.custodian = custodian or None
+    fund.asset_type = asset_type or None
+    fund.underlying_assets = underlying_assets or None
+    fund.status = status or None
+    await fund.save()
+
+    return RedirectResponse(url="/admin/funds/list", status_code=302)
+
+
+# 基金根路径重定向到列表
+@app.get("/admin/funds")
+async def funds_redirect():
+    return RedirectResponse(url="/admin/funds/list", status_code=302)
+
+
+# 删除基金
+@app.get("/admin/funds/delete/{fund_id}")
+async def fund_delete(request: Request, fund_id: int):
+    user = request.cookies.get("admin_user")
+    if not user:
+        return RedirectResponse(url="/admin/login")
+
+    from admin_models import FundAdmin
+    fund = await FundAdmin.filter(id=fund_id).first()
+
+    if not fund:
+        return HTMLResponse(content="<script>alert('基金不存在');history.back();</script>")
+
+    await fund.delete()
+    return RedirectResponse(url="/admin/funds/list", status_code=302)
+
+
 # ========== 用户列表页面 ==========
 @app.get("/admin/users/list", response_class=HTMLResponse)
 async def users_list(request: Request):
@@ -857,6 +1145,181 @@ async def users_list(request: Request):
         </table>
     """, user)
     return HTMLResponse(content=html)
+
+
+# ========== 用户创建页面 ==========
+@app.get("/admin/users/create", response_class=HTMLResponse)
+async def user_create_page(request: Request):
+    user = request.cookies.get("admin_user")
+    if not user:
+        return RedirectResponse(url="/admin/login")
+
+    html = render_admin_page("创建用户", f"""
+        <div class="page-header">
+            <h2>创建用户</h2>
+            <a href="/admin/users/list" class="btn">返回列表</a>
+        </div>
+        <form method="POST" action="/admin/users/create" class="data-form">
+            <div class="form-group">
+                <label>用户名 *</label>
+                <input type="text" name="username" required placeholder="登录用户名" maxlength="50">
+            </div>
+            <div class="form-group">
+                <label>邮箱 *</label>
+                <input type="email" name="email" required placeholder="user@example.com" maxlength="100">
+            </div>
+            <div class="form-group">
+                <label>密码 *</label>
+                <input type="password" name="password" required placeholder="设置登录密码" minlength="6">
+                <div class="help-text">密码长度至少6位</div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>状态</label>
+                    <select name="is_active">
+                        <option value="1">启用</option>
+                        <option value="0">禁用</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>超级用户</label>
+                    <select name="is_superuser">
+                        <option value="0">否</option>
+                        <option value="1">是</option>
+                    </select>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">提交</button>
+        </form>
+    """, user)
+    return HTMLResponse(content=html)
+
+
+# 创建用户提交
+@app.post("/admin/users/create")
+async def user_create_submit(
+    username: str = Form(...),
+    email: str = Form(...),
+    password: str = Form(...),
+    is_active: str = Form("1"),
+    is_superuser: str = Form("0")
+):
+    from admin_models import UserAdmin
+    from passlib.hash import bcrypt
+
+    # 检查用户名是否已存在
+    existing = await UserAdmin.filter(username=username).first()
+    if existing:
+        return HTMLResponse(content="<script>alert('用户名已存在');history.back();</script>")
+
+    # 检查邮箱是否已存在
+    existing_email = await UserAdmin.filter(email=email).first()
+    if existing_email:
+        return HTMLResponse(content="<script>alert('邮箱已被使用');history.back();</script>")
+
+    await UserAdmin.create(
+        username=username,
+        email=email,
+        password_hash=bcrypt.hash(password),
+        is_active=is_active == "1",
+        is_superuser=is_superuser == "1"
+    )
+
+    return RedirectResponse(url="/admin/users/list", status_code=302)
+
+
+# ========== 用户编辑页面 ==========
+@app.get("/admin/users/edit/{user_id}", response_class=HTMLResponse)
+async def user_edit_page(request: Request, user_id: int):
+    user = request.cookies.get("admin_user")
+    if not user:
+        return RedirectResponse(url="/admin/login")
+
+    from admin_models import UserAdmin
+    u = await UserAdmin.filter(id=user_id).first()
+
+    if not u:
+        return HTMLResponse(content="<script>alert('用户不存在');history.back();</script>")
+
+    html = render_admin_page("编辑用户", f"""
+        <div class="page-header">
+            <h2>编辑用户</h2>
+            <a href="/admin/users/list" class="btn">返回列表</a>
+        </div>
+        <form method="POST" action="/admin/users/edit/{u.id}" class="data-form">
+            <div class="form-group">
+                <label>用户名 *</label>
+                <input type="text" name="username" value="{u.username}" required maxlength="50">
+            </div>
+            <div class="form-group">
+                <label>邮箱 *</label>
+                <input type="email" name="email" value="{u.email}" required maxlength="100">
+            </div>
+            <div class="form-group">
+                <label>新密码（留空则不修改）</label>
+                <input type="password" name="password" placeholder="不修改请留空" minlength="6">
+                <div class="help-text">如需修改密码，输入新密码（至少6位）</div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>状态</label>
+                    <select name="is_active">
+                        <option value="1" {'selected' if u.is_active else ''}>启用</option>
+                        <option value="0" {'selected' if not u.is_active else ''}>禁用</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>超级用户</label>
+                    <select name="is_superuser">
+                        <option value="1" {'selected' if u.is_superuser else ''}>是</option>
+                        <option value="0" {'selected' if not u.is_superuser else ''}>否</option>
+                    </select>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">保存修改</button>
+        </form>
+    """, user)
+    return HTMLResponse(content=html)
+
+
+# 编辑用户提交
+@app.post("/admin/users/edit/{user_id}")
+async def user_edit_submit(
+    user_id: int,
+    username: str = Form(...),
+    email: str = Form(...),
+    password: str = Form(""),
+    is_active: str = Form("1"),
+    is_superuser: str = Form("0")
+):
+    from admin_models import UserAdmin
+    from passlib.hash import bcrypt
+    u = await UserAdmin.filter(id=user_id).first()
+
+    if not u:
+        return HTMLResponse(content="<script>alert('用户不存在');history.back();</script>")
+
+    # 检查用户名是否被其他用户占用
+    existing = await UserAdmin.filter(username=username).exclude(id=user_id).first()
+    if existing:
+        return HTMLResponse(content="<script>alert('用户名已被其他用户使用');history.back();</script>")
+
+    # 检查邮箱是否被其他用户占用
+    existing_email = await UserAdmin.filter(email=email).exclude(id=user_id).first()
+    if existing_email:
+        return HTMLResponse(content="<script>alert('邮箱已被其他用户使用');history.back();</script>")
+
+    u.username = username
+    u.email = email
+    u.is_active = is_active == "1"
+    u.is_superuser = is_superuser == "1"
+
+    if password:
+        u.password_hash = bcrypt.hash(password)
+
+    await u.save()
+
+    return RedirectResponse(url="/admin/users/list", status_code=302)
 
 
 def render_admin_page(title, content, username):
@@ -973,6 +1436,55 @@ def render_admin_page(title, content, username):
             text-align: right;
             color: #666;
         }}
+        .data-form {{
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            max-width: 900px;
+        }}
+        .form-group {{
+            margin-bottom: 20px;
+        }}
+        .form-group label {{
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }}
+        .form-group input,
+        .form-group textarea,
+        .form-group select {{
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+            background: white;
+        }}
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {{
+            outline: none;
+            border-color: #667eea;
+        }}
+        .form-group textarea {{
+            resize: vertical;
+            min-height: 80px;
+        }}
+        .form-row {{
+            display: flex;
+            gap: 20px;
+        }}
+        .form-row .form-group {{
+            flex: 1;
+        }}
+        .help-text {{
+            font-size: 12px;
+            color: #999;
+            margin-top: 4px;
+        }}
     </style>
 </head>
 <body>
@@ -1001,6 +1513,12 @@ def render_admin_page(title, content, username):
 
 
 # ========== 公告管理页面 ==========
+
+# 公告根路径重定向到列表
+@app.get("/admin/announcements")
+async def announcements_redirect():
+    return RedirectResponse(url="/admin/announcements/list", status_code=302)
+
 
 # 公告列表页面
 @app.get("/admin/announcements/list", response_class=HTMLResponse)
@@ -4327,4 +4845,4 @@ def test_alert_system(alert_type, test_data):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("admin_app:app", host="0.0.0.0", port=5075, reload=True)
+    uvicorn.run("admin_app:app", host="0.0.0.0", port=5078, reload=True)
