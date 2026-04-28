@@ -1287,7 +1287,7 @@
         // 轮询当前模式
         async function pollCurrentMode() {
             try {
-                const res = await fetch('/api/ai/current-mode');
+                const res = await fetch(`${AI_API_BASE}/current-mode`);
                 if (!res.ok) return;
                 const data = await res.json();
                 if (data.mode && data.mode !== currentMode) {

@@ -1475,6 +1475,6 @@ if __name__ == "__main__":
         "api_adapter:adapter_app",
         host=settings.HOST,
         port=settings.PORT,
-        reload=True,
+        reload=False,
         log_level="info"
     )

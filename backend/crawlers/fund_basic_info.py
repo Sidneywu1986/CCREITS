@@ -35,7 +35,7 @@ class REITBasicInfoCrawler:
         with get_conn() as conn:
             cursor = conn.cursor()
             cursor.execute('SELECT fund_code, fund_name FROM business.funds ORDER BY fund_code')
-            funds = [{'fund_code': row[0], 'fund_name': row[1]} for row in cursor.fetchall()]
+            funds = [{'fund_code': row['fund_code'], 'fund_name': row['fund_name']} for row in cursor.fetchall()]
         return funds
     
     def fetch_eastmoney_basic(self, code: str) -> Optional[Dict]:
@@ -265,6 +265,7 @@ class REITBasicInfoCrawler:
                 sql = f"UPDATE business.funds SET {', '.join(fields)} WHERE fund_code = %s"
                 cursor.execute(sql, values)
                 rowcount = cursor.rowcount
+                conn.commit()
             
             return rowcount > 0
             

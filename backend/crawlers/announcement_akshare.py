@@ -173,6 +173,8 @@ def save_to_database(announcements: List[Dict]) -> int:
                         inserted += 1
                 except Exception as e:
                     print(f"插入失败: {e}")
+            
+            conn.commit()
         
         print(f"保存到数据库: {inserted} 条新公告")
         return inserted
