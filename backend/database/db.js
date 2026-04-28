@@ -211,6 +211,7 @@ function getDataSourcesStatus() {
 
 module.exports = {
     db,
+    pool,
     initDatabase,
     logUpdate,
     updateSourceStatus,

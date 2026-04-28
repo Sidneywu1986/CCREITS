@@ -4,6 +4,8 @@
  */
 
 const cron = require('node-cron');
+const { spawn } = require('child_process');
+const path = require('path');
 const SinaCrawler = require('./sina');
 const EastMoneyCrawler = require('./eastmoney');
 const FundDetailCrawler = require('./fund-detail');
@@ -11,6 +13,7 @@ const AnnouncementCrawler = require('./announcement_v2');
 const DataIntegrityChecker = require('./data-integrity-checker');
 const AlertManager = require('./alert-manager');
 const YieldCrawler = require('./yield_crawler');
+const { withLock } = require('../database/task_lock');
 
 const config = {
     // 自动重试配置
@@ -35,41 +38,48 @@ console.log('⏰ 爬虫定时调度器已启动\n');
 async function runWithRetry(taskName, taskFn, customConfig = {}) {
     const retryConfig = { ...config.retry, ...customConfig };
 
-    for (let attempt = 1; attempt <= retryConfig.maxAttempts; attempt++) {
-        const startTime = Date.now();
+    // 获取任务锁，防止同一任务并发执行
+    try {
+        await withLock(taskName, async () => {
+            for (let attempt = 1; attempt <= retryConfig.maxAttempts; attempt++) {
+                const startTime = Date.now();
 
-        try {
-            console.log(`\n[${new Date().toLocaleString()}] ⏰ 启动${taskName}爬虫 (尝试 ${attempt}/${retryConfig.maxAttempts})...`);
-            await taskFn();
+                try {
+                    console.log(`\n[${new Date().toLocaleString()}] ⏰ 启动${taskName}爬虫 (尝试 ${attempt}/${retryConfig.maxAttempts})...`);
+                    await taskFn();
 
-            const duration = ((Date.now() - startTime) / 1000).toFixed(2);
-            console.log(`✅ ${taskName}更新完成 (耗时 ${duration}s)`);
+                    const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+                    console.log(`✅ ${taskName}更新完成 (耗时 ${duration}s)`);
 
-            // 成功则跳出重试循环
-            break;
-        } catch (error) {
-            const duration = ((Date.now() - startTime) / 1000).toFixed(2);
-            console.error(`❌ ${taskName}失败 (尝试 ${attempt}/${retryConfig.maxAttempts}, 耗时 ${duration}s):`, error.message);
+                    // 成功则跳出重试循环
+                    break;
+                } catch (error) {
+                    const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+                    console.error(`❌ ${taskName}失败 (尝试 ${attempt}/${retryConfig.maxAttempts}, 耗时 ${duration}s):`, error.message);
 
-            // 发送告警
-            AlertManager.sendFormattedAlert('CRAWLER_FAILED', {
-                crawler: taskName,
-                attempt,
-                error: error.message,
-                duration,
-            }, attempt === retryConfig.maxAttempts ? 'high' : 'medium');
+                    // 发送告警
+                    AlertManager.sendFormattedAlert('CRAWLER_FAILED', {
+                        crawler: taskName,
+                        attempt,
+                        error: error.message,
+                        duration,
+                    }, attempt === retryConfig.maxAttempts ? 'high' : 'medium');
 
-            // 如果是最后一次尝试，仍然失败
-            if (attempt === retryConfig.maxAttempts) {
-                console.error(`❌ ${taskName}达到最大重试次数，放弃任务`);
-                break;
+                    // 如果是最后一次尝试，仍然失败
+                    if (attempt === retryConfig.maxAttempts) {
+                        console.error(`❌ ${taskName}达到最大重试次数，放弃任务`);
+                        break;
+                    }
+
+                    // 计算退避时间并等待
+                    const delay = retryConfig.delay * Math.pow(retryConfig.backoff, attempt - 1);
+                    console.log(`⏳ ${taskName}等待 ${delay}ms 后重试...`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
             }
-
-            // 计算退避时间并等待
-            const delay = retryConfig.delay * Math.pow(retryConfig.backoff, attempt - 1);
-            console.log(`⏳ ${taskName}等待 ${delay}ms 后重试...`);
-            await new Promise(resolve => setTimeout(resolve, delay));
-        }
+        });
+    } catch (lockError) {
+        console.warn(`[${taskName}] 获取锁失败或任务被跳过: ${lockError.message}`);
     }
 }
 
@@ -112,12 +122,35 @@ cron.schedule('0 2 * * *', async () => {
     timezone: 'Asia/Shanghai'
 });
 
-// 4. 公告更新 - 每小时
-cron.schedule('0 * * * *', async () => {
+// 4a. CNInfo 公告同步 - 每小时（主来源）
+cron.schedule('15 * * * *', async () => {
     await runWithRetry(
-        '公告更新',
+        'CNInfo公告同步',
         async () => {
-            await AnnouncementCrawler.crawlAnnouncements({ usePython: true, maxAge: 7 });
+            return new Promise((resolve, reject) => {
+                const script = path.join(__dirname, '..', 'scripts', 'cninfo_announcement_scheduler.py');
+                const proc = spawn('python3', [script], {
+                    cwd: path.join(__dirname, '..'),
+                    env: { ...process.env, CNINFO_MAX_COUNT: '5', CNINFO_DAYS: '7', CNINFO_WORKERS: '8' }
+                });
+                let output = '';
+                proc.stdout.on('data', d => { output += d; process.stdout.write(d); });
+                proc.stderr.on('data', d => process.stderr.write(d));
+                proc.on('close', code => {
+                    if (code === 0) resolve(output);
+                    else reject(new Error(`CNInfo sync exited ${code}`));
+                });
+            });
+        }
+    );
+});
+
+// 4b. AKShare 公告备份 - 每日凌晨 1:00（fallback）
+cron.schedule('0 1 * * *', async () => {
+    await runWithRetry(
+        'AKShare公告备份',
+        async () => {
+            await AnnouncementCrawler.crawlAnnouncements({ usePython: true, maxAge: 1 });
         }
     );
 });
@@ -180,7 +213,8 @@ console.log('  • 东财深度: 每30分钟 (交易日 9:00-15:00)');
 console.log('  • 基金详情: 每日凌晨 2:00');
 console.log('  • 收盘日线: 交易日 15:05');
 console.log('  • 派息率: 交易日 15:10');
-console.log('  • 公告更新: 每小时');
+console.log('  • CNInfo公告同步: 每小时 (xx:15)');
+console.log('  • AKShare公告备份: 每日凌晨 1:00');
 console.log('  • 数据完整性检查: 每小时');
 console.log('  • 告警历史清理: 每日凌晨 3:00');
 
