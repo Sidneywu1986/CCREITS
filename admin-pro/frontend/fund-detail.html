@@ -1154,23 +1154,31 @@
         // 全局存储所有基金数据（API优先）
         let allFundsData = ALL_FUNDS || [];
         
+
+        // 统一 sector 为英文 key（兼容中文 sector 名称）
+        function normalizeSector(sector) {
+            if (!sector) return null;
+            if (SECTOR_CONFIG[sector]) return sector;
+            for (const [key, config] of Object.entries(SECTOR_CONFIG)) {
+                if (config.name === sector) return key;
+            }
+            return sector;
+        }
         function loadRelatedFunds() {
             // 调试信息
             console.log('当前基金板块:', currentFund.sector, '名称:', currentFund.sector_name || currentFund.sectorName);
             console.log('allFundsData 数量:', allFundsData.length);
             console.log('allFundsData 前3个板块:', allFundsData.slice(0, 3).map(f => ({code: f.code, sector: f.sector})));
             
-            // 使用全局 allFundsData（可能已从API加载）
-            const currentSector = currentFund.sector;
+            // 统一 sector 为英文 key
+            const currentSector = normalizeSector(currentFund.sector);
             const related = allFundsData.filter(f => {
-                // API返回的数据常缺少sector字段，先从自身取，缺失时从ALL_FUNDS兜底
-                let fundSector = f.sector;
+                let fundSector = normalizeSector(f.sector);
                 if (!fundSector && f.code) {
                     const mockFund = ALL_FUNDS.find(m => m.code === f.code);
-                    fundSector = mockFund?.sector;
+                    fundSector = normalizeSector(mockFund?.sector);
                 }
-                const match = fundSector && currentSector && fundSector.toString() === currentSector.toString();
-                return match && f.code !== currentCode;
+                return fundSector && currentSector && fundSector === currentSector && f.code !== currentCode;
             });
             
             console.log('匹配到的同板块基金:', related.length);

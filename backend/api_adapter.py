@@ -411,7 +411,9 @@ async def price_history_adapter(
             from collections import OrderedDict
             weeks = OrderedDict()
             for item in daily:
-                dt = datetime.datetime.strptime(item["date"], "%Y-%m-%d").date()
+                dt = item["date"]
+                if not isinstance(dt, datetime.date):
+                    dt = datetime.datetime.strptime(str(dt), "%Y-%m-%d").date()
                 iso_year, iso_week, _ = dt.isocalendar()
                 key = f"{iso_year}-W{iso_week:02d}"
                 if key not in weeks:
