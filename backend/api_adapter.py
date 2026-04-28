@@ -31,6 +31,19 @@ from core.config import settings
 from core.db import get_conn
 from services import realtime_quotes, announcements
 
+# 覆盖 core.db.get_conn: api_adapter 使用普通 cursor（兼容 row[0] 索引访问）
+import contextlib
+import psycopg2
+import core.db
+
+@contextlib.contextmanager
+def get_conn():
+    conn = psycopg2.connect(core.db.PG_DSN)
+    try:
+        yield conn
+    finally:
+        conn.close()
+
 # 十年期国债收益率缓存
 _BOND_CACHE = None
 _BOND_CACHE_TIME = 0
