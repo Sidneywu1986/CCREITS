@@ -87,12 +87,32 @@ class SinaCrawler {
                 `, [q.fund_code, today, q.price, q.change_percent, q.volume],
                 function(err) {
                     if (err) {
-                        // 忽略重复插入错误
                         if (!err.message.includes('UNIQUE')) {
                             console.error(`[${SOURCE_NAME}] 保存失败 ${q.fund_code}:`, err.message);
                         }
                     } else {
                         saved++;
+                    }
+                    resolve();
+                });
+            });
+
+            // 同步到 price_history
+            await new Promise((resolve, reject) => {
+                db.run(`
+                    INSERT INTO business.price_history
+                    (fund_code, trade_date, open_price, close_price, high_price, low_price, volume, amount, daily_return)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT (fund_code, trade_date) DO UPDATE SET
+                    open_price = EXCLUDED.open_price, close_price = EXCLUDED.close_price,
+                    high_price = EXCLUDED.high_price, low_price = EXCLUDED.low_price,
+                    volume = EXCLUDED.volume, amount = EXCLUDED.amount, daily_return = EXCLUDED.daily_return
+                `, [q.fund_code, today, q.open, q.price, q.high, q.low, q.volume, q.amount, q.change_percent],
+                function(err) {
+                    if (err) {
+                        if (!err.message.includes('UNIQUE') && !err.message.includes('duplicate')) {
+                            console.error(`[${SOURCE_NAME}] price_history 保存失败 ${q.fund_code}:`, err.message);
+                        }
                     }
                     resolve();
                 });
@@ -125,6 +145,7 @@ class SinaCrawler {
                 low: parseFloat(parts[5]),
                 prev_close: prevClose,
                 volume: parseInt(parts[8]),
+                amount: parseFloat(parts[9]) || null,
                 change_percent: prevClose > 0 ? ((price - prevClose) / prevClose * 100) : 0,
                 // 新浪不提供以下REITs特有数据
                 nav: null,

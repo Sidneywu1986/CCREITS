@@ -218,15 +218,33 @@ def save_tags_to_db(conn, article_id: int, tags: dict):
     events = tags.get("events", [])
     event_str = ",".join(events) if events else ""
 
+    # 4. 基金关联
+    funds = tags.get("funds", [])
+    related_codes = []
+    for f in funds:
+        code = f.get("code", "")
+        if code and len(code) == 6 and code.isdigit():
+            related_codes.append(code)
+
     cur.execute(
         """UPDATE business.wechat_articles SET
             asset_tags = %s,
-            event_tags = %s
+            event_tags = %s,
+            related_funds = %s
         WHERE id = %s""",
-        (asset_str, event_str, article_id),
+        (asset_str, event_str, json.dumps(related_codes) if related_codes else None, article_id),
     )
 
-    # 4. 结构化数据提取
+    # 5. 写入 article_fund_tags
+    for code in related_codes:
+        cur.execute(
+            """INSERT INTO business.article_fund_tags (article_id, fund_code)
+               VALUES (%s, %s)
+               ON CONFLICT (article_id, fund_code) DO NOTHING""",
+            (article_id, code),
+        )
+
+    # 6. 结构化数据提取
     ensure_extractions_table(conn)
     for ext in tags.get("extractions", []):
         cur.execute(

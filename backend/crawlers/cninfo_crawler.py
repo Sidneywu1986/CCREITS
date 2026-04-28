@@ -161,6 +161,16 @@ class CNInfoCrawler:
         # 尝试转换代码
         keyword = self._convert_code(keyword)
         
+        # 上交所REIT (508XXX) 巨潮搜索接口不支持，直接构造
+        if keyword.startswith('508'):
+            self.log('INFO', f'上交所REIT直接构造: {keyword}')
+            return {
+                'code': keyword,
+                'name': f'上海REIT-{keyword}',
+                'orgId': '',
+                'market': 'sh'
+            }
+        
         self.log('INFO', f'搜索基金: {keyword}')
         params = {'keyWord': keyword, 'maxNum': '10'}
         

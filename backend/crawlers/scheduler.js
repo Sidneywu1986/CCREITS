@@ -117,8 +117,7 @@ cron.schedule('0 * * * *', async () => {
     await runWithRetry(
         '公告更新',
         async () => {
-            const crawler = new AnnouncementCrawler();
-            await crawler.crawlAll();
+            await AnnouncementCrawler.crawlAnnouncements({ usePython: true, maxAge: 7 });
         }
     );
 });

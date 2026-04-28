@@ -9,12 +9,13 @@ import akshare as ak
 import re
 import sys
 import os
+import hashlib
 from datetime import datetime
 from typing import List, Dict
-from core.db import get_conn
 
 # 添加数据库路径
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from core.db import get_conn
 
 # REITs基金代码列表 (精简版，主要活跃的REITs)
 REITS_CODES = [
@@ -153,11 +154,12 @@ def save_to_database(announcements: List[Dict]) -> int:
             
             for ann in announcements:
                 try:
+                    content_hash = hashlib.md5(f"{ann['fund_code']}:{ann['publish_date']}:{ann['title']}".encode()).hexdigest()
                     cursor.execute('''
                         INSERT INTO business.announcements 
-                        (fund_code, title, category, summary, publish_date, source_url, pdf_url, exchange, confidence)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-                        ON CONFLICT DO NOTHING
+                        (fund_code, title, category, summary, publish_date, source_url, pdf_url, exchange, confidence, content_hash)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        ON CONFLICT (content_hash) DO NOTHING
                     ''', (
                         ann['fund_code'],
                         ann['title'],
@@ -167,7 +169,8 @@ def save_to_database(announcements: List[Dict]) -> int:
                         ann['source_url'],
                         ann['pdf_url'],
                         ann['exchange'],
-                        ann['confidence']
+                        ann['confidence'],
+                        content_hash
                     ))
                     if cursor.rowcount > 0:
                         inserted += 1

@@ -13,7 +13,7 @@ const { db } = require('../database/db');
 function runPythonCrawler() {
     return new Promise((resolve, reject) => {
         const scriptPath = path.join(__dirname, 'announcement_akshare.py');
-        const pythonProcess = spawn('python', [scriptPath], {
+        const pythonProcess = spawn('python3', [scriptPath], {
             cwd: path.join(__dirname, '..'),
             encoding: 'utf8'
         });

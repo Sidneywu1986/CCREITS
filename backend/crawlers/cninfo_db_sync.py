@@ -6,8 +6,12 @@ CNInfo公告数据自动同步到数据库
 
 import re
 import os
+import sys
 import requests
+import hashlib
 from datetime import datetime
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from core.db import get_conn
 
 # REITs 名称特征（用于识别真正的REITs公告）
@@ -141,15 +145,16 @@ def save_announcements_to_db(announcements, fund_code):
                         else:
                             # 可疑公告，标记并入库
                             category = classify_announcement(title)
+                            content_hash = hashlib.md5(f"{fund_code}:{publish_date}:{title}".encode()).hexdigest()
                             cursor.execute('''
                                 INSERT INTO business.announcements
-                                (fund_code, title, category, publish_date, source_url, pdf_url, exchange, confidence, is_suspicious, pdf_valid)
-                                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                                ON CONFLICT DO NOTHING
+                                (fund_code, title, category, publish_date, source_url, pdf_url, exchange, confidence, content_hash)
+                                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                ON CONFLICT (content_hash) DO NOTHING
                             ''', (
                                 fund_code, title, category, publish_date,
                                 cninfo_search_url, pdf_url, exchange,
-                                60, 1, 1  # 可疑公告置信度60，标记is_suspicious=1
+                                60, content_hash
                             ))
                             if cursor.rowcount > 0:
                                 result['inserted'] += 1
@@ -172,11 +177,12 @@ def save_announcements_to_db(announcements, fund_code):
                         continue
 
                     # 插入数据
+                    content_hash = hashlib.md5(f"{fund_code}:{publish_date}:{title}".encode()).hexdigest()
                     cursor.execute('''
                         INSERT INTO business.announcements
-                        (fund_code, title, category, publish_date, source_url, pdf_url, exchange, confidence, is_suspicious, pdf_valid)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                        ON CONFLICT DO NOTHING
+                        (fund_code, title, category, publish_date, source_url, pdf_url, exchange, confidence, content_hash)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        ON CONFLICT (content_hash) DO NOTHING
                     ''', (
                         fund_code,
                         title,
@@ -185,9 +191,8 @@ def save_announcements_to_db(announcements, fund_code):
                         cninfo_search_url,
                         pdf_url,
                         exchange,
-                        90 if pdf_valid else 70,  # PDF无效降低置信度
-                        0,
-                        1 if pdf_valid else 0
+                        90 if pdf_valid else 70,
+                        content_hash
                     ))
 
                     if not pdf_valid:
@@ -199,6 +204,7 @@ def save_announcements_to_db(announcements, fund_code):
                     print(f'[DB] 保存单条公告失败: {e}')
                     continue
 
+            conn.commit()
             print(f'[DB] 同步完成: 新增{result["inserted"]} | 跳过{result["skipped"]} | 可疑{result["filtered"]} | PDF无效{result["invalid_pdf"]}')
 
     except Exception as e:
@@ -263,7 +269,8 @@ def sync_single_fund(fund_code, max_count=30):
 
 def sync_all_reits(max_count=30):
     """同步所有REIT的公告到数据库"""
-    from cninfo_crawler import REIT_CODE_MAPPING
+    from cninfo_crawler import CNInfoCrawler
+    REIT_CODE_MAPPING = CNInfoCrawler.REIT_CODE_MAPPING
 
     print(f'[SYNC] 开始同步所有REIT公告，每只最多{max_count}条...')
 

@@ -8,6 +8,7 @@
 
 const axios = require('axios');
 const cheerio = require('cheerio');
+const crypto = require('crypto');
 const { db, logUpdate, updateSourceStatus } = require('../database/db');
 
 // 公告分类关键词
@@ -127,13 +128,17 @@ function generateSummary(title, category) {
  */
 async function saveAnnouncements(announcements) {
     for (const item of announcements) {
+        const contentHash = crypto.createHash('md5')
+            .update(`${item.fund_code}:${item.publish_date}:${item.title}`)
+            .digest('hex');
         await new Promise((resolve, reject) => {
             db.run(
                 `INSERT INTO business.announcements 
-                 (fund_code, title, category, summary, publish_date, source_url, confidence)
-                 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                 (fund_code, title, category, summary, publish_date, source_url, confidence, content_hash)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                 ON CONFLICT (content_hash) DO NOTHING`,
                 [item.fund_code, item.title, item.category, item.summary, 
-                 item.publish_date, item.source_url, item.confidence],
+                 item.publish_date, item.source_url, item.confidence, contentHash],
                 (err) => {
                     if (err) reject(err);
                     else resolve();
