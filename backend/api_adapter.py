@@ -375,8 +375,8 @@ async def price_history_adapter(
                         start_date = (datetime.date.today() - datetime.timedelta(days=1)).strftime('%Y-%m-%d')
                         cursor.execute("""
                             SELECT trade_date, open_price, high_price, low_price,
-                                   close_price, volume, amount, change_pct
-                            FROM business.fund_prices
+                                   close_price, volume, amount, daily_return
+                            FROM business.price_history
                             WHERE fund_code = %s AND trade_date >= %s
                             ORDER BY trade_date ASC
                         """, (code, start_date))
@@ -384,8 +384,8 @@ async def price_history_adapter(
                         # daily/weekly 均查询全部历史，由前端或下方聚合逻辑处理
                         cursor.execute("""
                             SELECT trade_date, open_price, high_price, low_price,
-                                   close_price, volume, amount, change_pct
-                            FROM business.fund_prices
+                                   close_price, volume, amount, daily_return
+                            FROM business.price_history
                             WHERE fund_code = %s
                             ORDER BY trade_date ASC
                         """, (code,))
