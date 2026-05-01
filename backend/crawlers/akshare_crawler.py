@@ -10,6 +10,8 @@ import json
 import argparse
 from datetime import datetime, timedelta
 from pathlib import Path
+import logging
+logger = logging.getLogger(__name__)
 
 # 添加项目根目录到路径
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -180,7 +182,7 @@ def get_all_reits_history(start_date=None, end_date=None):
         all_data = {}
         for fund in list_result['data']:
             code = fund['code']
-            print(f"正在获取 {code} {fund['name']} 的历史数据...", file=sys.stderr)
+            logger.info(f"正在获取 {code} {fund['name']} 的历史数据...", file=sys.stderr)
             
             history = get_reits_history(code, start_date, end_date)
             if history['success']:
@@ -235,7 +237,7 @@ def main():
     else:
         result = {"success": False, "error": "未知命令"}
     
-    print(json.dumps(result, ensure_ascii=False, default=str))
+    logger.info(json.dumps(result, ensure_ascii=False, default=str))
 
 if __name__ == '__main__':
     main()

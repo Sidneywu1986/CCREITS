@@ -111,11 +111,11 @@ async def lifespan(app: FastAPI):
             is_active=True,
             is_superuser=True,
         )
-        print("默认管理员: admin / admin123")
+        logger.info("默认管理员: admin / admin123")
     else:
-        print(f"管理员账号已存在: {count} 个")
+        logger.info(f"管理员账号已存在: {count} 个")
     
-    print(f"数据库已初始化: {DB_URL.replace(pg.get('password', ''), '***') if DB_TYPE != 'sqlite' else DB_URL}")
+    logger.info(f"数据库已初始化: {DB_URL.replace(pg.get('password', ''), '***') if DB_TYPE != 'sqlite' else DB_URL}")
     
     yield
     
@@ -148,6 +148,8 @@ app.add_middleware(
 from pydantic import BaseModel
 from datetime import datetime, timedelta
 import secrets
+import logging
+logger = logging.getLogger(__name__)
 
 class LoginRequest(BaseModel):
     username: str

@@ -21,6 +21,8 @@ sys.path.insert(0, BASE_DIR)
 
 from core.config import settings
 from core.database import get_db_context
+import logging
+logger = logging.getLogger(__name__)
 
 
 class FundPrice(BaseModel):
@@ -48,9 +50,9 @@ class AKShareServer:
         try:
             import akshare as ak
             self.ak = ak
-            print("✅ AKShare初始化成功")
+            logger.info("✅ AKShare初始化成功")
         except ImportError as e:
-            print(f"❌ AKShare导入失败: {e}")
+            logger.error(f"❌ AKShare导入失败: {e}")
             raise
 
     async def get_reits_list(self) -> List[Dict[str, Any]]:
@@ -81,7 +83,7 @@ class AKShareServer:
 
             return results
         except Exception as e:
-            print(f"获取REITs列表失败: {e}")
+            logger.error(f"获取REITs列表失败: {e}")
             return []
 
     async def get_reits_price(self, fund_codes: List[str]) -> List[FundPrice]:
@@ -114,21 +116,21 @@ class AKShareServer:
                             change_percent=(price - prev_close) / prev_close * 100 if prev_close > 0 else 0
                         ))
                 except Exception as e:
-                    print(f"获取基金{code}价格失败: {e}")
+                    logger.error(f"获取基金{code}价格失败: {e}")
                     continue
 
             return results
         except Exception as e:
-            print(f"获取REITs价格失败: {e}")
+            logger.error(f"获取REITs价格失败: {e}")
             return []
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """应用生命周期管理"""
-    print("🚀 AKShare服务正在启动...")
+    logger.info("🚀 AKShare服务正在启动...")
     yield
-    print("🛑 AKShare服务正在关闭...")
+    logger.info("🛑 AKShare服务正在关闭...")
 
 
 app = FastAPI(
@@ -212,7 +214,7 @@ async def get_fund_detail(fund_code: str):
 
 
 if __name__ == "__main__":
-    print(f"🌐 AKShare服务启动在端口 {settings.PORT}")
+    logger.info(f"🌐 AKShare服务启动在端口 {settings.PORT}")
     uvicorn.run(
         "akshare_server:app",
         host=settings.HOST,

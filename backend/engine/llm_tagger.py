@@ -345,7 +345,7 @@ def main():
     job = BatchRetagJob()
     # 默认先跑未标签的文章
     stats = job.run(only_untagged=True)
-    print(json.dumps(stats, indent=2, ensure_ascii=False))
+    logger.info(json.dumps(stats, indent=2, ensure_ascii=False))
 
 
 if __name__ == "__main__":

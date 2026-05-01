@@ -13,6 +13,8 @@ from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from core.db import get_conn
+import logging
+logger = logging.getLogger(__name__)
 
 # REITs 名称特征（用于识别真正的REITs公告）
 REIT_NAME_PATTERNS = [
@@ -201,15 +203,15 @@ def save_announcements_to_db(announcements, fund_code):
                     result['inserted'] += 1
 
                 except Exception as e:
-                    print(f'[DB] 保存单条公告失败: {e}')
+                    logger.error(f'[DB] 保存单条公告失败: {e}')
                     continue
 
             conn.commit()
-            print(f'[DB] 同步完成: 新增{result["inserted"]} | 跳过{result["skipped"]} | 可疑{result["filtered"]} | PDF无效{result["invalid_pdf"]}')
+            logger.info(f'[DB] 同步完成: 新增{result["inserted"]} | 跳过{result["skipped"]} | 可疑{result["filtered"]} | PDF无效{result["invalid_pdf"]}')
 
     except Exception as e:
         result['error'] = str(e)
-        print(f'[DB] 数据库操作失败: {e}')
+        logger.error(f'[DB] 数据库操作失败: {e}')
 
     return result
 
@@ -227,7 +229,7 @@ def sync_single_fund(fund_code, max_count=30):
     """同步单只REIT的公告到数据库"""
     from cninfo_crawler import CNInfoCrawler
 
-    print(f'[SYNC] 开始同步 {fund_code} 的公告...')
+    logger.info(f'[SYNC] 开始同步 {fund_code} 的公告...')
 
     crawler = CNInfoCrawler()
 
@@ -272,7 +274,7 @@ def sync_all_reits(max_count=30):
     from cninfo_crawler import CNInfoCrawler
     REIT_CODE_MAPPING = CNInfoCrawler.REIT_CODE_MAPPING
 
-    print(f'[SYNC] 开始同步所有REIT公告，每只最多{max_count}条...')
+    logger.info(f'[SYNC] 开始同步所有REIT公告，每只最多{max_count}条...')
 
     stats = {
         'total': len(REIT_CODE_MAPPING),
@@ -295,9 +297,9 @@ def sync_all_reits(max_count=30):
                 stats['failed'] += 1
         except Exception as e:
             stats['failed'] += 1
-            print(f'[SYNC] {code} 异常: {e}')
+            logger.error(f'[SYNC] {code} 异常: {e}')
 
-    print(f'[SYNC] 全部完成: 成功{stats["success"]}/{stats["total"]}, 新增{stats["total_inserted"]}, 跳过{stats["total_skipped"]}, PDF无效{stats["total_invalid_pdf"]}')
+    logger.info(f'[SYNC] 全部完成: 成功{stats["success"]}/{stats["total"]}, 新增{stats["total_inserted"]}, 跳过{stats["total_skipped"]}, PDF无效{stats["total_invalid_pdf"]}')
     return stats
 
 
@@ -315,6 +317,6 @@ if __name__ == '__main__':
         sync_all_reits(args.max_count)
     elif args.code:
         result = sync_single_fund(args.code, args.max_count)
-        print(result)
+        logger.info(result)
     else:
-        print('请指定 --code 或 --all')
+        logger.info('请指定 --code 或 --all')
