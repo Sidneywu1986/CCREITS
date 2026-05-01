@@ -53,18 +53,24 @@
 
 ## Phase 3 — API JWT认证体系
 
-**Status:** ⏳ Pending
+**Status:** 🔄 In Progress
 
-**Goal:** 为全部 `/api/*` 端点添加身份验证
+**Goal:** 为全部 `/api/*` 端点和管理后台添加统一 JWT 身份验证
 
 **Deliverables:**
-- JWT认证中间件
-- 用户注册/登录/刷新Token
-- 前端登录页面
-- API权限分级（公开/用户/管理员）
-- 测试覆盖
+- ✅ 技术方案（03-AUTH-SPEC.md + 03-PLAN.md）
+- ⏳ JWT 核心模块（生成/验证/刷新/撤销）
+- ⏳ 数据库迁移（users 表扩展 + 角色权限关联表）
+- ⏳ 认证 API（注册/登录/刷新/登出/改密）
+- ⏳ API 权限分级（PUBLIC / USER / ADMIN）
+- ⏳ 前端 TokenManager（自动刷新 + 请求拦截）
+- ⏳ 速率限制 + 账号锁定
+- ⏳ 测试覆盖（核心模块 + API + 集成）
 
 **Depends on:** Phase 2
+
+**Auth-SPEC:** `03-AUTH-SPEC.md`
+**Plan:** `03-PLAN.md`
 
 ---
 
