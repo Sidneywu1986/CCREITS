@@ -173,19 +173,19 @@ if TORTOISE_AVAILABLE:
             generate_schemas=False,  # Tables already exist
             add_exception_handlers=True,
         )
-        print("[Tortoise] Registered ai_db (PostgreSQL)")
+        logger.info("[Tortoise] Registered ai_db (PostgreSQL)")
     except Exception as e:
         logger.exception("API error")
-        print(f"[Tortoise] Registration failed: {e}")
+        logger.error("[Tortoise] Registration failed")
 
 # 启动后台定时任务（每30分钟同步一次）
 try:
     from scheduler.tasks import start_scheduler
     start_scheduler(interval_minutes=30)
-    print("[Scheduler] Auto-sync every 30 minutes enabled")
+    logger.info("[Scheduler] Auto-sync every 30 minutes enabled")
 except Exception as e:
     logger.exception("API error")
-    print(f"[Scheduler] Failed to start: {e}")
+    logger.error("[Scheduler] Failed to start")
 
 # 数据库路径 - 基于项目根目录的动态路径
 
@@ -882,9 +882,8 @@ def get_all_indices_from_sina() -> dict:
                     if data:
                         indices[code] = data
         return indices
-    except Exception as e:
-        logger.exception("API error")
-        print(f"获取新浪指数失败: {e}")
+    except Exception:
+        logger.exception("获取新浪指数失败")
         return {}
 
 
@@ -916,9 +915,8 @@ def get_dividend_index_from_eastmoney() -> dict:
                     "changePercent": round(change_pct, 2)
                 }
         return None
-    except Exception as e:
-        logger.exception("API error")
-        print(f"获取东方财富中证红利失败: {e}")
+    except Exception:
+        logger.exception("获取东方财富中证红利失败")
         return None
 
 
@@ -958,9 +956,8 @@ def calculate_reits_index() -> dict:
             "change": round(change, 3),
             "changePercent": round(change_pct, 2)
         }
-    except Exception as e:
-        logger.exception("API error")
-        print(f"计算REITs指数失败: {e}")
+    except Exception:
+        logger.exception("计算REITs指数失败")
         return None
 
 
@@ -1240,9 +1237,8 @@ async def get_realtime_quotes():
                 if code in yield_map:
                     q['dividend_yield'] = yield_map[code]
                     q['yield'] = yield_map[code]
-        except Exception as e:
-            logger.exception("API error")
-            print(f"合并派息率失败: {e}")
+        except Exception:
+            logger.exception("合并派息率失败")
 
         return {
             "success": True,
@@ -1547,9 +1543,9 @@ async def health_check():
 
 
 if __name__ == "__main__":
-    print(f"API adapter layer starting on port {settings.PORT}")
-    print(f"Database: PostgreSQL")
-    print(f"Funds: {settings.PORT} | Prices: loaded")
+    logger.info(f"API adapter layer starting on port {settings.PORT}")
+    logger.info("Database: PostgreSQL")
+    logger.info("Funds and prices loaded")
     uvicorn.run(
         "api_adapter:adapter_app",
         host=settings.HOST,
