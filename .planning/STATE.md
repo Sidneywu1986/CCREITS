@@ -73,9 +73,22 @@ See: .planning/PROJECT.md (updated 2026-05-01)
 
 ## Active Work
 
-None — Phase 2 全部完成，等待 Phase 3 启动。
+- Wave 1: JWT 核心认证基础设施 ✅ 已完成（44/44 测试通过）
+- Wave 2: 认证 API 与路由接入 ⏳ 待启动
+- Wave 3: 前端接入与集成测试 ⏳ 待启动
 
 ---
+
+## Phase 3 Progress
+
+- **Wave 1** ✅ 核心认证基础设施（TDD）
+  - `core/auth/jwt.py` — Access/Refresh Token 生成/验证/刷新/撤销
+  - `core/auth/password.py` — bcrypt 封装（兼容现有 passlib 哈希）
+  - `core/auth/dependencies.py` — get_current_user / require_admin / optional_user
+  - `core/auth/permissions.py` — 权限码定义 + 角色映射
+  - `admin/schemas.py` — 扩展认证 schemas（Register/Login/Refresh/Me/ChangePassword）
+  - `database/migrations/003_add_auth_fields.sql` — users 表扩展 + 关联表
+  - **44/44 单元测试通过**
 
 ## Blockers
 
