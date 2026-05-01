@@ -289,7 +289,7 @@ async def get_funds_list():
         }
         cache_set(cache_key, {"data": funds, "total": len(funds)}, ttl=60)
         return result
-    except Exception as e:
+    except Exception:
         logger.exception("获取基金列表失败，请稍后重试")
         return {
             "success": False,
@@ -352,7 +352,7 @@ async def funds_detail_adapter(code: str = Query(..., description="基金代码"
             },
             "message": "获取基金详情成功"
         }
-    except Exception as e:
+    except Exception:
         logger.exception("获取基金详情失败，请稍后重试")
         return {
             "success": False,
@@ -392,7 +392,7 @@ async def get_sectors_list():
             "message": f"获取板块列表成功（{len(sectors)}个板块）",
             "cached": False
         }
-    except Exception as e:
+    except Exception:
         logger.exception("获取板块列表失败，请稍后重试")
         return {
             "success": False,
@@ -502,7 +502,7 @@ async def price_history_adapter(
             "data": history,
             "message": f"获取价格历史成功 ({len(history)}条)"
         }
-    except Exception as e:
+    except Exception:
         logger.exception("获取价格历史失败，请稍后重试")
         return {
             "success": False,
@@ -546,7 +546,7 @@ async def related_funds_adapter(
             "data": related,
             "message": f"获取相关基金成功 ({len(related)}只)"
         }
-    except Exception as e:
+    except Exception:
         logger.exception("获取相关基金失败，请稍后重试")
         return {
             "success": False,
@@ -588,7 +588,7 @@ async def financial_data_adapter(code: str = Query(..., description="基金代�
             },
             "message": "获取财务数据成功"
         }
-    except Exception as e:
+    except Exception:
         logger.exception("获取财务数据失败，请稍后重试")
         return {
             "success": False,
@@ -628,7 +628,7 @@ async def operation_data_adapter(code: str = Query(..., description="基金代�
             },
             "message": "获取运营数据成功"
         }
-    except Exception as e:
+    except Exception:
         logger.exception("获取运营数据失败，请稍后重试")
         return {
             "success": False,
@@ -668,7 +668,7 @@ async def dividends_adapter(code: str = Query(..., description="基金代码")):
             "data": dividends,
             "message": f"获取分红数据成功 ({len(dividends)}条)"
         }
-    except Exception as e:
+    except Exception:
         logger.exception("获取分红数据失败，请稍后重试")
         return {
             "success": False,
@@ -715,7 +715,7 @@ async def dividend_calendar_list():
             "total": len(dividends),
             "message": f"获取分红日历成功 ({len(dividends)}条)"
         }
-    except Exception as e:
+    except Exception:
         logger.exception("获取分红日历失败，请稍后重试")
         return {
             "success": False,
@@ -773,7 +773,7 @@ async def dividend_stats_summary():
             },
             "message": "获取分红统计成功"
         }
-    except Exception as e:
+    except Exception:
         logger.exception("获取分红统计失败，请稍后重试")
         return {
             "success": False,
@@ -822,7 +822,7 @@ async def dividend_upcoming(days: int = Query(30, description="未来天数")):
             "total": len(dividends),
             "message": f"获取即将分红成功 ({len(dividends)}条)"
         }
-    except Exception as e:
+    except Exception:
         logger.exception("获取即将分红失败，请稍后重试")
         return {
             "success": False,
@@ -1089,7 +1089,7 @@ async def market_indices_list():
         _INDICES_CACHE_TIME = now_ts
         return result
 
-    except Exception as e:
+    except Exception:
         logger.exception("获取市场指数失败，请稍后重试")
         return {
             "success": False,
@@ -1136,7 +1136,7 @@ async def market_indices_history(
             "data": history,
             "message": f"获取指数历史成功 ({len(history)}条)"
         }
-    except Exception as e:
+    except Exception:
         logger.exception("获取指数历史失败，请稍后重试")
         return {
             "success": False,
@@ -1211,7 +1211,7 @@ async def market_indices_overview():
             },
             "message": "获取市场概况成功"
         }
-    except Exception as e:
+    except Exception:
         logger.exception("获取市场概况失败，请稍后重试")
         return {
             "success": False,
@@ -1251,7 +1251,7 @@ async def get_realtime_quotes():
             "timestamp": datetime.datetime.now().isoformat(),
             "message": f"获取实时行情成功 ({len(quotes)}只)"
         }
-    except Exception as e:
+    except Exception:
         logger.exception("获取实时行情失败，请稍后重试")
         return {
             "success": False,
@@ -1277,7 +1277,7 @@ async def get_single_quote(code: str = Query(..., description="基金代码")):
             "data": None,
             "message": f"未找到基金 {code} 的行情"
         }
-    except Exception as e:
+    except Exception:
         logger.exception("获取行情失败，请稍后重试")
         return {
             "success": False,
@@ -1317,7 +1317,7 @@ async def announcements_list(
             "total": len(data),
             "message": f"获取公告成功 ({len(data)}条)"
         }
-    except Exception as e:
+    except Exception:
         logger.exception("获取公告失败，请稍后重试")
         return {
             "success": False,
@@ -1341,7 +1341,7 @@ async def announcements_latest(
             "total": min(len(data), limit),
             "message": f"获取最新公告成功"
         }
-    except Exception as e:
+    except Exception:
         logger.exception("获取最新公告失败，请稍后重试")
         return {
             "success": False,
@@ -1369,7 +1369,7 @@ async def crawl_announcements():
             "data": {"count": len(data)},
             "message": f"爬取成功，共{len(data)}条公告"
         }
-    except Exception as e:
+    except Exception:
         logger.exception("爬取失败，请稍后重试")
         return {
             "success": False,
@@ -1443,7 +1443,7 @@ async def update_announcement_status(
             "success": True,
             "message": f"状态已更新: {current_status} → {status}"
         }
-    except Exception as e:
+    except Exception:
         logger.exception("更新失败，请稍后重试")
         return {
             "success": False,
