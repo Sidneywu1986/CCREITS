@@ -10,6 +10,17 @@
     const API_BASE_URL = (typeof window !== 'undefined' && window.API_BASE_URL) || 'http://localhost:5074/api';
     const APP_VERSION = '20260423.1';
 
+    // ==================== 安全工具 ====================
+    function escapeHtml(text) {
+        if (text == null) return '';
+        return String(text)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
     // ==================== 板块配置 ====================
     const SECTOR_CONFIG = {
         'transport': { name: '交通基础设施', icon: '🛣', tagClass: 'sector-transport', color: 'green' },

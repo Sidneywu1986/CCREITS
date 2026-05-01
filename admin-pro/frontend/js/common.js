@@ -1,3 +1,13 @@
+function escapeHtml(text) {
+    if (text == null) return '';
+    return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
 // 板块配置(2个板块) - 已移除文旅和城市更新
 const SECTOR_CONFIG = {
     'transport': { name: '交通基础设施', icon: '🛣', tagClass: 'sector-transport', color: 'green' },
