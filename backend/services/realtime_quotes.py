@@ -14,6 +14,8 @@ from typing import List, Dict, Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from core.db import get_conn
+import logging
+logger = logging.getLogger(__name__)
 
 # 板块映射表路径
 SECTOR_MAPPING_PATH = os.path.join(os.path.dirname(__file__), '..', 'sector_mapping.json')
@@ -25,7 +27,7 @@ def _load_sector_mapping() -> Dict[str, str]:
         with open(path, 'r', encoding='utf-8') as f:
             return json.load(f)
     except Exception as e:
-        print(f"加载板块映射失败: {e}")
+        logger.error(f"加载板块映射失败: {e}")
         return {}
 
 # 延迟加载板块映射
@@ -47,7 +49,7 @@ def _load_shares_mapping() -> Dict[str, float]:
                 if row[1]:
                     shares[row[0]] = row[1]
     except Exception as e:
-        print(f"加载数据库份额失败: {e}")
+        logger.error(f"加载数据库份额失败: {e}")
     # 用scale_mapping.json补充缺失数据
     try:
         path = os.path.normpath(SCALE_MAPPING_PATH)
@@ -57,7 +59,7 @@ def _load_shares_mapping() -> Dict[str, float]:
                 if code not in shares and scale:
                     shares[code] = scale
     except Exception as e:
-        print(f"加载scale_mapping失败: {e}")
+        logger.error(f"加载scale_mapping失败: {e}")
     return shares
 
 def get_sector(fund_code: str) -> str:
@@ -112,7 +114,7 @@ def calculate_period_change(fund_code: str, current_price: float) -> tuple:
 
         return _calc_change_from_klines(klines, current_price)
     except Exception as e:
-        print(f"计算周期涨跌幅失败 {fund_code}: {e}")
+        logger.error(f"计算周期涨跌幅失败 {fund_code}: {e}")
         return (None, None)
 
 
@@ -239,7 +241,7 @@ def parse_sina_data(code: str, data: str) -> Optional[Dict]:
             'timestamp': f"{date_str} {time_str}" if date_str and time_str else ''
         }
     except Exception as e:
-        print(f"解析失败 {code}: {e}")
+        logger.error(f"解析失败 {code}: {e}")
         return None
 
 
@@ -276,7 +278,7 @@ def fetch_realtime_quote(codes: List[str]) -> List[Dict]:
 
         return results
     except Exception as e:
-        print(f"获取实时行情失败: {e}")
+        logger.error(f"获取实时行情失败: {e}")
         return []
 
 
@@ -347,7 +349,7 @@ def calculate_period_change_no_cache(fund_code: str) -> list:
 
         return klines
     except Exception as e:
-        print(f"获取K线失败 {fund_code}: {e}")
+        logger.error(f"获取K线失败 {fund_code}: {e}")
         return None
 
 
@@ -423,26 +425,26 @@ def save_to_database(quotes: List[Dict], db_path: str = None):
             conn.commit()
         return inserted
     except Exception as e:
-        print(f"保存失败: {e}")
+        logger.error(f"保存失败: {e}")
         return 0
 
 
 if __name__ == '__main__':
-    print("=" * 60)
-    print("REITs实时行情获取")
-    print("=" * 60)
+    logger.info("=" * 60)
+    logger.info("REITs实时行情获取")
+    logger.info("=" * 60)
 
     # 获取所有REITs行情
     quotes = fetch_all_reits_quotes()
-    print(f"\n获取到 {len(quotes)} 只基金的行情数据\n")
+    logger.info(f"\n获取到 {len(quotes)} 只基金的行情数据\n")
 
     # 显示前10只
-    print(f"{'代码':<10} {'名称':<15} {'现价':<10} {'涨跌':<10} {'涨跌幅':<10} {'时间'}")
-    print("-" * 70)
+    logger.info(f"{'代码':<10} {'名称':<15} {'现价':<10} {'涨跌':<10} {'涨跌幅':<10} {'时间'}")
+    logger.info("-" * 70)
     for q in quotes[:10]:
         print(f"{q['fund_code']:<10} {q['name'][:12]:<15} {q['current_price']:<10} "
               f"{q['change']:<+10.3f} {q['change_pct']:>+8.2f}% {q['time']}")
 
     # 保存到数据库
     saved = save_to_database(quotes)
-    print(f"\n已保存 {saved} 条行情数据到数据库")
+    logger.info(f"\n已保存 {saved} 条行情数据到数据库")
