@@ -55,6 +55,36 @@ def _sql(sql: str) -> str:
         return f'${cnt[0]}'
     return re.sub(r'\?', repl, sql)
 
+# ========== Cookie 签名 ==========
+import hmac
+import hashlib
+
+def _sign_cookie(value: str) -> str:
+    """对 cookie 值进行 HMAC 签名"""
+    secret = getattr(settings, 'JWT_SECRET', '')
+    if not secret:
+        return value
+    sig = hmac.new(secret.encode(), value.encode(), hashlib.sha256).hexdigest()[:16]
+    return f"{value}:{sig}"
+
+def _verify_cookie(signed_value: str) -> Optional[str]:
+    """验证并提取签名的 cookie 值"""
+    if not signed_value or ":" not in signed_value:
+        return None
+    value, sig = signed_value.rsplit(":", 1)
+    secret = getattr(settings, 'JWT_SECRET', '')
+    if not secret:
+        return None
+    expected = hmac.new(secret.encode(), value.encode(), hashlib.sha256).hexdigest()[:16]
+    if hmac.compare_digest(sig, expected):
+        return value
+    return None
+
+def get_admin_user(request: Request) -> Optional[str]:
+    """从请求中获取已验证的管理员用户名"""
+    signed = request.cookies.get("admin_user")
+    return _verify_cookie(signed)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     from tortoise import Tortoise
@@ -534,7 +564,7 @@ async def login(username: str = Form(...), password: str = Form(...)):
         return HTMLResponse(content="<script>alert('用户名或密码错误');history.back();</script>")
     
     response = RedirectResponse(url="/admin/", status_code=302)
-    response.set_cookie(key="admin_user", value=username)
+    response.set_cookie(key="admin_user", value=_sign_cookie(username), httponly=True, samesite="lax")
     return response
 
 
@@ -548,7 +578,7 @@ async def logout():
 # ========== 管理后台首页 ==========
 @app.get("/admin/", response_class=HTMLResponse)
 async def admin_dashboard(request: Request):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return RedirectResponse(url="/admin/login")
     
@@ -684,7 +714,7 @@ async def admin_dashboard(request: Request):
 @app.get("/admin/funds/list", response_class=HTMLResponse)
 async def funds_list(request: Request, page: int = 1, limit: int = 20,
                      search: str = "", exchange: str = "", status: str = ""):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return RedirectResponse(url="/admin/login")
 
@@ -836,7 +866,7 @@ async def funds_list(request: Request, page: int = 1, limit: int = 20,
 # ========== 基金创建页面 ==========
 @app.get("/admin/funds/create", response_class=HTMLResponse)
 async def fund_create_page(request: Request):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return RedirectResponse(url="/admin/login")
 
@@ -963,7 +993,7 @@ async def fund_create_submit(
 # ========== 基金编辑页面 ==========
 @app.get("/admin/funds/edit/{fund_id}", response_class=HTMLResponse)
 async def fund_edit_page(request: Request, fund_id: int):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return RedirectResponse(url="/admin/login")
 
@@ -1106,7 +1136,7 @@ async def funds_redirect():
 # 删除基金
 @app.get("/admin/funds/delete/{fund_id}")
 async def fund_delete(request: Request, fund_id: int):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return RedirectResponse(url="/admin/login")
 
@@ -1123,7 +1153,7 @@ async def fund_delete(request: Request, fund_id: int):
 # ========== 用户列表页面 ==========
 @app.get("/admin/users/list", response_class=HTMLResponse)
 async def users_list(request: Request):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return RedirectResponse(url="/admin/login")
     
@@ -1171,7 +1201,7 @@ async def users_list(request: Request):
 # ========== 用户创建页面 ==========
 @app.get("/admin/users/create", response_class=HTMLResponse)
 async def user_create_page(request: Request):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return RedirectResponse(url="/admin/login")
 
@@ -1252,7 +1282,7 @@ async def user_create_submit(
 # ========== 用户编辑页面 ==========
 @app.get("/admin/users/edit/{user_id}", response_class=HTMLResponse)
 async def user_edit_page(request: Request, user_id: int):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return RedirectResponse(url="/admin/login")
 
@@ -1544,7 +1574,7 @@ async def announcements_redirect():
 # 公告列表页面
 @app.get("/admin/announcements/list", response_class=HTMLResponse)
 async def announcements_list(request: Request, page: int = 1, limit: int = 20, search: str = ""):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return RedirectResponse(url="/admin/login")
 
@@ -1619,7 +1649,7 @@ async def announcements_list(request: Request, page: int = 1, limit: int = 20, s
 # 创建公告页面
 @app.get("/admin/announcements/create", response_class=HTMLResponse)
 async def announcement_create_page(request: Request):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return RedirectResponse(url="/admin/login")
 
@@ -1694,7 +1724,7 @@ async def announcement_create_submit(
 # 公告详情页面
 @app.get("/admin/announcements/detail/{announcement_id}", response_class=HTMLResponse)
 async def announcement_detail(request: Request, announcement_id: int):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return RedirectResponse(url="/admin/login")
 
@@ -1747,7 +1777,7 @@ async def announcement_detail(request: Request, announcement_id: int):
 # 编辑公告页面
 @app.get("/admin/announcements/edit/{announcement_id}", response_class=HTMLResponse)
 async def announcement_edit_page(request: Request, announcement_id: int):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return RedirectResponse(url="/admin/login")
 
@@ -1836,7 +1866,7 @@ async def announcement_edit_submit(
 # 删除公告
 @app.get("/admin/announcements/delete/{announcement_id}")
 async def announcement_delete(request: Request, announcement_id: int):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return RedirectResponse(url="/admin/login")
 
@@ -1855,7 +1885,7 @@ async def announcement_delete(request: Request, announcement_id: int):
 # 角色列表页面
 @app.get("/admin/roles/list", response_class=HTMLResponse)
 async def roles_list(request: Request, page: int = 1, limit: int = 20, search: str = ""):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return RedirectResponse(url="/admin/login")
 
@@ -1937,7 +1967,7 @@ async def roles_list(request: Request, page: int = 1, limit: int = 20, search: s
 # 创建角色页面
 @app.get("/admin/roles/create", response_class=HTMLResponse)
 async def role_create_page(request: Request):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return RedirectResponse(url="/admin/login")
 
@@ -1980,7 +2010,7 @@ async def role_create_submit(
 # 编辑角色页面
 @app.get("/admin/roles/edit/{role_id}", response_class=HTMLResponse)
 async def role_edit_page(request: Request, role_id: int):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return RedirectResponse(url="/admin/login")
 
@@ -2033,7 +2063,7 @@ async def role_edit_submit(
 # 删除角色
 @app.get("/admin/roles/delete/{role_id}")
 async def role_delete(request: Request, role_id: int):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return RedirectResponse(url="/admin/login")
 
@@ -2058,7 +2088,7 @@ async def role_delete(request: Request, role_id: int):
 # 权限列表页面
 @app.get("/admin/permissions/list", response_class=HTMLResponse)
 async def permissions_list(request: Request, page: int = 1, limit: int = 20, search: str = ""):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return RedirectResponse(url="/admin/login")
 
@@ -2142,7 +2172,7 @@ async def permissions_list(request: Request, page: int = 1, limit: int = 20, sea
 # 创建权限页面
 @app.get("/admin/permissions/create", response_class=HTMLResponse)
 async def permission_create_page(request: Request):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return RedirectResponse(url="/admin/login")
 
@@ -2197,7 +2227,7 @@ async def permission_create_submit(
 # 编辑权限页面
 @app.get("/admin/permissions/edit/{permission_id}", response_class=HTMLResponse)
 async def permission_edit_page(request: Request, permission_id: int):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return RedirectResponse(url="/admin/login")
 
@@ -2262,7 +2292,7 @@ async def permission_edit_submit(
 # 删除权限
 @app.get("/admin/permissions/delete/{permission_id}")
 async def permission_delete(request: Request, permission_id: int):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return RedirectResponse(url="/admin/login")
 
@@ -2285,7 +2315,7 @@ async def permission_delete(request: Request, permission_id: int):
 # 权限分配页面
 @app.get("/admin/roles/permissions/{role_id}", response_class=HTMLResponse)
 async def role_permissions_page(request: Request, role_id: int):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return RedirectResponse(url="/admin/login")
 
@@ -2345,7 +2375,7 @@ async def role_permissions_submit(
     role_id: int,
     permissions: list = Form(..., list=True)
 ):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return RedirectResponse(url="/admin/login")
 
@@ -2379,7 +2409,7 @@ async def role_permissions_submit(
 # 批量删除
 @app.post("/admin/funds/batch-delete")
 async def funds_batch_delete(fund_ids: str = Form(...)):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return RedirectResponse(url="/admin/login")
 
@@ -2392,7 +2422,7 @@ async def funds_batch_delete(fund_ids: str = Form(...)):
 # 批量更新状态
 @app.post("/admin/funds/batch-update")
 async def funds_batch_update(fund_ids: str = Form(...), status: str = Form(...)):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return RedirectResponse(url="/admin/login")
 
@@ -2410,7 +2440,7 @@ async def funds_batch_update(fund_ids: str = Form(...), status: str = Form(...))
 # 导出Excel
 @app.get("/admin/funds/export")
 async def funds_export(request: Request, search: str = "", exchange: str = "", status: str = ""):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return RedirectResponse(url="/admin/login")
 
@@ -2457,7 +2487,7 @@ async def funds_export(request: Request, search: str = "", exchange: str = "", s
 # 导出Excel格式
 @app.get("/admin/funds/export/excel")
 async def funds_export_excel(request: Request, search: str = "", exchange: str = "", status: str = ""):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return RedirectResponse(url="/admin/login")
 
@@ -2566,7 +2596,7 @@ async def funds_export_excel(request: Request, search: str = "", exchange: str =
 # 下载导入模板
 @app.get("/admin/funds/template")
 async def funds_template(request: Request):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return RedirectResponse(url="/admin/login")
 
@@ -2594,7 +2624,7 @@ async def funds_template(request: Request):
 # 导入页面
 @app.get("/admin/funds/import", response_class=HTMLResponse)
 async def funds_import_page(request: Request):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return RedirectResponse(url="/admin/login")
 
@@ -2659,7 +2689,7 @@ async def funds_import(
     mode: str = Form("append"),
     validate: str = Form("1")
 ):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return RedirectResponse(url="/admin/login")
 
@@ -2769,7 +2799,7 @@ async def funds_import(
 # 爬虫管理主页面
 @app.get("/admin/crawlers", response_class=HTMLResponse)
 async def crawlers_page(request: Request):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return RedirectResponse(url="/admin/login")
 
@@ -2903,7 +2933,7 @@ async def crawlers_page(request: Request):
 # 爬虫状态API
 @app.get("/admin/crawlers/status", response_class=JSONResponse)
 async def crawlers_status(request: Request):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return JSONResponse(status_code=401, content={"error": "未登录"})
 
@@ -2914,7 +2944,7 @@ async def crawlers_status(request: Request):
 # 爬虫列表API
 @app.get("/admin/crawlers/list", response_class=JSONResponse)
 async def crawlers_list(request: Request):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return JSONResponse(status_code=401, content={"error": "未登录"})
 
@@ -2925,7 +2955,7 @@ async def crawlers_list(request: Request):
 # 启动爬虫
 @app.post("/admin/crawlers/start")
 async def start_crawler(request: Request, crawler_name: str = "all"):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return JSONResponse(status_code=401, content={"error": "未登录"})
 
@@ -2939,7 +2969,7 @@ async def start_crawler(request: Request, crawler_name: str = "all"):
 # 停止爬虫
 @app.post("/admin/crawlers/stop")
 async def stop_crawler(request: Request, crawler_name: str = "all"):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return JSONResponse(status_code=401, content={"error": "未登录"})
 
@@ -2953,7 +2983,7 @@ async def stop_crawler(request: Request, crawler_name: str = "all"):
 # 触发爬虫
 @app.post("/admin/crawlers/trigger")
 async def trigger_crawler(request: Request, crawler_name: str = "all", params: dict = None):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return JSONResponse(status_code=401, content={"error": "未登录"})
 
@@ -2970,7 +3000,7 @@ async def trigger_crawler(request: Request, crawler_name: str = "all", params: d
 # 爬虫日志
 @app.get("/admin/crawlers/logs")
 async def crawlers_logs(request: Request, crawler_name: str = None):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return RedirectResponse(url="/admin/login")
 
@@ -2981,7 +3011,7 @@ async def crawlers_logs(request: Request, crawler_name: str = None):
 # 爬虫配置
 @app.get("/admin/crawlers/config")
 async def crawlers_config_page(request: Request):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return RedirectResponse(url="/admin/login")
 
@@ -3012,7 +3042,7 @@ async def crawlers_config_page(request: Request):
 
 @app.post("/admin/crawlers/config")
 async def update_crawler_config(request: Request):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return JSONResponse(status_code=401, content={"error": "未登录"})
 
@@ -3027,7 +3057,7 @@ async def update_crawler_config(request: Request):
 # 爬虫统计
 @app.get("/admin/crawlers/stats")
 async def crawlers_stats(request: Request):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return JSONResponse(status_code=401, content={"error": "未登录"})
 
@@ -3038,7 +3068,7 @@ async def crawlers_stats(request: Request):
 # 数据完整性检查
 @app.get("/admin/crawlers/integrity")
 async def crawlers_integrity(request: Request):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return JSONResponse(status_code=401, content={"error": "未登录"})
 
@@ -3186,7 +3216,7 @@ def check_data_integrity():
 # 完整性检查主页面
 @app.get("/admin/integrity/dashboard", response_class=HTMLResponse)
 async def integrity_dashboard(request: Request):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return RedirectResponse(url="/admin/login")
 
@@ -3332,7 +3362,7 @@ async def integrity_dashboard(request: Request):
 # 完整性检查API
 @app.post("/admin/integrity/check")
 async def integrity_check(request: Request, check_type: str = "all"):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return JSONResponse(status_code=401, content={"error": "未登录"})
 
@@ -3350,7 +3380,7 @@ async def integrity_check(request: Request, check_type: str = "all"):
 # 完整性状态API
 @app.get("/admin/integrity/status")
 async def integrity_status_api(request: Request):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return JSONResponse(status_code=401, content={"error": "未登录"})
 
@@ -3361,7 +3391,7 @@ async def integrity_status_api(request: Request):
 # 完整性修复
 @app.post("/admin/integrity/fix")
 async def integrity_fix(request: Request, issue_id: str = "all", fix_type: str = "auto"):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return JSONResponse(status_code=401, content={"error": "未登录"})
 
@@ -3379,7 +3409,7 @@ async def integrity_fix(request: Request, issue_id: str = "all", fix_type: str =
 # 完整性告警
 @app.post("/admin/integrity/alert")
 async def integrity_alert(request: Request, level: str = "warning", message: str = ""):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return JSONResponse(status_code=401, content={"error": "未登录"})
 
@@ -3393,7 +3423,7 @@ async def integrity_alert(request: Request, level: str = "warning", message: str
 # 完整性报告
 @app.get("/admin/integrity/report")
 async def integrity_report(request: Request, check_id: str = None):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return RedirectResponse(url="/admin/login")
 
@@ -3404,7 +3434,7 @@ async def integrity_report(request: Request, check_id: str = None):
 # 完整性历史
 @app.get("/admin/integrity/history")
 async def integrity_history(request: Request):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return RedirectResponse(url="/admin/login")
 
@@ -3415,7 +3445,7 @@ async def integrity_history(request: Request):
 # 完整性设置页面
 @app.get("/admin/integrity/settings")
 async def integrity_settings_page(request: Request):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return RedirectResponse(url="/admin/login")
 
@@ -3486,7 +3516,7 @@ async def integrity_settings_page(request: Request):
 
 @app.post("/admin/integrity/settings")
 async def update_integrity_settings(request: Request):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return JSONResponse(status_code=401, content={"error": "未登录"})
 
@@ -3652,7 +3682,7 @@ def save_integrity_settings(settings_data):
 # 日志查看器主页面
 @app.get("/admin/logs/dashboard", response_class=HTMLResponse)
 async def logs_dashboard(request: Request):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return RedirectResponse(url="/admin/login")
 
@@ -3834,7 +3864,7 @@ async def logs_dashboard(request: Request):
 # 日志查看API
 @app.get("/admin/logs/view")
 async def logs_view(request: Request, log_name: str = "crawler.log", lines: int = 100):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return JSONResponse(status_code=401, content={"error": "未登录"})
 
@@ -3853,7 +3883,7 @@ async def logs_view(request: Request, log_name: str = "crawler.log", lines: int 
 # 日志搜索API
 @app.get("/admin/logs/search")
 async def logs_search(request: Request, keyword: str = "", log_name: str = None, max_results: int = 100):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return JSONResponse(status_code=401, content={"error": "未登录"})
 
@@ -3871,7 +3901,7 @@ async def logs_search(request: Request, keyword: str = "", log_name: str = None,
 # 日志清除API
 @app.post("/admin/logs/clear")
 async def logs_clear(request: Request):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return JSONResponse(status_code=401, content={"error": "未登录"})
 
@@ -3890,7 +3920,7 @@ async def logs_clear(request: Request):
 # 日志下载API
 @app.get("/admin/logs/download")
 async def logs_download(request: Request, log_name: str = None, date_range: str = None):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return RedirectResponse(url="/admin/login")
 
@@ -3924,7 +3954,7 @@ async def logs_download(request: Request, log_name: str = None, date_range: str 
 # 日志配置页面
 @app.get("/admin/logs/config")
 async def logs_config_page(request: Request):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return RedirectResponse(url="/admin/login")
 
@@ -3994,7 +4024,7 @@ async def logs_config_page(request: Request):
 
 @app.post("/admin/logs/config")
 async def update_logs_config(request: Request):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return JSONResponse(status_code=401, content={"error": "未登录"})
 
@@ -4009,7 +4039,7 @@ async def update_logs_config(request: Request):
 # 日志统计API
 @app.get("/admin/logs/stats")
 async def logs_stats_api(request: Request):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return JSONResponse(status_code=401, content={"error": "未登录"})
 
@@ -4023,7 +4053,7 @@ async def logs_stats_api(request: Request):
 # 日志导出API
 @app.get("/admin/logs/export")
 async def logs_export(request: Request, date_range: str = None, format: str = "zip"):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return JSONResponse(status_code=401, content={"error": "未登录"})
 
@@ -4272,7 +4302,7 @@ def export_logs(date_range, format):
 # 告警仪表盘
 @app.get("/admin/alerts/dashboard")
 async def alerts_dashboard(request: Request):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return RedirectResponse(url="/admin/login")
 
@@ -4360,7 +4390,7 @@ async def alerts_dashboard(request: Request):
 # 告警列表API
 @app.get("/admin/alerts/list")
 async def alerts_list_api(request: Request, limit: int = 50):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return JSONResponse(status_code=401, content={"error": "未登录"})
 
@@ -4371,7 +4401,7 @@ async def alerts_list_api(request: Request, limit: int = 50):
 # 创建告警规则
 @app.get("/admin/alerts/create")
 async def alerts_create_page(request: Request):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return RedirectResponse(url="/admin/login")
 
@@ -4452,7 +4482,7 @@ async def alerts_create_page(request: Request):
 
 @app.post("/admin/alerts/create")
 async def create_alert_rule(request: Request):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return JSONResponse(status_code=401, content={"error": "未登录"})
 
@@ -4467,7 +4497,7 @@ async def create_alert_rule(request: Request):
 # 编辑告警规则
 @app.get("/admin/alerts/edit/{rule_id}")
 async def alerts_edit_page(request: Request, rule_id: int):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return RedirectResponse(url="/admin/login")
 
@@ -4552,7 +4582,7 @@ async def alerts_edit_page(request: Request, rule_id: int):
 
 @app.put("/admin/alerts/edit/{rule_id}")
 async def update_alert_rule(request: Request, rule_id: int):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return JSONResponse(status_code=401, content={"error": "未登录"})
 
@@ -4567,7 +4597,7 @@ async def update_alert_rule(request: Request, rule_id: int):
 # 删除告警规则
 @app.delete("/admin/alerts/delete/{rule_id}")
 async def delete_alert_rule(request: Request, rule_id: int):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return JSONResponse(status_code=401, content={"error": "未登录"})
 
@@ -4581,7 +4611,7 @@ async def delete_alert_rule(request: Request, rule_id: int):
 # 告警历史
 @app.get("/admin/alerts/history")
 async def alerts_history(request: Request):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return RedirectResponse(url="/admin/login")
 
@@ -4653,7 +4683,7 @@ async def alerts_history(request: Request):
 
 @app.get("/admin/alerts/history/data")
 async def alerts_history_data(request: Request, level: str = None, start: str = None, end: str = None):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return JSONResponse(status_code=401, content={"error": "未登录"})
 
@@ -4664,7 +4694,7 @@ async def alerts_history_data(request: Request, level: str = None, start: str = 
 # 告警设置
 @app.get("/admin/alerts/settings")
 async def alerts_settings(request: Request):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return RedirectResponse(url="/admin/login")
 
@@ -4729,7 +4759,7 @@ async def alerts_settings(request: Request):
 
 @app.post("/admin/alerts/settings")
 async def update_alert_settings(request: Request):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return JSONResponse(status_code=401, content={"error": "未登录"})
 
@@ -4744,7 +4774,7 @@ async def update_alert_settings(request: Request):
 # 告警统计
 @app.get("/admin/alerts/stats")
 async def alerts_stats_api(request: Request):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return JSONResponse(status_code=401, content={"error": "未登录"})
 
@@ -4755,7 +4785,7 @@ async def alerts_stats_api(request: Request):
 # 告警测试
 @app.post("/admin/alerts/test")
 async def test_alert_api(request: Request, alert_type: str = "test", test_data: dict = None):
-    user = request.cookies.get("admin_user")
+    user = get_admin_user(request)
     if not user:
         return JSONResponse(status_code=401, content={"error": "未登录"})
 
