@@ -16,6 +16,8 @@ from typing import List, Dict, Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from core.db import get_conn
+import logging
+logger = logging.getLogger(__name__)
 
 # REITs基金代码列表
 REITS_CODES = [
@@ -87,7 +89,7 @@ def _get_fund_info_map():
                     'custodian': row[3] or ''
                 }
     except Exception as e:
-        print(f"获取基金信息失败: {e}")
+        logger.error(f"获取基金信息失败: {e}")
     return fund_map
 
 
@@ -153,7 +155,7 @@ def fetch_sse_announcements(limit_per_stock: int = 30) -> List[Dict]:
             })
 
     except Exception as e:
-        print(f"[SSE API] 获取失败: {e}")
+        logger.error(f"[SSE API] 获取失败: {e}")
 
     return all_announcements
 
@@ -209,11 +211,11 @@ def fetch_cninfo_announcements(limit_per_stock: int = 30) -> List[Dict]:
                         'source': 'cninfo'
                     })
             except Exception as e:
-                print(f"  [CNInfo] {code} 获取失败: {e}")
+                logger.error(f"  [CNInfo] {code} 获取失败: {e}")
                 continue
 
     except ImportError as e:
-        print(f"[公告服务] CNInfo爬虫导入失败: {e}")
+        logger.error(f"[公告服务] CNInfo爬虫导入失败: {e}")
 
     return all_announcements
 
@@ -232,17 +234,17 @@ def fetch_all_announcements(live=True, limit_per_stock: int = 5) -> List[Dict]:
     all_data = []
 
     # 第一层：SSE API（上交所REITs）
-    print("[公告服务] 第一层：SSE上交所...")
+    logger.info("[公告服务] 第一层：SSE上交所...")
     sse_data = fetch_sse_announcements(limit_per_stock)
-    print(f"[公告服务] SSE获取 {len(sse_data)} 条")
+    logger.info(f"[公告服务] SSE获取 {len(sse_data)} 条")
     all_data.extend(sse_data)
 
     # 第二层：CNInfo（深交所REITs + 上交所备用）
     # 只有SSE数据不足时才用CNInfo补充
     if len(sse_data) < 5:
-        print("[公告服务] 第二层：CNInfo...")
+        logger.info("[公告服务] 第二层：CNInfo...")
         cninfo_data = fetch_cninfo_announcements(limit_per_stock)
-        print(f"[公告服务] CNInfo获取 {len(cninfo_data)} 条")
+        logger.info(f"[公告服务] CNInfo获取 {len(cninfo_data)} 条")
 
         # 合并去重
         existing_codes = {a['fund_code'] for a in all_data}
@@ -252,7 +254,7 @@ def fetch_all_announcements(live=True, limit_per_stock: int = 5) -> List[Dict]:
 
     # 如果获取数量太少，补充数据库缓存
     if len(all_data) < 10:
-        print("[公告服务] 数据不足，补充数据库缓存...")
+        logger.info("[公告服务] 数据不足，补充数据库缓存...")
         cached = get_cached_announcements(limit=50)
         all_data = merge_announcements(all_data, cached)
 
@@ -347,7 +349,7 @@ def get_cached_announcements(limit: int = 100) -> List[Dict]:
 
         return announcements
     except Exception as e:
-        print(f"获取缓存公告失败: {e}")
+        logger.error(f"获取缓存公告失败: {e}")
         return []
 
 
@@ -388,10 +390,10 @@ def save_announcements_to_db(announcements: List[Dict]) -> int:
                     pass
 
             conn.commit()
-        print(f"[公告服务] 保存 {inserted} 条新公告到数据库")
+        logger.info(f"[公告服务] 保存 {inserted} 条新公告到数据库")
         return inserted
     except Exception as e:
-        print(f"保存公告失败: {e}")
+        logger.error(f"保存公告失败: {e}")
         return 0
 
 
@@ -434,7 +436,7 @@ def get_announcements_by_fund(code: str, limit: int = 20) -> List[Dict]:
             'is_suspicious': row[15] if row[15] is not None else 0
         } for row in rows]
     except Exception as e:
-        print(f"获取基金公告失败: {e}")
+        logger.error(f"获取基金公告失败: {e}")
         return []
 
 
@@ -475,7 +477,7 @@ def get_announcements_by_category(category: str, limit: int = 50) -> List[Dict]:
             'is_suspicious': row[15] if row[15] is not None else 0
         } for row in rows]
     except Exception as e:
-        print(f"按分类获取公告失败: {e}")
+        logger.error(f"按分类获取公告失败: {e}")
         return []
 
 
@@ -488,35 +490,35 @@ def mark_as_read(announcement_id: int) -> bool:
             conn.commit()
         return True
     except Exception as e:
-        print(f"标记已读失败: {e}")
+        logger.error(f"标记已读失败: {e}")
         return False
 
 
 if __name__ == '__main__':
-    print("=" * 60)
-    print("公告数据服务测试")
-    print("=" * 60)
+    logger.info("=" * 60)
+    logger.info("公告数据服务测试")
+    logger.info("=" * 60)
 
     # 测试SSE API
-    print("\n=== 测试SSE API ===")
+    logger.info("\n=== 测试SSE API ===")
     sse_data = fetch_sse_announcements(limit_per_stock=30)
-    print(f"SSE获取 {len(sse_data)} 条公告")
+    logger.info(f"SSE获取 {len(sse_data)} 条公告")
     for ann in sse_data[:5]:
-        print(f"  [{ann['exchange']}] {ann['publish_date']} [{ann['category']}] {ann['title'][:40]}...")
+        logger.info(f"  [{ann['exchange']}] {ann['publish_date']} [{ann['category']}] {ann['title'][:40]}...")
 
     # 测试获取全部公告
-    print("\n=== 测试 fetch_all_announcements ===")
+    logger.info("\n=== 测试 fetch_all_announcements ===")
     announcements = fetch_all_announcements(live=True, limit_per_stock=3)
-    print(f"\n获取到 {len(announcements)} 条公告")
+    logger.info(f"\n获取到 {len(announcements)} 条公告")
 
     # 显示前10条
-    print("\n前10条公告:")
+    logger.info("\n前10条公告:")
     for i, ann in enumerate(announcements[:10]):
-        print(f"  [{ann['exchange']}] {ann['publish_date']} [{ann['category']}] {ann['title'][:40]}...")
+        logger.info(f"  [{ann['exchange']}] {ann['publish_date']} [{ann['category']}] {ann['title'][:40]}...")
 
     # 统计分类
     categories = {}
     for ann in announcements:
         cat = ann['category']
         categories[cat] = categories.get(cat, 0) + 1
-    print(f"\n分类统计: {categories}")
+    logger.info(f"\n分类统计: {categories}")
