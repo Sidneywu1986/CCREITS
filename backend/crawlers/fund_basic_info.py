@@ -13,6 +13,8 @@ from datetime import datetime
 from typing import Dict, Optional, List
 import os
 from core.db import get_conn
+import logging
+logger = logging.getLogger(__name__)
 
 # 请求头
 HEADERS = {
@@ -87,7 +89,7 @@ class REITBasicInfoCrawler:
             return data if data else None
             
         except Exception as e:
-            print(f'[东财] 获取{code}基础信息失败: {e}')
+            logger.error(f'[东财] 获取{code}基础信息失败: {e}')
             return None
     
     def fetch_eastmoney_detail_api(self, code: str) -> Optional[Dict]:
@@ -110,7 +112,7 @@ class REITBasicInfoCrawler:
                 }
             return None
         except Exception as e:
-            print(f'[东财API] 获取{code}详情失败: {e}')
+            logger.error(f'[东财API] 获取{code}详情失败: {e}')
             return None
     
     def fetch_sina_basic(self, code: str) -> Optional[Dict]:
@@ -135,7 +137,7 @@ class REITBasicInfoCrawler:
                     }
             return None
         except Exception as e:
-            print(f'[新浪] 获取{code}基础信息失败: {e}')
+            logger.error(f'[新浪] 获取{code}基础信息失败: {e}')
             return None
     
     def fetch_cninfo_basic(self, code: str) -> Optional[Dict]:
@@ -162,7 +164,7 @@ class REITBasicInfoCrawler:
                 }
             return None
         except Exception as e:
-            print(f'[巨潮] 获取{code}基础信息失败: {e}')
+            logger.error(f'[巨潮] 获取{code}基础信息失败: {e}')
             return None
     
     def calculate_remaining_years(self, listing_date: str) -> Optional[str]:
@@ -193,7 +195,7 @@ class REITBasicInfoCrawler:
                 return "即将到期"
                 
         except Exception as e:
-            print(f'计算剩余期限失败: {e}')
+            logger.error(f'计算剩余期限失败: {e}')
             return None
     
     def merge_data(self, code: str, data_sources: List[Optional[Dict]]) -> Dict:
@@ -252,7 +254,7 @@ class REITBasicInfoCrawler:
                         values.append(fund_data[source_key])
                 
                 if not fields:
-                    print(f"[{fund_data['code']}] 无数据可更新")
+                    logger.info(f"[{fund_data['code']}] 无数据可更新")
                     return False
                 
                 # 添加updated_at
@@ -270,15 +272,15 @@ class REITBasicInfoCrawler:
             return rowcount > 0
             
         except Exception as e:
-            print(f"[DB] 更新{fund_data['code']}失败: {e}")
+            logger.error(f"[DB] 更新{fund_data['code']}失败: {e}")
             return False
     
     def crawl_single(self, fund_code: str, fund_name: str) -> Dict:
         """
         爬取单只REIT的基础信息
         """
-        print(f"\n[{fund_code}] {fund_name}")
-        print("-" * 50)
+        logger.info(f"\n[{fund_code}] {fund_name}")
+        logger.info("-" * 50)
         
         # 从多个数据源获取数据
         eastmoney_data = self.fetch_eastmoney_basic(fund_code)
@@ -290,17 +292,17 @@ class REITBasicInfoCrawler:
         merged = self.merge_data(fund_code, [eastmoney_data, eastmoney_api_data, sina_data, cninfo_data])
         
         # 打印获取到的数据
-        print(f"  规模: {merged.get('scale', '--')}亿")
-        print(f"  成立日期: {merged.get('listing_date', '--')}")
-        print(f"  剩余期限: {merged.get('remaining_years', '--')}")
-        print(f"  管理人: {merged.get('manager', '--')}")
-        print(f"  净值: {merged.get('nav', '--')}")
+        logger.info(f"  规模: {merged.get('scale', '--')}亿")
+        logger.info(f"  成立日期: {merged.get('listing_date', '--')}")
+        logger.info(f"  剩余期限: {merged.get('remaining_years', '--')}")
+        logger.info(f"  管理人: {merged.get('manager', '--')}")
+        logger.info(f"  净值: {merged.get('nav', '--')}")
         
         # 更新数据库
         if self.update_database(merged):
-            print(f"  [OK] 数据库更新成功")
+            logger.info(f"  [OK] 数据库更新成功")
         else:
-            print(f"  [WARN] 数据库无更新")
+            logger.warning(f"  [WARN] 数据库无更新")
         
         return merged
     
@@ -309,8 +311,8 @@ class REITBasicInfoCrawler:
         爬取所有REIT的基础信息
         """
         funds = self.get_fund_list()
-        print(f"\n开始爬取{len(funds)}只REIT的基础信息...")
-        print("=" * 60)
+        logger.info(f"\n开始爬取{len(funds)}只REIT的基础信息...")
+        logger.info("=" * 60)
         
         success_count = 0
         fail_count = 0
@@ -323,15 +325,15 @@ class REITBasicInfoCrawler:
                 self.crawl_single(fund['fund_code'], fund['fund_name'])
                 success_count += 1
             except Exception as e:
-                print(f"  [ERROR] 爬取失败: {e}")
+                logger.error(f"  [ERROR] 爬取失败: {e}")
                 fail_count += 1
             
             # 延时，避免请求过快
             if i < len(funds) - 1:
                 time.sleep(0.5)
         
-        print("\n" + "=" * 60)
-        print(f"爬取完成: 成功{success_count}, 失败{fail_count}, 总计{success_count + fail_count}")
+        logger.info("\n" + "=" * 60)
+        logger.error(f"爬取完成: 成功{success_count}, 失败{fail_count}, 总计{success_count + fail_count}")
         
         return {'success': success_count, 'failed': fail_count}
 

@@ -10,6 +10,8 @@ import time
 import os
 from datetime import datetime
 from core.db import get_conn
+import logging
+logger = logging.getLogger(__name__)
 
 # REIT基础信息（手动整理的准确数据，网上到处都是）
 REIT_BASE_INFO = {
@@ -118,7 +120,7 @@ def update_database():
         cursor = conn.cursor()
         
         success = 0
-        print('开始更新数据库...\n')
+        logger.info('开始更新数据库...\n')
         
         for code, info in REIT_BASE_INFO.items():
             try:
@@ -137,15 +139,15 @@ def update_database():
                 ''', (listing_date, remaining, datetime.now().strftime('%Y-%m-%d %H:%M:%S'), code))
                 
                 if cursor.rowcount > 0:
-                    print(f'{code}: 成立{listing_date}, 剩余{remaining}')
+                    logger.info(f'{code}: 成立{listing_date}, 剩余{remaining}')
                     success += 1
                 else:
-                    print(f'{code}: 未找到记录')
+                    logger.info(f'{code}: 未找到记录')
                     
             except Exception as e:
-                print(f'{code}: 更新失败 - {e}')
+                logger.error(f'{code}: 更新失败 - {e}')
     
-    print(f'\n完成: 成功更新 {success}/{len(REIT_BASE_INFO)} 只REIT')
+    logger.info(f'\n完成: 成功更新 {success}/{len(REIT_BASE_INFO)} 只REIT')
     return success
 
 
@@ -154,17 +156,17 @@ def verify_data():
     with get_conn() as conn:
         cursor = conn.cursor()
         
-        print('\n=== 数据验证 ===')
+        logger.info('\n=== 数据验证 ===')
         cursor.execute('SELECT COUNT(*) FROM business.funds WHERE listing_date IS NOT NULL')
-        print(f'有成立日期的REIT: {cursor.fetchone()[0]}/81')
+        logger.info(f'有成立日期的REIT: {cursor.fetchone()[0]}/81')
         
         cursor.execute('SELECT COUNT(*) FROM business.funds WHERE remaining_years IS NOT NULL')
-        print(f'有剩余期限的REIT: {cursor.fetchone()[0]}/81')
+        logger.info(f'有剩余期限的REIT: {cursor.fetchone()[0]}/81')
         
-        print('\n=== 数据样例 ===')
+        logger.info('\n=== 数据样例 ===')
         cursor.execute('SELECT code, name, listing_date, remaining_years FROM business.funds LIMIT 5')
         for row in cursor.fetchall():
-            print(f'{row[0]} {row[1][:10]}... 成立:{row[2]} 剩余:{row[3]}')
+            logger.info(f'{row[0]} {row[1][:10]}... 成立:{row[2]} 剩余:{row[3]}')
 
 
 if __name__ == '__main__':

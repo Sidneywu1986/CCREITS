@@ -1,5 +1,7 @@
 import sys
 from core.db import get_conn
+import logging
+logger = logging.getLogger(__name__)
 sys.stdout.reconfigure(encoding='utf-8')
 
 BATCH_SIZE = 1000
@@ -18,7 +20,7 @@ def main():
             cols = {c[0] for c in cursor.fetchall()}
             if 'fund_type' not in cols:
                 cursor.execute("ALTER TABLE business.funds ADD COLUMN IF NOT EXISTS fund_type VARCHAR(20)")
-                print("Added column: funds.fund_type")
+                logger.info("Added column: funds.fund_type")
             
             # 2. 根据 sector 更新 fund_type
             cursor.execute("SELECT fund_code, sector FROM business.funds")
@@ -29,13 +31,13 @@ def main():
             
             cursor.executemany("UPDATE business.funds SET fund_type = %s WHERE fund_code = %s", updates)
             conn.commit()
-            print(f"Updated {len(updates)} funds with fund_type")
+            logger.info(f"Updated {len(updates)} funds with fund_type")
             
             # 验证分类结果
             cursor.execute("SELECT fund_type, COUNT(*) FROM business.funds GROUP BY fund_type")
-            print("Fund type distribution:")
+            logger.info("Fund type distribution:")
             for row in cursor.fetchall():
-                print(f"  {row[0]}: {row[1]}")
+                logger.info(f"  {row[0]}: {row[1]}")
             
             # 3. 获取基金信息缓存（fund_type, market_cap, remaining_years, total_shares）
             cursor.execute("""
@@ -56,7 +58,7 @@ def main():
             cursor.execute("DELETE FROM business.reit_market_performance")
             cursor.execute("DELETE FROM business.reits_market_anomaly")
             conn.commit()
-            print("\nCleared target tables.")
+            logger.info("\nCleared target tables.")
             
             # 5. 读取 fund_prices 数据
             cursor.execute("""
@@ -104,11 +106,11 @@ def main():
                 
                 count += 1
                 if count % 5000 == 0:
-                    print(f"  Processed {count} rows...")
+                    logger.info(f"  Processed {count} rows...")
             
-            print(f"\nTotal price rows: {count}")
-            print(f"  Property REITs rows: {len(property_rows)}")
-            print(f"  Concession REITs rows: {len(concession_rows)}")
+            logger.info(f"\nTotal price rows: {count}")
+            logger.info(f"  Property REITs rows: {len(property_rows)}")
+            logger.info(f"  Concession REITs rows: {len(concession_rows)}")
             
             # 6. 批量插入产权类市场表现表
             if property_rows:
@@ -121,7 +123,7 @@ def main():
                     ON CONFLICT DO NOTHING
                 """, property_rows)
                 conn.commit()
-                print(f"Inserted {len(property_rows)} rows into reit_market_performance")
+                logger.info(f"Inserted {len(property_rows)} rows into reit_market_performance")
             
             # 7. 批量插入经营权类市场表现表
             if concession_rows:
@@ -136,35 +138,35 @@ def main():
                     ON CONFLICT DO NOTHING
                 """, concession_rows)
                 conn.commit()
-                print(f"Inserted {len(concession_rows)} rows into reits_market_anomaly")
+                logger.info(f"Inserted {len(concession_rows)} rows into reits_market_anomaly")
             
             # 8. 验证
             cursor.execute("SELECT COUNT(*) FROM business.reit_market_performance")
             prop_count = cursor.fetchone()[0]
             cursor.execute("SELECT COUNT(*) FROM business.reits_market_anomaly")
             conc_count = cursor.fetchone()[0]
-            print(f"\nVerification:")
-            print(f"  reit_market_performance: {prop_count} rows")
-            print(f"  reits_market_anomaly: {conc_count} rows")
+            logger.info(f"\nVerification:")
+            logger.info(f"  reit_market_performance: {prop_count} rows")
+            logger.info(f"  reits_market_anomaly: {conc_count} rows")
             
             # 样例数据检查
             cursor.execute("""
                 SELECT fund_code, trade_date, closing_price, turnover_rate, market_cap, daily_return, nav_premium_rate
                 FROM business.reit_market_performance LIMIT 3
             """)
-            print("\nSample property data:")
+            logger.info("\nSample property data:")
             for row in cursor.fetchall():
-                print(f"  {row}")
+                logger.info(f"  {row}")
             
             cursor.execute("""
                 SELECT project_code, trade_date, closing_price, turnover_rate, premium_rate, abnormal_volatility_flag
                 FROM business.reits_market_anomaly LIMIT 3
             """)
-            print("\nSample concession data:")
+            logger.info("\nSample concession data:")
             for row in cursor.fetchall():
-                print(f"  {row}")
+                logger.info(f"  {row}")
             
-    print("\nSync completed.")
+    logger.info("\nSync completed.")
 
 if __name__ == '__main__':
     main()

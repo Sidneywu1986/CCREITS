@@ -173,8 +173,8 @@ if __name__ == "__main__":
         "高速公路REITs分红方案",
     ]
     vecs = embedder.encode(test_texts, batch_size=2, show_progress=True)
-    print(f"Shape: {vecs.shape}, dtype: {vecs.dtype}")
-    print(f"Norms: {np.linalg.norm(vecs, axis=1)}")
+    logger.info(f"Shape: {vecs.shape}, dtype: {vecs.dtype}")
+    logger.info(f"Norms: {np.linalg.norm(vecs, axis=1)}")
     q = embedder.encode_query("数据中心REITs前景")
     sims = np.dot(vecs, q)
-    print(f"Query similarities: {sims}")
+    logger.info(f"Query similarities: {sims}")

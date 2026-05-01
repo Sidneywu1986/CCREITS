@@ -16,6 +16,8 @@ from typing import List, Dict
 # 添加数据库路径
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from core.db import get_conn
+import logging
+logger = logging.getLogger(__name__)
 
 # REITs基金代码列表 (精简版，主要活跃的REITs)
 REITS_CODES = [
@@ -107,7 +109,7 @@ def get_stock_news(symbol: str) -> List[Dict]:
                 })
                 
     except Exception as e:
-        print(f"  获取 {symbol} 新闻失败: {e}")
+        logger.error(f"  获取 {symbol} 新闻失败: {e}")
     
     return announcements
 
@@ -119,7 +121,7 @@ def crawl_all_announcements(limit_per_stock: int = 5, max_stocks: int = 20) -> L
     all_announcements = []
     stocks_to_crawl = REITS_CODES[:max_stocks]  # 限制数量避免请求过多
     
-    print(f"开始爬取 {len(stocks_to_crawl)} 只REITs基金的新闻...")
+    logger.info(f"开始爬取 {len(stocks_to_crawl)} 只REITs基金的新闻...")
     
     for i, code in enumerate(stocks_to_crawl):
         try:
@@ -127,9 +129,9 @@ def crawl_all_announcements(limit_per_stock: int = 5, max_stocks: int = 20) -> L
             # 限制每个股票的新闻数量
             news = news[:limit_per_stock]
             all_announcements.extend(news)
-            print(f"  [{i+1}/{len(stocks_to_crawl)}] {code}: {len(news)} 条")
+            logger.info(f"  [{i+1}/{len(stocks_to_crawl)}] {code}: {len(news)} 条")
         except Exception as e:
-            print(f"  [{i+1}/{len(stocks_to_crawl)}] {code}: 失败")
+            logger.error(f"  [{i+1}/{len(stocks_to_crawl)}] {code}: 失败")
     
     # 去重并按日期排序
     seen = set()
@@ -140,7 +142,7 @@ def crawl_all_announcements(limit_per_stock: int = 5, max_stocks: int = 20) -> L
             seen.add(key)
             unique_announcements.append(ann)
     
-    print(f"共获取 {len(unique_announcements)} 条 unique 公告")
+    logger.info(f"共获取 {len(unique_announcements)} 条 unique 公告")
     return unique_announcements
 
 
@@ -175,23 +177,23 @@ def save_to_database(announcements: List[Dict]) -> int:
                     if cursor.rowcount > 0:
                         inserted += 1
                 except Exception as e:
-                    print(f"插入失败: {e}")
+                    logger.error(f"插入失败: {e}")
             
             conn.commit()
         
-        print(f"保存到数据库: {inserted} 条新公告")
+        logger.info(f"保存到数据库: {inserted} 条新公告")
         return inserted
         
     except Exception as e:
-        print(f"数据库保存失败: {e}")
+        logger.error(f"数据库保存失败: {e}")
         return 0
 
 
 def main():
     """主函数"""
-    print("=" * 60)
-    print("REITs公告爬虫 (AKShare版)")
-    print("=" * 60)
+    logger.info("=" * 60)
+    logger.info("REITs公告爬虫 (AKShare版)")
+    logger.info("=" * 60)
     
     # 爬取公告
     announcements = crawl_all_announcements(limit_per_stock=3, max_stocks=10)
@@ -201,13 +203,13 @@ def main():
         inserted = save_to_database(announcements)
         
         # 显示前5条
-        print("\n前5条公告:")
+        logger.info("\n前5条公告:")
         for ann in announcements[:5]:
-            print(f"  [{ann['exchange']}] {ann['publish_date']} {ann['fund_code']}: {ann['title'][:40]}...")
+            logger.info(f"  [{ann['exchange']}] {ann['publish_date']} {ann['fund_code']}: {ann['title'][:40]}...")
         
         return inserted
     else:
-        print("未获取到公告")
+        logger.info("未获取到公告")
         return 0
 
 

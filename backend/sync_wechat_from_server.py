@@ -10,6 +10,8 @@ import subprocess
 import re
 from datetime import datetime
 from core.db import get_conn
+import logging
+logger = logging.getLogger(__name__)
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -48,7 +50,7 @@ def fetch_new_articles(last_sync_iso):
         last_sync_dt = datetime.strptime(last_sync_iso, '%Y-%m-%dT%H:%M:%S')
     last_sync_unix = int(last_sync_dt.timestamp())
 
-    print(f"[Sync] Query articles after unix={last_sync_unix} ({last_sync_iso})")
+    logger.info(f"[Sync] Query articles after unix={last_sync_unix} ({last_sync_iso})")
 
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -145,7 +147,7 @@ def sync_to_local(articles):
                 inserted += 1
         
             conn.commit()
-    print(f"[Sync] Inserted {inserted}, skipped {skipped}")
+    logger.info(f"[Sync] Inserted {inserted}, skipped {skipped}")
     return inserted
 
 
@@ -153,7 +155,7 @@ def run_script(name):
     """运行本地处理脚本"""
     script_path = os.path.join(BASE_DIR, 'backend', 'scripts', name)
     if os.path.exists(script_path):
-        print(f"[Sync] Running {name} ...")
+        logger.info(f"[Sync] Running {name} ...")
         try:
             result = subprocess.run(
                 [sys.executable, script_path],
@@ -161,38 +163,38 @@ def run_script(name):
                 capture_output=True, text=True, timeout=600
             )
             if result.returncode != 0:
-                print(f"[Sync] {name} stderr: {result.stderr[:500]}")
+                logger.info(f"[Sync] {name} stderr: {result.stderr[:500]}")
             else:
-                print(f"[Sync] {name} done")
+                logger.info(f"[Sync] {name} done")
         except subprocess.TimeoutExpired:
-            print(f"[Sync] {name} timeout")
+            logger.error(f"[Sync] {name} timeout")
         except Exception as e:
-            print(f"[Sync] {name} error: {e}")
+            logger.error(f"[Sync] {name} error: {e}")
     else:
-        print(f"[Sync] Script not found: {script_path}")
+        logger.info(f"[Sync] Script not found: {script_path}")
 
 
 def main():
-    print("=" * 50)
-    print(f"[Sync] Start: {datetime.now().isoformat()}")
+    logger.info("=" * 50)
+    logger.info(f"[Sync] Start: {datetime.now().isoformat()}")
 
     last_sync = get_local_last_sync()
-    print(f"[Sync] Local last sync: {last_sync}")
+    logger.info(f"[Sync] Local last sync: {last_sync}")
 
     articles = fetch_new_articles(last_sync)
-    print(f"[Sync] Server new articles: {len(articles)}")
+    logger.info(f"[Sync] Server new articles: {len(articles)}")
 
     inserted = sync_to_local(articles)
 
     if inserted > 0:
         run_script('vectorize_articles.py')
         run_script('tag_sentiment.py')
-        print(f"[Sync] Complete! Added {inserted} articles.")
+        logger.info(f"[Sync] Complete! Added {inserted} articles.")
     else:
-        print("[Sync] No new articles.")
+        logger.info("[Sync] No new articles.")
 
-    print(f"[Sync] End: {datetime.now().isoformat()}")
-    print("=" * 50)
+    logger.info(f"[Sync] End: {datetime.now().isoformat()}")
+    logger.info("=" * 50)
 
 
 if __name__ == '__main__':

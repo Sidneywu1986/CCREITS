@@ -11,6 +11,8 @@ import subprocess
 import datetime
 import glob
 import shutil
+import logging
+logger = logging.getLogger(__name__)
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -28,13 +30,13 @@ TABLES = [
 
 def backup_milvus():
     if not os.path.exists(MILVUS_DB):
-        print("Milvus DB not found, skipping")
+        logger.info("Milvus DB not found, skipping")
         return
     ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     dst = os.path.join(BACKUP_DIR, f"milvus_reits.db.{ts}")
     shutil.copy2(MILVUS_DB, dst)
     size = os.path.getsize(dst) / 1024 / 1024
-    print(f"Milvus: {size:.1f}MB -> {dst}")
+    logger.info(f"Milvus: {size:.1f}MB -> {dst}")
 
 
 def backup_postgres():
@@ -46,9 +48,9 @@ def backup_postgres():
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
         if os.path.exists(outfile):
             size = os.path.getsize(outfile) / 1024 / 1024
-            print(f"PG {table}: {size:.1f}MB -> {outfile}")
+            logger.info(f"PG {table}: {size:.1f}MB -> {outfile}")
         else:
-            print(f"PG {table}: FAILED - {result.stderr[:200]}")
+            logger.info(f"PG {table}: FAILED - {result.stderr[:200]}")
 
 
 def cleanup_old():
@@ -65,21 +67,21 @@ def cleanup_old():
         if len(files) > KEEP_COUNT:
             for old in files[:-KEEP_COUNT]:
                 os.remove(old)
-                print(f"  Removed old: {os.path.basename(old)}")
+                logger.info(f"  Removed old: {os.path.basename(old)}")
 
 
 def main():
     os.makedirs(BACKUP_DIR, exist_ok=True)
-    print(f"Backup dir: {BACKUP_DIR}")
-    print(f"Timestamp: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print("=" * 50)
+    logger.info(f"Backup dir: {BACKUP_DIR}")
+    logger.info(f"Timestamp: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    logger.info("=" * 50)
 
     backup_milvus()
     backup_postgres()
-    print("=" * 50)
+    logger.info("=" * 50)
     cleanup_old()
 
-    print("Done!")
+    logger.info("Done!")
 
 
 if __name__ == "__main__":
