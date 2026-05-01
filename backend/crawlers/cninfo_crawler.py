@@ -21,6 +21,8 @@ import sys
 import argparse
 import re
 from datetime import datetime, timedelta
+import logging
+logger = logging.getLogger(__name__)
 
 
 class CNInfoCrawler:
@@ -142,7 +144,7 @@ class CNInfoCrawler:
             'message': message
         }
         if self.verbose or level in ['ERROR', 'WARN', 'INFO']:
-            print(json.dumps(log_entry, ensure_ascii=False), flush=True)
+            logger.info(json.dumps(log_entry, ensure_ascii=False), flush=True)
     
     def _convert_code(self, code):
         """转换REIT代码（508XXX -> 180XXX）"""
@@ -412,17 +414,17 @@ def main():
     
     if args.json_output:
         # 输出最终结果JSON（供Java解析）
-        print(json.dumps(result, ensure_ascii=False, indent=2))
+        logger.info(json.dumps(result, ensure_ascii=False, indent=2))
     else:
         # 简化输出
         if result['success']:
-            print(f"\n✅ 爬取成功!")
-            print(f"   基金: {result['fund_info']['name']}")
-            print(f"   公告: {len(result['announcements'])} 条")
-            print(f"   下载: {result['stats']['downloaded']} 个PDF")
-            print(f"   保存: {args.output_dir}")
+            logger.info(f"\n✅ 爬取成功!")
+            logger.info(f"   基金: {result['fund_info']['name']}")
+            logger.info(f"   公告: {len(result['announcements'])} 条")
+            logger.info(f"   下载: {result['stats']['downloaded']} 个PDF")
+            logger.info(f"   保存: {args.output_dir}")
         else:
-            print(f"\n❌ 爬取失败: {result['error']}")
+            logger.error(f"\n❌ 爬取失败: {result['error']}")
             sys.exit(1)
 
 

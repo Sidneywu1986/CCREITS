@@ -9,10 +9,12 @@ JSON_PATH = os.path.join(BASE_DIR, 'dividend_correction.json')
 
 sys.path.insert(0, BASE_DIR)
 from core.db import get_conn
+import logging
+logger = logging.getLogger(__name__)
 
 def import_dividends():
     if not os.path.exists(JSON_PATH):
-        print(f"找不到文件: {JSON_PATH}")
+        logger.info(f"找不到文件: {JSON_PATH}")
         return 0
     
     with open(JSON_PATH, 'r', encoding='utf-8') as f:
@@ -51,11 +53,11 @@ def import_dividends():
                     if cursor.rowcount > 0:
                         inserted += 1
                 except Exception as e:
-                    print(f"插入失败 {code} {formatted_date}: {e}")
+                    logger.error(f"插入失败 {code} {formatted_date}: {e}")
         
         conn.commit()
     
-    print(f"导入完成: {inserted} 条分红记录")
+    logger.info(f"导入完成: {inserted} 条分红记录")
     return inserted
 
 if __name__ == '__main__':

@@ -12,6 +12,8 @@ import re
 import time
 from datetime import datetime
 from core.db import get_conn
+import logging
+logger = logging.getLogger(__name__)
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 API_BASE = os.getenv('WEMPRSS_API_BASE', 'http://localhost:3000')
@@ -46,7 +48,7 @@ class WemprssClient:
             payload += '=' * padding
         jwt = json.loads(base64.urlsafe_b64decode(payload))
         self.token_expires = jwt.get('exp', 0)
-        print(f'[API] Logged in, token expires in {(self.token_expires - int(time.time())) // 3600}h')
+        logger.info(f'[API] Logged in, token expires in {(self.token_expires - int(time.time())) // 3600}h')
         return self.token
         
     def _get_token(self):
@@ -147,10 +149,10 @@ def sync_articles(client, local_links, dry_run=False):
     ensure_table()
     
     # 获取公众号列表
-    print('[Sync] Fetching feeds list...')
+    logger.info('[Sync] Fetching feeds list...')
     feeds_resp = client.get_feeds(limit=100, offset=0)
     feeds = feeds_resp.get('data', {}).get('list', []) if isinstance(feeds_resp.get('data'), dict) else []
-    print(f'[Sync] Found {len(feeds)} feeds')
+    logger.info(f'[Sync] Found {len(feeds)} feeds')
     
     new_articles = []
     skipped = 0
@@ -159,7 +161,7 @@ def sync_articles(client, local_links, dry_run=False):
     for feed in feeds:
         mp_id = feed.get('id')
         mp_name = feed.get('mp_name', mp_id)
-        print(f'[Sync] Processing: {mp_name} ({mp_id})')
+        logger.info(f'[Sync] Processing: {mp_name} ({mp_id})')
         
         # 分页获取文章列表
         offset = 0
@@ -173,7 +175,7 @@ def sync_articles(client, local_links, dry_run=False):
                 total = data.get('total', 0) if isinstance(data, dict) else 0
                 if offset == 0:
                     feed_total = total
-                    print(f'  total on server: {total}')
+                    logger.info(f'  total on server: {total}')
                 
                 if not articles:
                     break
@@ -210,7 +212,7 @@ def sync_articles(client, local_links, dry_run=False):
                         local_links.add(url)  # 避免同一批次内重复
                         
                     except Exception as e:
-                        print(f'  detail error for {article_id}: {e}')
+                        logger.error(f'  detail error for {article_id}: {e}')
                         errors += 1
                 
                 if len(articles) < limit:
@@ -218,15 +220,15 @@ def sync_articles(client, local_links, dry_run=False):
                 offset += limit
                 
             except Exception as e:
-                print(f'  list error: {e}')
+                logger.error(f'  list error: {e}')
                 errors += 1
                 break
         
-        print(f'  -> new so far: {len(new_articles)}, skipped: {skipped}, errors: {errors}')
+        logger.error(f'  -> new so far: {len(new_articles)}, skipped: {skipped}, errors: {errors}')
     
     # 写入数据库
     if not dry_run and new_articles:
-        print(f'[Sync] Writing {len(new_articles)} articles to local DB...')
+        logger.info(f'[Sync] Writing {len(new_articles)} articles to local DB...')
         with get_conn() as conn:
                     c = conn.cursor()
                     inserted = 0
@@ -240,13 +242,13 @@ def sync_articles(client, local_links, dry_run=False):
                         except Exception:  # psycopg2.IntegrityError
                             pass  # 重复，忽略
                     conn.commit()
-        print(f'[Sync] Inserted {inserted} articles')
+        logger.info(f'[Sync] Inserted {inserted} articles')
         return inserted, skipped, errors
     elif dry_run:
-        print(f'[Sync] DRY RUN: would insert {len(new_articles)} articles')
+        logger.info(f'[Sync] DRY RUN: would insert {len(new_articles)} articles')
         return len(new_articles), skipped, errors
     else:
-        print('[Sync] No new articles')
+        logger.info('[Sync] No new articles')
         return 0, skipped, errors
 
 
@@ -254,7 +256,7 @@ def run_script(name):
     """运行本地处理脚本"""
     script_path = os.path.join(BASE_DIR, 'backend', 'scripts', name)
     if os.path.exists(script_path):
-        print(f'[Sync] Running {name} ...')
+        logger.info(f'[Sync] Running {name} ...')
         try:
             result = subprocess.run(
                 [sys.executable, script_path],
@@ -262,42 +264,42 @@ def run_script(name):
                 capture_output=True, text=True, timeout=600
             )
             if result.returncode != 0:
-                print(f'[Sync] {name} stderr: {result.stderr[:500]}')
+                logger.info(f'[Sync] {name} stderr: {result.stderr[:500]}')
             else:
-                print(f'[Sync] {name} done')
+                logger.info(f'[Sync] {name} done')
         except subprocess.TimeoutExpired:
-            print(f'[Sync] {name} timeout')
+            logger.error(f'[Sync] {name} timeout')
         except Exception as e:
-            print(f'[Sync] {name} error: {e}')
+            logger.error(f'[Sync] {name} error: {e}')
     else:
-        print(f'[Sync] Script not found: {script_path}')
+        logger.info(f'[Sync] Script not found: {script_path}')
 
 
 def test_update_depth(client, mp_id='MP_WXS_2393306340'):
     """测试 update API 能同步多少页历史文章"""
-    print(f'\n[UpdateTest] Testing update depth for {mp_id}')
+    logger.info(f'\n[UpdateTest] Testing update depth for {mp_id}')
     
     # 记录当前数量
     before_resp = client.get_articles(mp_id, limit=1, offset=0)
     before_total = before_resp.get('data', {}).get('total', 0) if isinstance(before_resp.get('data'), dict) else 0
-    print(f'[UpdateTest] Before update: {before_total} articles')
+    logger.info(f'[UpdateTest] Before update: {before_total} articles')
     
     # 触发同步（1-10 页）
     try:
         update_resp = client.update_mp(mp_id, start_page=1, end_page=10)
-        print(f'[UpdateTest] Update response: {json.dumps(update_resp, ensure_ascii=False, indent=2)[:400]}')
+        logger.info(f'[UpdateTest] Update response: {json.dumps(update_resp, ensure_ascii=False, indent=2)[:400]}')
     except urllib.error.HTTPError as e:
-        print(f'[UpdateTest] Update HTTP error: {e.code}')
-        print(f'[UpdateTest] Body: {e.read().decode()[:300]}')
+        logger.error(f'[UpdateTest] Update HTTP error: {e.code}')
+        logger.info(f'[UpdateTest] Body: {e.read().decode()[:300]}')
     except Exception as e:
-        print(f'[UpdateTest] Update error: {type(e).__name__}: {e}')
+        logger.error(f'[UpdateTest] Update error: {type(e).__name__}: {e}')
     
     return before_total
 
 
 def main():
-    print("=" * 60)
-    print(f"[Sync] Start: {datetime.now().isoformat()}")
+    logger.info("=" * 60)
+    logger.info(f"[Sync] Start: {datetime.now().isoformat()}")
     
     client = WemprssClient()
     client.login()
@@ -306,13 +308,13 @@ def main():
     test_update = '--test-update' in sys.argv
     if test_update:
         test_update_depth(client)
-        print('[Sync] Update test triggered. Check server later for results.')
-        print("=" * 60)
+        logger.info('[Sync] Update test triggered. Check server later for results.')
+        logger.info("=" * 60)
         return
     
     # 常规同步
     local_links = get_local_links()
-    print(f'[Sync] Local existing articles: {len(local_links)}')
+    logger.info(f'[Sync] Local existing articles: {len(local_links)}')
     
     dry_run = '--dry-run' in sys.argv
     inserted, skipped, errors = sync_articles(client, local_links, dry_run=dry_run)
@@ -320,14 +322,14 @@ def main():
     if inserted > 0 and not dry_run:
         run_script('vectorize_articles.py')
         run_script('tag_sentiment.py')
-        print(f'[Sync] Complete! Added {inserted} articles.')
+        logger.info(f'[Sync] Complete! Added {inserted} articles.')
     elif dry_run:
-        print(f'[Sync] DRY RUN complete. Would add {inserted} articles.')
+        logger.info(f'[Sync] DRY RUN complete. Would add {inserted} articles.')
     else:
-        print('[Sync] No new articles.')
+        logger.info('[Sync] No new articles.')
     
-    print(f'[Sync] End: {datetime.now().isoformat()}')
-    print('=' * 60)
+    logger.info(f'[Sync] End: {datetime.now().isoformat()}')
+    logger.info('=' * 60)
 
 
 if __name__ == '__main__':

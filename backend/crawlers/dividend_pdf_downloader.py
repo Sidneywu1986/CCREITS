@@ -188,5 +188,5 @@ class REITsDividendPDFDownloader:
 
 
 if __name__ == "__main__":
-    print("REITs分红PDF下载器 - 与dividend_crawler配合使用")
-    print("Usage: 先运行dividend_crawler获取公告列表，再使用本下载器")
+    logger.info("REITs分红PDF下载器 - 与dividend_crawler配合使用")
+    logger.info("Usage: 先运行dividend_crawler获取公告列表，再使用本下载器")

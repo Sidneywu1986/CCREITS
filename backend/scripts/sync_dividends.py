@@ -9,6 +9,8 @@ REITs 分红数据同步入口脚本
 import sys
 import os
 import argparse
+import logging
+logger = logging.getLogger(__name__)
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, BASE_DIR)
@@ -27,11 +29,11 @@ def run_crawler(fund_codes=None):
     else:
         cmd.append('--all')
     
-    print("=== 启动交易所分红爬虫 ===")
+    logger.info("=== 启动交易所分红爬虫 ===")
     result = subprocess.run(cmd, capture_output=True, text=True)
-    print(result.stdout)
+    logger.info(result.stdout)
     if result.stderr:
-        print("[STDERR]", result.stderr)
+        logger.info("[STDERR]", result.stderr)
     return result.returncode == 0
 
 if __name__ == '__main__':
@@ -41,13 +43,13 @@ if __name__ == '__main__':
     parser.add_argument('--codes', nargs='+', help='指定基金代码列表')
     args = parser.parse_args()
     
-    print("=" * 50)
-    print("REITs 分红数据同步")
-    print("=" * 50)
+    logger.info("=" * 50)
+    logger.info("REITs 分红数据同步")
+    logger.info("=" * 50)
     
     # 1. 从 announcements 同步（主要来源）
     count = sync_from_announcements()
-    print(f"\n[1/2] 公告同步完成: 新增 {count} 条记录")
+    logger.info(f"\n[1/2] 公告同步完成: 新增 {count} 条记录")
     
     # 2. 可选：运行交易所爬虫
     if args.crawler or args.all or args.codes:
@@ -59,8 +61,8 @@ if __name__ == '__main__':
             codes = ['508000', '508001', '180101', '180201', '180301', '180501']
         
         success = run_crawler(codes if not args.all else None)
-        print(f"\n[2/2] 交易所爬虫: {'成功' if success else '失败'}")
+        logger.error(f"\n[2/2] 交易所爬虫: {'成功' if success else '失败'}")
     
-    print("\n同步完成！")
-    print("提示: 可加入 Windows 任务计划程序实现定时自动更新")
-    print("  命令: python " + os.path.abspath(__file__))
+    logger.info("\n同步完成！")
+    logger.info("提示: 可加入 Windows 任务计划程序实现定时自动更新")
+    logger.info("  命令: python " + os.path.abspath(__file__))

@@ -12,6 +12,8 @@ ANNOUNCEMENTS_DIR = os.path.join(os.path.dirname(BASE_DIR), 'announcements')
 
 sys.path.insert(0, BASE_DIR)
 from core.db import get_conn
+import logging
+logger = logging.getLogger(__name__)
 
 def find_pdf_for_announcement(fund_code, publish_date):
     """在 announcements 目录中查找对应的PDF"""
@@ -142,7 +144,7 @@ def extract_dividend_from_pdf(pdf_path):
         
         return amount, record_date, ex_date
     except Exception as e:
-        print(f"  解析PDF失败 {pdf_path}: {e}")
+        logger.error(f"  解析PDF失败 {pdf_path}: {e}")
         return None, None, None
 
 def sync_dividends():
@@ -156,7 +158,7 @@ def sync_dividends():
             ORDER BY publish_date DESC
         """)
         rows = cursor.fetchall()
-        print(f"找到 {len(rows)} 条分红公告")
+        logger.info(f"找到 {len(rows)} 条分红公告")
         
         inserted = 0
         parsed = 0
@@ -169,7 +171,7 @@ def sync_dividends():
                 amount, record_date, ex_date = extract_dividend_from_pdf(pdf_path)
                 if amount:
                     parsed += 1
-                    print(f"[{fund_code}] PDF解析成功: 金额={amount}, 登记日={record_date}, 除息日={ex_date}")
+                    logger.info(f"[{fund_code}] PDF解析成功: 金额={amount}, 登记日={record_date}, 除息日={ex_date}")
             
             # 如果PDF解析失败，尝试从标题提取金额
             if not amount and title:
@@ -180,7 +182,7 @@ def sync_dividends():
                         amount = None
             
             if not amount:
-                print(f"[{fund_code}] 无法提取分红金额, 跳过")
+                logger.info(f"[{fund_code}] 无法提取分红金额, 跳过")
                 continue
             
             dividend_date = ex_date or record_date or publish_date
@@ -207,11 +209,11 @@ def sync_dividends():
                 if cursor.rowcount > 0:
                     inserted += 1
             except Exception as e:
-                print(f"[{fund_code}] 插入失败: {e}")
+                logger.error(f"[{fund_code}] 插入失败: {e}")
         
         conn.commit()
     
-    print(f"\n完成: 解析成功 {parsed} 条, 新插入 {inserted} 条")
+    logger.info(f"\n完成: 解析成功 {parsed} 条, 新插入 {inserted} 条")
     return inserted
 
 if __name__ == '__main__':

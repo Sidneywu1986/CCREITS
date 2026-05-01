@@ -9,15 +9,17 @@ import sys
 import os
 from datetime import datetime
 from core.db import get_conn
+import logging
+logger = logging.getLogger(__name__)
 
 def fetch_and_save_reits_data():
     """获取REITs实时数据并保存到数据库"""
-    print("[AKShare] 开始获取REITs实时数据...")
+    logger.info("[AKShare] 开始获取REITs实时数据...")
     
     try:
         # 获取实时行情
         df = ak.reits_realtime_em()
-        print(f"[AKShare] 成功获取 {len(df)} 只REITs数据")
+        logger.info(f"[AKShare] 成功获取 {len(df)} 只REITs数据")
         
         # 连接数据库
         with get_conn() as conn:
@@ -51,13 +53,13 @@ def fetch_and_save_reits_data():
                 
                 if cursor.rowcount > 0:
                     updated += 1
-                    print(f"[AKShare] ✓ {code} 价格:{price} 份额:{circulating_shares:.2f}万份" if circulating_shares else f"[AKShare] ✓ {code} 价格:{price}")
+                    logger.info(f"[AKShare] ✓ {code} 价格:{price} 份额:{circulating_shares:.2f}万份" if circulating_shares else f"[AKShare] ✓ {code} 价格:{price}")
         
-        print(f"[AKShare] 完成! 更新了 {updated} 只基金")
+        logger.info(f"[AKShare] 完成! 更新了 {updated} 只基金")
         return updated
         
     except Exception as e:
-        print(f"[AKShare] 错误: {e}")
+        logger.error(f"[AKShare] 错误: {e}")
         import traceback
         traceback.print_exc()
         return 0

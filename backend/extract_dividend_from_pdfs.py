@@ -9,6 +9,8 @@ import json
 from collections import defaultdict
 from datetime import datetime
 from core.db import get_conn
+import logging
+logger = logging.getLogger(__name__)
 
 def extract_dividend_from_pdf(pdf_path):
     """从单个PDF中提取分红金额"""
@@ -45,7 +47,7 @@ def extract_dividend_from_pdf(pdf_path):
         
         return None
     except Exception as e:
-        print(f"解析PDF失败 {pdf_path}: {e}")
+        logger.error(f"解析PDF失败 {pdf_path}: {e}")
         return None
 
 def extract_date_from_filename(filename):
@@ -150,9 +152,9 @@ def calculate_correct_dividend_yield(fund_dividends, local_data, realtime_data):
     return results
 
 if __name__ == '__main__':
-    print("扫描分红公告PDF...")
+    logger.info("扫描分红公告PDF...")
     fund_dividends = scan_all_dividend_pdfs()
-    print(f"找到 {len(fund_dividends)} 只基金的分红公告")
+    logger.info(f"找到 {len(fund_dividends)} 只基金的分红公告")
     
     # 获取本地数据库数据
     with get_conn() as conn:
@@ -169,27 +171,27 @@ if __name__ == '__main__':
         quotes = fetch_all_reits_quotes()
         realtime_data = {q['fund_code']: q for q in quotes}
     except Exception as e:
-        print(f"获取实时价格失败: {e}")
+        logger.error(f"获取实时价格失败: {e}")
         realtime_data = {}
     
-    print("计算正确派息率...")
+    logger.info("计算正确派息率...")
     results = calculate_correct_dividend_yield(fund_dividends, local_data, realtime_data)
     
     # 保存结果
     with open('dividend_correction.json', 'w', encoding='utf-8') as f:
         json.dump(results, f, ensure_ascii=False, indent=2)
     
-    print(f"\n完成！共分析 {len(results)} 只基金")
-    print(f"结果已保存到: dividend_correction.json")
+    logger.info(f"\n完成！共分析 {len(results)} 只基金")
+    logger.info(f"结果已保存到: dividend_correction.json")
     
     # 打印对比
-    print("\n" + "="*100)
-    print("派息率对比 (仅显示PDF解析成功的基金)")
-    print("="*100)
-    print(f"{'代码':<10} {'名称':<22} {'存储值':>10} {'市价派息率':>12} {'净值派息率':>12} {'近12月分红':>12} {'分红次数':>8}")
-    print("-"*100)
+    logger.info("\n" + "="*100)
+    logger.info("派息率对比 (仅显示PDF解析成功的基金)")
+    logger.info("="*100)
+    logger.info(f"{'代码':<10} {'名称':<22} {'存储值':>10} {'市价派息率':>12} {'净值派息率':>12} {'近12月分红':>12} {'分红次数':>8}")
+    logger.info("-"*100)
     
     for r in sorted(results, key=lambda x: x['calculated_market_yield'], reverse=True):
         stored = f"{r['stored_dividend_yield']:.2f}%" if r['stored_dividend_yield'] else "N/A"
         name = r['name'][:20] if r['name'] else ''
-        print(f"{r['code']:<10} {name:<22} {stored:>10} {r['calculated_market_yield']:>11.2f}% {r['calculated_nav_yield']:>11.2f}% {r['annual_dividend_estimate']:>12.4f} {r['dividend_count']:>8}")
+        logger.info(f"{r['code']:<10} {name:<22} {stored:>10} {r['calculated_market_yield']:>11.2f}% {r['calculated_nav_yield']:>11.2f}% {r['annual_dividend_estimate']:>12.4f} {r['dividend_count']:>8}")
