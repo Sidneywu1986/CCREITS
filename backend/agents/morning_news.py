@@ -6,6 +6,7 @@
 
 import asyncio
 import logging
+import psycopg2
 from dataclasses import dataclass
 from typing import List, Dict, Optional
 from datetime import datetime
@@ -91,7 +92,7 @@ class MorningNewsEngine:
                         market='CN',
                     ))
             return news[:10]  # 最多10条
-        except Exception as e:
+        except (psycopg2.Error, ValueError, KeyError) as e:
             logger.warning(f"Fetch overnight news from PG failed: {e}")
             return []
         # TODO: 接入实际爬虫

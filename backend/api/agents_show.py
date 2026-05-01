@@ -33,9 +33,9 @@ def get_shows(show_date: Optional[str] = None):
             "total": len(rows),
             "shows": rows
         }
-    except Exception as e:
+    except psycopg2.Error as e:
         logger.error(f"Get shows failed: {e}")
-        return {"date": target_date, "total": 0, "shows": [], "error": str(e)}
+        return {"date": target_date, "total": 0, "shows": [], "error": "获取节目列表失败"}
 
 
 @router.get("/shows/latest")
@@ -63,6 +63,6 @@ def get_latest_show(slot_id: Optional[str] = None):
             if row:
                 return dict(row)
             return {"message": "No show found"}
-    except Exception as e:
+    except psycopg2.Error as e:
         logger.error(f"Get latest show failed: {e}")
-        return {"error": str(e)}
+        return {"error": "获取最新节目失败"}

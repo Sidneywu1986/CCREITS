@@ -99,7 +99,7 @@ class LLMTagEngine:
                 timeout=120,
             )
             logger.info(f"LLM client initialized: {DEEPSEEK_BASE_URL} model={DEEPSEEK_MODEL}")
-        except Exception as e:
+        except (ImportError, RuntimeError, ValueError) as e:
             logger.error(f"Failed to init LLM client: {e}")
             raise
 
@@ -130,7 +130,7 @@ class LLMTagEngine:
             result = self._safe_parse_json(text)
             return result
 
-        except Exception as e:
+        except (RuntimeError, ValueError, ConnectionError) as e:
             logger.error(f"Article {article.get('id')} tagging failed: {e}")
             return None
 

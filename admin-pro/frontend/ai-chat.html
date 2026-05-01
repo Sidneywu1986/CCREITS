@@ -131,8 +131,9 @@
         .duet-stage-label.stage-3 { background: #fee2e2; color: #991b1b; }
         .duet-stage-label.stage-4 { background: #e0e7ff; color: #3730a3; }
     </style>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 </head>
-<body class="h-screen flex flex-col overflow-hidden bg-gray-50">
+<body class="min-h-screen md:h-screen flex flex-col overflow-x-hidden md:overflow-hidden bg-gray-50 pb-mobile-nav md:pb-0">
     <!-- Header -->
     <header class="h-[60px] bg-white border-b border-gray-200 flex items-center justify-between px-6 flex-none z-40">
         <div class="flex items-center gap-4">
@@ -176,7 +177,7 @@
     <!-- Main Content -->
     <div class="chat-container flex flex-1 overflow-hidden">
         <!-- Left Sidebar - AI角色列表 -->
-        <aside class="w-64 bg-white border-r border-gray-200 flex flex-col hidden lg:flex">
+        <aside class="w-full md:w-64 bg-white border-r border-gray-200 flex flex-col hidden lg:flex">
             <div class="p-4 border-b border-gray-200">
                 <h3 class="font-semibold text-gray-900 flex items-center gap-2">
                     <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -470,6 +471,7 @@
     </div>
 
     <script src="./js/common.js?v=2"></script>
+    <script src="./js/icons.js"></script>
     <script src="./js/api.js"></script>
     <script>
         // API配置
@@ -631,7 +633,7 @@
                         <img src="${(AGENT_DISPLAY_CONFIG[msg.persona] || {}).avatar || ''}" class="w-8 h-8 rounded-full bg-gray-100 flex-none">
                         <div class="flex-1">
                             <div class="flex items-center gap-2 mb-1">
-                                <span class="font-semibold text-sm text-gray-900">${msg.persona}</span>
+                                <span class="font-semibold text-sm text-gray-900">${escapeHtml(msg.persona)}</span>
                                 <span class="text-xs text-gray-400">${new Date().toLocaleTimeString()}</span>
                             </div>
                             <div class="message-bubble bg-white border border-gray-200 rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm">
@@ -691,7 +693,7 @@
                         beatEl.innerHTML = `
                             <div class="bg-gradient-to-r from-purple-50 to-pink-50 rounded-full px-4 py-1.5 text-xs text-purple-600 flex items-center gap-1.5 animate-pulse">
                                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg>
-                                ${msg.speaker_cn} 接话 · ${msg.beat_type === 'challenge' ? '不同角度' : msg.beat_type === 'support' ? '补充支撑' : msg.beat_type === 'punchline' ? '翻包袱' : '冷静'}
+                                ${escapeHtml(msg.speaker_cn)} 接话 · ${msg.beat_type === 'challenge' ? '不同角度' : msg.beat_type === 'support' ? '补充支撑' : msg.beat_type === 'punchline' ? '翻包袱' : '冷静'}
                             </div>
                         `;
                         document.getElementById('chat-messages').appendChild(beatEl);
@@ -834,7 +836,7 @@
             if (meta && meta.duet_stage) {
                 const label = getDuetStageLabel(meta.duet_stage);
                 if (label) {
-                    duetLabelHtml = `<span class="duet-stage-label stage-${meta.duet_stage}">${label}</span>`;
+                    duetLabelHtml = `<span class="duet-stage-label stage-${escapeHtml(meta.duet_stage)}">${label}</span>`;
                 }
             }
 
@@ -909,9 +911,9 @@
                 div.onmouseout = () => { div.style.background = '#fafafa'; };
                 div.onclick = () => scrollToAgentMsg(agent.name);
                 div.innerHTML = `
-                    <img src="${agent.avatar}" style="width:24px;height:24px;border-radius:50%;flex-shrink:0;">
+                    <img src="${escapeHtml(agent.avatar)}" style="width:24px;height:24px;border-radius:50%;flex-shrink:0;">
                     <div style="flex:1;display:flex;flex-direction:column;min-width:0;">
-                        <span style="font-size:12px;font-weight:500;color:#374151;">${agent.name}</span>
+                        <span style="font-size:12px;font-weight:500;color:#374151;">${escapeHtml(agent.name)}</span>
                     </div>
                     <span style="font-size:11px;padding:2px 8px;border-radius:4px;font-weight:500;background:${agent.stance === 'bullish' ? '#d1fae5' : agent.stance === 'bearish' ? '#fee2e2' : agent.stance === 'cautious' ? '#fef3c7' : '#f3f4f6'};color:${agent.stance === 'bullish' ? '#065f46' : agent.stance === 'bearish' ? '#991b1b' : agent.stance === 'cautious' ? '#92400e' : '#4b5563'};">${STANCE_LABEL[agent.stance]}</span>
                 `;
@@ -938,10 +940,10 @@
                 div.innerHTML = `
                     <span style="width:20px;height:20px;display:flex;align-items:center;justify-content:center;background:${topic.active ? '#dc2626' : '#e5e7eb'};border-radius:50%;font-size:11px;font-weight:600;color:${topic.active ? '#fff' : '#6b7280'};flex-shrink:0;">${idx + 1}</span>
                     <div style="flex:1;min-width:0;">
-                        <div style="font-size:12px;font-weight:500;color:#374151;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${topic.title}</div>
+                        <div style="font-size:12px;font-weight:500;color:#374151;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(topic.title)}</div>
                         <div style="display:flex;gap:6px;font-size:11px;color:#9ca3af;margin-top:2px;">
                             <span>${topic.active ? '即将开始' : '排队中'}</span>
-                            <span>${topic.votes} 人想听</span>
+                            <span>${escapeHtml(topic.votes)} 人想听</span>
                         </div>
                     </div>
                     ${!topic.active ? `<button onclick="bumpTopic(${topic.id})" style="padding:4px 10px;border:1px solid #e5e7eb;background:#fff;border-radius:6px;font-size:11px;cursor:pointer;color:#6b7280;flex-shrink:0;">想听</button>` : ''}
@@ -1024,8 +1026,8 @@
                 const container = document.getElementById('rs-split-opinions');
                 container.innerHTML = splits.map(s => `
                     <div style="display:flex;gap:6px;font-size:11px;padding:6px;border-radius:6px;background:${s.stance === 'bearish' ? '#fef2f2' : s.stance === 'bullish' ? '#f0fdf4' : '#f8f9fa'};">
-                        <span style="font-weight:600;color:#374151;">${s.who}</span>
-                        <span style="color:#6b7280;font-style:italic;">${s.says}</span>
+                        <span style="font-weight:600;color:#374151;">${escapeHtml(s.who)}</span>
+                        <span style="color:#6b7280;font-style:italic;">${escapeHtml(s.says)}</span>
                     </div>
                 `).join('');
             }
@@ -1072,18 +1074,18 @@
                     conflicts.map(c => {
                         const borderColor = c.type === '核心分歧' ? '#dc2626' : c.type === '估值差异' ? '#f59e0b' : '#3b82f6';
                         return `<div style="background:#f8fafc;border-radius:12px;padding:16px;margin-bottom:12px;border-left:4px solid ${borderColor};">
-                            <div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">${c.type}</div>
+                            <div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">${escapeHtml(c.type)}</div>
                             <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
                                 <span style="font-weight:700;font-size:14px;color:#1e293b;">${c.between[0]}</span>
                                 <span style="font-size:12px;color:#94a3b8;font-weight:600;">VS</span>
                                 <span style="font-weight:700;font-size:14px;color:#1e293b;">${c.between[1]}</span>
                             </div>
                             <div style="display:flex;gap:12px;margin-bottom:12px;">
-                                <div style="flex:1;background:#fff;border-radius:8px;padding:10px;font-size:13px;color:#475569;line-height:1.6;">${c.side_a}</div>
+                                <div style="flex:1;background:#fff;border-radius:8px;padding:10px;font-size:13px;color:#475569;line-height:1.6;">${escapeHtml(c.side_a)}</div>
                                 <div style="width:1px;background:#e2e8f0;"></div>
-                                <div style="flex:1;background:#fff;border-radius:8px;padding:10px;font-size:13px;color:#475569;line-height:1.6;">${c.side_b}</div>
+                                <div style="flex:1;background:#fff;border-radius:8px;padding:10px;font-size:13px;color:#475569;line-height:1.6;">${escapeHtml(c.side_b)}</div>
                             </div>
-                            <div style="font-size:12px;color:#64748b;font-style:italic;padding:8px;background:#fff;border-radius:6px;">💡 ${c.highlight}</div>
+                            <div style="font-size:12px;color:#64748b;font-style:italic;padding:8px;background:#fff;border-radius:6px;">💡 ${escapeHtml(c.highlight)}</div>
                         </div>`;
                     }).join('') +
                 '</div>';
@@ -1109,17 +1111,17 @@
                         <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
                             <div style="width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;background:${avatarGradients[aid] || '#6b7280'};">${nameMap[aid] || aid}</div>
                             <div style="display:flex;align-items:center;gap:8px;">
-                                <span style="font-weight:600;font-size:14px;color:#1e293b;">${prop.agent_name}</span>
+                                <span style="font-weight:600;font-size:14px;color:#1e293b;">${escapeHtml(prop.agent_name)}</span>
                                 <span style="font-size:11px;padding:2px 8px;border-radius:12px;font-weight:500;background:${stanceBg[prop.stance] || '#e2e8f0'};color:${stanceColor[prop.stance] || '#475569'};">${stanceLabel[prop.stance] || '中性'}</span>
                             </div>
                         </div>
                         <div style="margin-bottom:10px;">
                             <div style="font-size:10px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Round 0 · 独立观点</div>
-                            <p style="font-size:13px;color:#475569;line-height:1.7;margin:0;">${prop.round_0}</p>
+                            <p style="font-size:13px;color:#475569;line-height:1.7;margin:0;">${escapeHtml(prop.round_0)}</p>
                         </div>
                         ${prop.round_1 ? `<div style="background:#fff;border-radius:6px;padding:10px;border:1px dashed #cbd5e1;">
                             <div style="font-size:10px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Round 1 · 交换修正</div>
-                            <p style="font-size:13px;color:#475569;line-height:1.7;margin:0;">${prop.round_1}</p>
+                            <p style="font-size:13px;color:#475569;line-height:1.7;margin:0;">${escapeHtml(prop.round_1)}</p>
                         </div>` : ''}
                     </div>`;
                 }).join('') +
@@ -1129,7 +1131,7 @@
             container.innerHTML = `
                 <div style="background:linear-gradient(135deg, #1e293b 0%, #334155 100%);color:#fff;padding:20px;">
                     <div style="display:inline-block;font-size:12px;font-weight:600;padding:4px 10px;background:rgba(255,255,255,0.15);border-radius:20px;margin-bottom:10px;">🎙️ 投研辩论会</div>
-                    <h3 style="font-size:18px;font-weight:700;margin:0 0 10px 0;line-height:1.4;">${payload.topic}</h3>
+                    <h3 style="font-size:18px;font-weight:700;margin:0 0 10px 0;line-height:1.4;">${escapeHtml(payload.topic)}</h3>
                     ${consensus ? `<div style="font-size:13px;color:#cbd5e1;background:rgba(255,255,255,0.08);padding:8px 12px;border-radius:8px;">💡 共识：${consensus}</div>` : ''}
                 </div>
                 ${conflictsHtml}
@@ -1172,7 +1174,7 @@
 
             let centerHtml = '';
             if (currentMode === 'showtime') {
-                centerHtml = `<span style="background:rgba(255,255,255,0.1);padding:4px 12px;border-radius:12px;display:inline-block;">本场每人限${userQuota.total}问 · 您剩余 ${userQuota.remaining}/${userQuota.total}</span>`;
+                centerHtml = `<span style="background:rgba(255,255,255,0.1);padding:4px 12px;border-radius:12px;display:inline-block;">本场每人限${userQuota.total}问 · 您剩余 ${escapeHtml(userQuota.remaining)}/${userQuota.total}</span>`;
             } else if (modeCountdown) {
                 centerHtml = `<span style="font-family:monospace;font-weight:600;letter-spacing:0.5px;">⏱️ 距${nextSlotName}还有 ${modeCountdown}</span>`;
             } else {
@@ -1191,8 +1193,8 @@
 
             banner.innerHTML = `
                 <div style="display:flex;align-items:center;gap:8px;">
-                    <span style="font-size:18px;line-height:1;">${cfg.icon}</span>
-                    <span style="font-weight:700;font-size:14px;">${cfg.name}</span>
+                    <span style="font-size:18px;line-height:1;">${escapeHtml(cfg.icon)}</span>
+                    <span style="font-weight:700;font-size:14px;">${escapeHtml(cfg.name)}</span>
                 </div>
                 <div style="font-size:12px;">${centerHtml}</div>
                 <div style="display:flex;align-items:center;gap:12px;font-size:11px;">
@@ -1264,7 +1266,7 @@
                 <div style="padding:12px 16px;border-bottom:1px solid #f1f5f9;">
                     <div style="font-size:14px;font-weight:600;color:#1e293b;margin-bottom:4px;">${escapeHtml(item.title)}</div>
                     <div style="font-size:12px;color:#475569;line-height:1.6;margin-bottom:6px;">${escapeHtml(item.summary)}</div>
-                    <div style="font-size:11px;color:#64748b;">📰 ${item.source} <span style="display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;margin-left:8px;background:${item.market==='US'?'#dbeafe':item.market==='SG'?'#fef3c7':'#f1f5f9'};color:${item.market==='US'?'#1e40af':item.market==='SG'?'#92400e':'#475569'};">${item.market}</span> <a href="${item.source_url}" target="_blank" rel="noopener" style="color:#3b82f6;text-decoration:none;">查看原文 →</a></div>
+                    <div style="font-size:11px;color:#64748b;">📰 ${escapeHtml(item.source)} <span style="display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;margin-left:8px;background:${item.market==='US'?'#dbeafe':item.market==='SG'?'#fef3c7':'#f1f5f9'};color:${item.market==='US'?'#1e40af':item.market==='SG'?'#92400e':'#475569'};">${escapeHtml(item.market)}</span> <a href="${escapeHtml(item.source_url)}" target="_blank" rel="noopener" style="color:#3b82f6;text-decoration:none;">查看原文 →</a></div>
                 </div>
             `).join('');
             div.innerHTML = `
@@ -1404,13 +1406,13 @@
                 return `
                 <div class="flex items-center gap-2.5 p-2 rounded-lg hover:bg-gray-50 transition-all cursor-pointer group ${isActive ? 'bg-purple-50 border border-purple-200' : ''}" 
                      onclick="selectAgent('${displayName}')">
-                    <img src="${config.avatar}" alt="${displayName}" class="rounded-full bg-gray-100 flex-none" style="width:28px;height:28px">
+                    <img src="${escapeHtml(config.avatar)}" alt="${displayName}" class="rounded-full bg-gray-100 flex-none" style="width:28px;height:28px">
                     <div class="flex-1 min-w-0 overflow-hidden">
                         <div class="flex items-center gap-1.5">
                             <span class="font-semibold text-sm text-gray-900 truncate">${displayName}</span>
-                            <span class="text-[10px] px-1 py-0.5 bg-${config.color}-100 text-${config.color}-700 rounded whitespace-nowrap">${ai.agent_desc || 'AI分析师'}</span>
+                            <span class="text-[10px] px-1 py-0.5 bg-${escapeHtml(config.color)}-100 text-${escapeHtml(config.color)}-700 rounded whitespace-nowrap">${ai.agent_desc || 'AI分析师'}</span>
                         </div>
-                        <p class="text-[11px] text-gray-500 truncate">${config.style} · ${config.expertise.slice(0,2).join(' ')}</p>
+                        <p class="text-[11px] text-gray-500 truncate">${escapeHtml(config.style)} · ${config.expertise.slice(0,2).join(' ')}</p>
                     </div>
                     <div class="w-1.5 h-1.5 ${isActive ? 'bg-purple-500' : 'bg-green-500'} rounded-full animate-pulse flex-none"></div>
                 </div>
@@ -1451,7 +1453,7 @@
                 }
                 return `
                 <div class="flex items-center justify-between p-2 rounded-lg hover:bg-gray-100 cursor-pointer transition-all" onclick="askAI('${h.title.replace(/'/g, "\\'")}')">
-                    <span class="text-xs text-gray-700 truncate flex-1">${index + 1}. ${h.title}</span>
+                    <span class="text-xs text-gray-700 truncate flex-1">${index + 1}. ${escapeHtml(h.title)}</span>
                     <span class="text-[10px] px-1.5 py-0.5 ${tagClass} rounded">
                         ${tag}
                     </span>
@@ -1475,7 +1477,7 @@
             
             let avatarHtml;
             if (isAI && config) {
-                avatarHtml = `<img src="${config.avatar}" class="w-8 h-8 rounded-full bg-gray-100 flex-none">`;
+                avatarHtml = `<img src="${escapeHtml(config.avatar)}" class="w-8 h-8 rounded-full bg-gray-100 flex-none">`;
             } else if (isMe) {
                 avatarHtml = `<div class="w-8 h-8 rounded-full bg-gradient-to-br from-green-500 to-teal-500 flex items-center justify-center text-white font-bold flex-none">我</div>`;
             } else {
@@ -1483,16 +1485,16 @@
                 avatarHtml = `<div class="w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-red-400 flex items-center justify-center text-white font-bold flex-none text-xs">${sender.substring(0, 1)}</div>`;
             }
             
-            const bubbleColor = isAI && config ? `bg-${config.color}-50 border-${config.color}-200` : (isMe ? 'bg-blue-600 text-white' : 'bg-orange-50 border border-orange-200 text-gray-800');
+            const bubbleColor = isAI && config ? `bg-${escapeHtml(config.color)}-50 border-${escapeHtml(config.color)}-200` : (isMe ? 'bg-blue-600 text-white' : 'bg-orange-50 border border-orange-200 text-gray-800');
             const textColor = isAI || isOther ? 'text-gray-800' : 'text-white';
-            const senderColor = isAI && config ? `text-${config.color}-700` : (isMe ? 'text-blue-200' : 'text-orange-600');
+            const senderColor = isAI && config ? `text-${escapeHtml(config.color)}-700` : (isMe ? 'text-blue-200' : 'text-orange-600');
 
             // 对戏阶段标签
             let duetLabelHtml = '';
             if (meta && meta.duet_stage) {
                 const label = getDuetStageLabel(meta.duet_stage);
                 if (label) {
-                    duetLabelHtml = `<span class="duet-stage-label stage-${meta.duet_stage}">${label}</span>`;
+                    duetLabelHtml = `<span class="duet-stage-label stage-${escapeHtml(meta.duet_stage)}">${label}</span>`;
                 }
             }
 
@@ -1545,10 +1547,10 @@
             div.id = id;
             div.className = 'chat-message flex gap-3';
             div.innerHTML = `
-                ${config.avatar ? `<img src="${config.avatar}" class="w-8 h-8 rounded-full bg-gray-100 flex-none">` : '<div class="w-8 h-8 rounded-full bg-gray-200 flex-none"></div>'}
+                ${config.avatar ? `<img src="${escapeHtml(config.avatar)}" class="w-8 h-8 rounded-full bg-gray-100 flex-none">` : '<div class="w-8 h-8 rounded-full bg-gray-200 flex-none"></div>'}
                 <div class="message-bubble bg-white border border-gray-200 rounded-2xl px-4 py-3 shadow-sm">
                     <div class="flex items-center gap-2 mb-1">
-                        <span class="font-semibold text-sm text-${config.color}-700">${agentName}</span>
+                        <span class="font-semibold text-sm text-${escapeHtml(config.color)}-700">${agentName}</span>
                         <span class="text-xs text-gray-400">思考中...</span>
                     </div>
                     <div class="flex gap-1 items-center h-6">
@@ -1780,5 +1782,29 @@
     </script>
 
     <!-- 剧场侧屏已集成到右侧边栏 -->
+
+    <!-- Mobile Bottom Navigation -->
+    <nav class="mobile-nav md:hidden">
+        <a href="./market.html" class="mobile-nav__item ">
+            <i data-lucide="bar-chart-3" data-size="20"></i>
+            <span>行情</span>
+        </a>
+        <a href="./fund-archive.html" class="mobile-nav__item ">
+            <i data-lucide="building-2" data-size="20"></i>
+            <span>档案</span>
+        </a>
+        <a href="./announcements.html" class="mobile-nav__item ">
+            <i data-lucide="bell" data-size="20"></i>
+            <span>公告</span>
+        </a>
+        <a href="./research-center.html" class="mobile-nav__item ">
+            <i data-lucide="pie-chart" data-size="20"></i>
+            <span>投研</span>
+        </a>
+        <a href="./portfolio.html" class="mobile-nav__item ">
+            <i data-lucide="star" data-size="20"></i>
+            <span>自选</span>
+        </a>
+    </nav>
 </body>
 </html>

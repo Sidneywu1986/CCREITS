@@ -111,7 +111,7 @@ async def research(req: ResearchRequest):
             else:
                 logger.warning("Milvus not healthy, using fulltext fallback")
                 research_contexts = await _fulltext_search_fallback(req.message)
-        except Exception as e:
+        except (RuntimeError, ValueError, KeyError) as e:
             logger.warning(f"Vector search failed, using fallback: {e}")
             research_contexts = await _fulltext_search_fallback(req.message)
 
@@ -144,9 +144,9 @@ async def research(req: ResearchRequest):
             )
 
             ai_content = response.choices[0].message.content
-        except Exception as e:
+        except (RuntimeError, ValueError, ConnectionError) as e:
             logger.error(f"LLM call failed: {e}")
-            ai_content = f"抱歉，AI服务暂时不可用: {str(e)}"
+            ai_content = "抱歉，AI服务暂时不可用，请稍后重试"
 
         # 6. Save AI response
         ai_msg = await ResearchMessage.create(
@@ -167,6 +167,6 @@ async def research(req: ResearchRequest):
 
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"research error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        logger.exception("research error")
+        raise HTTPException(status_code=500, detail="服务暂时不可用，请稍后重试")

@@ -10,6 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="./css/common.css">
     <script src="./js/app-core.js?v=2"></script>
+    <script src="./js/icons.js"></script>
     <style>
         body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background-color: #f8fafc; }
         .mono { font-family: 'JetBrains Mono', monospace; }
@@ -32,8 +33,9 @@
         .metric-gradient-3 { background: linear-gradient(135deg, #fffbeb, #fef3c7); }
         .metric-gradient-4 { background: linear-gradient(135deg, #f0fdf4, #dcfce7); }
     </style>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 </head>
-<body class="h-screen flex flex-col overflow-hidden">
+<body class="min-h-screen md:h-screen flex flex-col overflow-x-hidden md:overflow-hidden pb-mobile-nav md:pb-0">
 
     <!-- Header -->
     <header class="h-[52px] bg-white border-b border-slate-200 flex items-center justify-between px-4 flex-none z-40">
@@ -76,7 +78,7 @@
     <!-- Main -->
     <main class="flex-1 flex flex-col md:flex-row overflow-hidden p-3 gap-3">
         <!-- Left: Fund Selector -->
-        <aside class="w-full md:w-72 flex-none bg-white rounded-xl border border-slate-200 flex flex-col overflow-hidden shadow-sm max-h-[40vh] md:max-h-none">
+        <aside class="w-full md:w-full md:w-72 flex-none bg-white rounded-xl border border-slate-200 flex flex-col overflow-hidden shadow-sm max-h-[40vh] md:max-h-none">
             <div class="p-3 border-b border-slate-100 bg-white">
                 <h3 class="font-semibold text-slate-900 text-sm flex items-center gap-2">
                     <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
@@ -400,11 +402,11 @@ function renderFundList() {
         const price = q && q.price > 0 ? q.price : f.price;
         const change = q ? q.change : 0;
         const selected = rcSelectedFunds.includes(f.code);
-        return `<div class="fund-card rounded-lg p-2.5 ${selected ? 'selected' : 'bg-white'}" data-code="${f.code}" onclick="toggleFund('${f.code}')">
+        return `<div class="fund-card rounded-lg p-2.5 ${selected ? 'selected' : 'bg-white'}" data-code="${escapeHtml(f.code)}" onclick="toggleFund('${escapeHtml(f.code)}')">
             <div class="flex items-center justify-between">
                 <div class="flex-1 min-w-0">
-                    <div class="font-medium text-slate-900 text-xs truncate">${f.name}</div>
-                    <div class="text-[10px] text-slate-500 mt-0.5">${f.code} · ${SECTOR_NAMES[f.sector] || f.sector}</div>
+                    <div class="font-medium text-slate-900 text-xs truncate">${escapeHtml(f.name)}</div>
+                    <div class="text-[10px] text-slate-500 mt-0.5">${escapeHtml(f.code)} · ${SECTOR_NAMES[f.sector] || f.sector}</div>
                 </div>
                 <div class="text-right ml-2">
                     <div class="font-bold text-xs mono ${change >= 0 ? 'text-red-600' : 'text-green-600'}">${price > 0 ? price.toFixed(3) : '--'}</div>
@@ -445,7 +447,7 @@ function updateSelectionUI() {
     const tags = document.getElementById('selected-tags');
     tags.innerHTML = rcSelectedFunds.map(code => {
         const f = rcFunds.find(x => x.code === code);
-        return f ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 text-[10px] font-medium rounded-full">${f.name}<button onclick="event.stopPropagation();toggleFund('${code}')" class="hover:text-blue-900">×</button></span>` : '';
+        return f ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 text-[10px] font-medium rounded-full">${escapeHtml(f.name)}<button onclick="event.stopPropagation();toggleFund('${code}')" class="hover:text-blue-900">×</button></span>` : '';
     }).join('');
     renderFundList();
 }
@@ -614,12 +616,12 @@ function initPositionRows() {
 function renderPositionRows() {
     const tbody = document.getElementById('position-rows');
     tbody.innerHTML = positions.map((p, i) => {
-        const fundOpts = '<option value="">选择基金</option>' + rcFunds.map(f => `<option value="${f.code}" ${p.fund === f.code ? 'selected' : ''}>${f.name}</option>`).join('');
+        const fundOpts = '<option value="">选择基金</option>' + rcFunds.map(f => `<option value="${escapeHtml(f.code)}" ${p.fund === f.code ? 'selected' : ''}>${escapeHtml(f.name)}</option>`).join('');
         return `<tr class="border-b border-slate-100">
             <td class="py-1.5 pr-2"><select onchange="updatePosition(${i}, 'fund', this.value)" class="calc-input text-xs">${fundOpts}</select></td>
-            <td class="py-1.5 px-1"><input type="number" value="${p.buyPrice || ''}" onchange="updatePosition(${i}, 'buyPrice', this.value)" class="calc-input text-xs text-right" step="0.001" placeholder="买入价"></td>
-            <td class="py-1.5 px-1"><input type="number" value="${p.shares || ''}" onchange="updatePosition(${i}, 'shares', this.value)" class="calc-input text-xs text-right" step="1" placeholder="份数"></td>
-            <td class="py-1.5 px-1"><input type="number" value="${p.currentPrice || ''}" onchange="updatePosition(${i}, 'currentPrice', this.value)" class="calc-input text-xs text-right" step="0.001" placeholder="现价"></td>
+            <td class="py-1.5 px-1"><input type="number" value="${escapeHtml(p.buyPrice || '')}" onchange="updatePosition(${i}, 'buyPrice', this.value)" class="calc-input text-xs text-right" step="0.001" placeholder="买入价"></td>
+            <td class="py-1.5 px-1"><input type="number" value="${escapeHtml(p.shares || '')}" onchange="updatePosition(${i}, 'shares', this.value)" class="calc-input text-xs text-right" step="1" placeholder="份数"></td>
+            <td class="py-1.5 px-1"><input type="number" value="${escapeHtml(p.currentPrice || '')}" onchange="updatePosition(${i}, 'currentPrice', this.value)" class="calc-input text-xs text-right" step="0.001" placeholder="现价"></td>
             <td class="py-1.5 px-1"><input type="number" value="${p.dividend || ''}" onchange="updatePosition(${i}, 'dividend', this.value)" class="calc-input text-xs text-right" step="0.001" placeholder="分红"></td>
             <td class="py-1.5 pl-1">${i > 0 ? `<button onclick="removePosition(${i})" class="text-slate-400 hover:text-red-500">×</button>` : ''}</td>
         </tr>`;
@@ -925,5 +927,29 @@ function percentile(arr, val) {
 }
 
 </script>
+
+    <!-- Mobile Bottom Navigation -->
+    <nav class="mobile-nav md:hidden">
+        <a href="./market.html" class="mobile-nav__item ">
+            <i data-lucide="bar-chart-3" data-size="20"></i>
+            <span>行情</span>
+        </a>
+        <a href="./fund-archive.html" class="mobile-nav__item ">
+            <i data-lucide="building-2" data-size="20"></i>
+            <span>档案</span>
+        </a>
+        <a href="./announcements.html" class="mobile-nav__item ">
+            <i data-lucide="bell" data-size="20"></i>
+            <span>公告</span>
+        </a>
+        <a href="./research-center.html" class="mobile-nav__item active">
+            <i data-lucide="pie-chart" data-size="20"></i>
+            <span>投研</span>
+        </a>
+        <a href="./portfolio.html" class="mobile-nav__item ">
+            <i data-lucide="star" data-size="20"></i>
+            <span>自选</span>
+        </a>
+    </nav>
 </body>
 </html>

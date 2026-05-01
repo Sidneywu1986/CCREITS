@@ -59,7 +59,7 @@ class BGEEmbedder:
             )
             logger.info(f"Using HuggingFace cached model at {local_path}")
             return local_path
-        except Exception:
+        except (ImportError, OSError, RuntimeError):
             pass
 
         # 3. Try online download via ModelScope first, then HF
@@ -69,7 +69,7 @@ class BGEEmbedder:
             modelscope_path = ms_snapshot_download("BAAI/bge-m3", cache_dir=os.path.expanduser("~/.cache/modelscope/hub"))
             logger.info(f"Model downloaded to {modelscope_path}")
             return modelscope_path
-        except Exception as e:
+        except (ImportError, OSError, RuntimeError) as e:
             logger.warning(f"ModelScope download failed: {e}")
 
         # 4. Fallback to HuggingFace online (with mirror)

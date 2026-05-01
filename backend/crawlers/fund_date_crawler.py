@@ -9,6 +9,7 @@ import time
 import os
 from datetime import datetime
 from core.db import get_conn
+import psycopg2
 import logging
 logger = logging.getLogger(__name__)
 
@@ -39,7 +40,7 @@ def fetch_fund_info(code):
             result['scale'] = float(scale_match.group(1))
         
         return result
-    except Exception as e:
+    except (RuntimeError, ValueError, TypeError) as e:
         logger.error(f'  [Error] {code}: {e}')
         return {}
 
@@ -92,7 +93,7 @@ def update_fund(code, data):
             rowcount = cursor.rowcount
         
         return rowcount > 0
-    except Exception as e:
+    except psycopg2.Error as e:
         logger.error(f'  [DB Error] {code}: {e}')
         return False
 

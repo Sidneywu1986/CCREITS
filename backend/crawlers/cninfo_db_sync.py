@@ -13,6 +13,7 @@ from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from core.db import get_conn
+import psycopg2
 import logging
 logger = logging.getLogger(__name__)
 
@@ -202,15 +203,15 @@ def save_announcements_to_db(announcements, fund_code):
 
                     result['inserted'] += 1
 
-                except Exception as e:
+                except psycopg2.Error as e:
                     logger.error(f'[DB] 保存单条公告失败: {e}')
                     continue
 
             conn.commit()
             logger.info(f'[DB] 同步完成: 新增{result["inserted"]} | 跳过{result["skipped"]} | 可疑{result["filtered"]} | PDF无效{result["invalid_pdf"]}')
 
-    except Exception as e:
-        result['error'] = str(e)
+    except psycopg2.Error as e:
+        result['error'] = '数据库操作失败'
         logger.error(f'[DB] 数据库操作失败: {e}')
 
     return result
@@ -295,7 +296,7 @@ def sync_all_reits(max_count=30):
                 stats['total_invalid_pdf'] += result.get('invalid_pdf', 0)
             else:
                 stats['failed'] += 1
-        except Exception as e:
+        except (RuntimeError, OSError, ValueError) as e:
             stats['failed'] += 1
             logger.error(f'[SYNC] {code} 异常: {e}')
 

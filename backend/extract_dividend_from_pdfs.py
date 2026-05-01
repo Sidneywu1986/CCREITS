@@ -46,7 +46,7 @@ def extract_dividend_from_pdf(pdf_path):
                     return amount
         
         return None
-    except Exception as e:
+    except (OSError, ValueError, TypeError) as e:
         logger.error(f"解析PDF失败 {pdf_path}: {e}")
         return None
 
@@ -170,7 +170,7 @@ if __name__ == '__main__':
     try:
         quotes = fetch_all_reits_quotes()
         realtime_data = {q['fund_code']: q for q in quotes}
-    except Exception as e:
+    except (RuntimeError, ValueError) as e:
         logger.error(f"获取实时价格失败: {e}")
         realtime_data = {}
     

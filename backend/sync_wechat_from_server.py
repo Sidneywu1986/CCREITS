@@ -168,7 +168,7 @@ def run_script(name):
                 logger.info(f"[Sync] {name} done")
         except subprocess.TimeoutExpired:
             logger.error(f"[Sync] {name} timeout")
-        except Exception as e:
+        except (RuntimeError, OSError, ValueError) as e:
             logger.error(f"[Sync] {name} error: {e}")
     else:
         logger.info(f"[Sync] Script not found: {script_path}")

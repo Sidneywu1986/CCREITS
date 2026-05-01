@@ -184,8 +184,9 @@
             box-shadow: 0 4px 12px rgba(59,130,246,0.4);
         }
     </style>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 </head>
-<body class="h-screen flex flex-col overflow-hidden">
+<body class="min-h-screen md:h-screen flex flex-col overflow-x-hidden md:overflow-hidden pb-mobile-nav md:pb-0">
 
     <!-- Header -->
     <header class="h-[60px] bg-white border-b border-gray-200 flex items-center justify-between px-6 flex-none z-40">
@@ -266,7 +267,7 @@
                             </button>
                             
                             <!-- 类型选择 -->
-                            <select id="sector-filter" onchange="filterBySector(this.value)" class="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 cursor-pointer min-w-[120px]">
+                            <select id="sector-filter" onchange="filterBySector(this.value)" class="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 cursor-pointer min-w-full md:w-[120px]">
                                 <option value="all">全部类型</option>
                                 <option value="transport">交通基础设施</option>
                                 <option value="logistics">仓储物流</option>
@@ -609,6 +610,7 @@
     </div>
 
     <script src="./js/common.js"></script>
+    <script src="./js/icons.js"></script>
     <script src="./js/fund-calculator.js"></script>
     <script src="./js/api.js"></script>
     <script>
@@ -1105,7 +1107,7 @@
                         formatter: function(params) {
                             const d = params[0];
                             const v = d.data;
-                            return `${d.name}<br/>开: ${v[0]}<br/>收: ${v[1]}<br/>低: ${v[2]}<br/>高: ${v[3]}`;
+                            return `${escapeHtml(d.name)}<br/>开: ${v[0]}<br/>收: ${v[1]}<br/>低: ${v[2]}<br/>高: ${v[3]}`;
                         }
                     },
                     xAxis: {
@@ -1221,10 +1223,10 @@
                 const price = getPrice(fund);
                 const change = getChange(fund);
                 return `
-                <div class="flex justify-between items-center p-3 hover:bg-gray-50 rounded-lg cursor-pointer" onclick="window.location.href='./fund-detail.html?code=${fund.code}'">
+                <div class="flex justify-between items-center p-3 hover:bg-gray-50 rounded-lg cursor-pointer" onclick="window.location.href='./fund-detail.html?code=${escapeHtml(fund.code)}'">
                     <div>
-                        <div class="font-medium text-gray-900 text-sm">${fund.name}</div>
-                        <div class="text-xs text-gray-500 mono">${fund.code}</div>
+                        <div class="font-medium text-gray-900 text-sm">${escapeHtml(fund.name)}</div>
+                        <div class="text-xs text-gray-500 mono">${escapeHtml(fund.code)}</div>
                     </div>
                     <div class="text-right">
                         <div class="text-sm font-medium mono">${price ? price.toFixed(3) : '--'}</div>
@@ -1242,8 +1244,8 @@
                 <button onclick="window.location.href='./market.html?sector=${key}'" 
                     class="p-3 rounded-xl border text-left transition-all ${isCurrent ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'}">
                     <div class="flex items-center gap-2 mb-1">
-                        <span class="text-sm">${config.icon}</span>
-                        <span class="font-medium text-sm ${isCurrent ? 'text-blue-900' : 'text-gray-700'}">${config.name}</span>
+                        <span class="text-sm">${escapeHtml(config.icon)}</span>
+                        <span class="font-medium text-sm ${isCurrent ? 'text-blue-900' : 'text-gray-700'}">${escapeHtml(config.name)}</span>
                     </div>
                     <div class="text-xs text-gray-400">${isCurrent ? '当前板块' : '点击查看'}</div>
                 </button>
@@ -1251,7 +1253,7 @@
         }
 
         function viewSectorFunds() {
-            window.location.href = `./market.html?sector=${currentFund.sector}`;
+            window.location.href = `./market.html?sector=${escapeHtml(currentFund.sector)}`;
         }
 
         function addCurrentToCompare() {
@@ -1263,7 +1265,7 @@
             if (!list.find(i => i.code === currentCode)) {
                 list.push({ code: currentCode, name: currentFund.name });
                 saveCompareList(list);
-                REITS.showToast(`已将 ${currentFund.name} 加入对比栏`, 'success');
+                REITS.showToast(`已将 ${escapeHtml(currentFund.name)} 加入对比栏`, 'success');
             } else {
                 REITS.showToast('该基金已在对比栏中', 'info');
             }
@@ -1296,8 +1298,8 @@
             
             items.innerHTML = list.map(item => `
                 <div class="flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-lg flex-none">
-                    <span class="text-sm text-blue-900 font-medium truncate max-w-[120px]">${item.name}</span>
-                    <button onclick="removeFromCompare('${item.code}'); updateCompareBar();" class="text-blue-400 hover:text-blue-600">
+                    <span class="text-sm text-blue-900 font-medium truncate max-w-full md:w-[120px]">${escapeHtml(item.name)}</span>
+                    <button onclick="removeFromCompare('${escapeHtml(item.code)}'); updateCompareBar();" class="text-blue-400 hover:text-blue-600">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                     </button>
                 </div>
@@ -1510,15 +1512,15 @@
                     return `
                         <div class="flex items-start gap-3 p-4 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors group"
                              onclick="window.open('${item.pdf_url || item.source_url || '#'}', '_blank')">
-                            <div class="flex-none w-10 h-10 ${cfg.color} rounded-lg flex flex-col items-center justify-center text-xs">
-                                <span>${cfg.icon}</span>
+                            <div class="flex-none w-10 h-10 ${escapeHtml(cfg.color)} rounded-lg flex flex-col items-center justify-center text-xs">
+                                <span>${escapeHtml(cfg.icon)}</span>
                             </div>
                             <div class="flex-1 min-w-0">
-                                <div class="text-sm font-medium text-gray-900 group-hover:text-blue-600 transition-colors leading-snug">${item.title}</div>
+                                <div class="text-sm font-medium text-gray-900 group-hover:text-blue-600 transition-colors leading-snug">${escapeHtml(item.title)}</div>
                                 <div class="flex items-center gap-2 mt-1">
-                                    <span class="text-xs ${cfg.textColor} font-medium">${cfg.label}</span>
+                                    <span class="text-xs ${escapeHtml(cfg.textColor)} font-medium">${escapeHtml(cfg.label)}</span>
                                     <span class="text-xs text-gray-300">|</span>
-                                    <span class="text-xs text-gray-400">${item.publish_date || ''}</span>
+                                    <span class="text-xs text-gray-400">${escapeHtml(item.publish_date || '')}</span>
                                     ${item.is_suspicious === 1 ? '<span class="text-xs text-yellow-500 font-medium ml-1">⚠️待核实</span>' : ''}
                                 </div>
                             </div>
@@ -1595,12 +1597,12 @@
                 const isCurrent = fund.code === currentCode;
                 const sectorClass = SECTOR_CONFIG[fund.sector]?.tagClass || 'bg-gray-100 text-gray-600';
                 return `
-                    <div class="flex items-center justify-between p-3 hover:bg-gray-50 cursor-pointer ${isCurrent ? 'bg-blue-50' : ''}" onclick="switchFund('${fund.code}')">
+                    <div class="flex items-center justify-between p-3 hover:bg-gray-50 cursor-pointer ${isCurrent ? 'bg-blue-50' : ''}" onclick="switchFund('${escapeHtml(fund.code)}')">
                         <div class="flex items-center gap-2">
                             <span class="sector-tag ${sectorClass} text-xs">${SECTOR_CONFIG[fund.sector]?.icon || ''}</span>
                             <div>
-                                <div class="font-medium text-gray-900 text-sm ${isCurrent ? 'text-blue-600' : ''}">${fund.name}</div>
-                                <div class="text-xs text-gray-400 mono">${fund.code}</div>
+                                <div class="font-medium text-gray-900 text-sm ${isCurrent ? 'text-blue-600' : ''}">${escapeHtml(fund.name)}</div>
+                                <div class="text-xs text-gray-400 mono">${escapeHtml(fund.code)}</div>
                             </div>
                         </div>
                         <div class="text-right">
@@ -1636,12 +1638,12 @@
                 const isCurrent = fund.code === currentCode;
                 const sectorClass = SECTOR_CONFIG[fund.sector]?.tagClass || 'bg-gray-100 text-gray-600';
                 return `
-                    <div class="flex items-center justify-between p-3 hover:bg-gray-50 cursor-pointer ${isCurrent ? 'bg-blue-50' : ''}" onclick="switchFund('${fund.code}')">
+                    <div class="flex items-center justify-between p-3 hover:bg-gray-50 cursor-pointer ${isCurrent ? 'bg-blue-50' : ''}" onclick="switchFund('${escapeHtml(fund.code)}')">
                         <div class="flex items-center gap-2">
                             <span class="sector-tag ${sectorClass} text-xs">${SECTOR_CONFIG[fund.sector]?.icon || ''}</span>
                             <div>
-                                <div class="font-medium text-gray-900 text-sm ${isCurrent ? 'text-blue-600' : ''}">${fund.name}</div>
-                                <div class="text-xs text-gray-400 mono">${fund.code}</div>
+                                <div class="font-medium text-gray-900 text-sm ${isCurrent ? 'text-blue-600' : ''}">${escapeHtml(fund.name)}</div>
+                                <div class="text-xs text-gray-400 mono">${escapeHtml(fund.code)}</div>
                             </div>
                         </div>
                         <div class="text-right">
@@ -1954,7 +1956,7 @@
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
                     </svg>
-                    REITs估值计算器 - ${fund.name}
+                    REITs估值计算器 - ${escapeHtml(fund.name)}
                 `;
             }
             
@@ -2223,5 +2225,29 @@
         document.getElementById('about-modal').classList.remove('show');
     }
 </script>
+
+    <!-- Mobile Bottom Navigation -->
+    <nav class="mobile-nav md:hidden">
+        <a href="./market.html" class="mobile-nav__item ">
+            <i data-lucide="bar-chart-3" data-size="20"></i>
+            <span>行情</span>
+        </a>
+        <a href="./fund-archive.html" class="mobile-nav__item ">
+            <i data-lucide="building-2" data-size="20"></i>
+            <span>档案</span>
+        </a>
+        <a href="./announcements.html" class="mobile-nav__item ">
+            <i data-lucide="bell" data-size="20"></i>
+            <span>公告</span>
+        </a>
+        <a href="./research-center.html" class="mobile-nav__item ">
+            <i data-lucide="pie-chart" data-size="20"></i>
+            <span>投研</span>
+        </a>
+        <a href="./portfolio.html" class="mobile-nav__item ">
+            <i data-lucide="star" data-size="20"></i>
+            <span>自选</span>
+        </a>
+    </nav>
 </body>
 </html>

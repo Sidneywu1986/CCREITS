@@ -65,10 +65,11 @@ def get_reits_list():
             "source": "akshare",
             "timestamp": datetime.now().isoformat()
         }
-    except Exception as e:
+    except (RuntimeError, ValueError, TypeError, KeyError, IndexError) as e:
+        logger.exception("获取REITs列表失败")
         return {
             "success": False,
-            "error": str(e),
+            "error": "获取REITs列表失败，请稍后重试",
             "source": "akshare"
         }
 
@@ -116,11 +117,12 @@ def get_reits_history(code, start_date=None, end_date=None):
             "source": "akshare",
             "timestamp": datetime.now().isoformat()
         }
-    except Exception as e:
+    except (RuntimeError, ValueError, TypeError, KeyError, IndexError) as e:
+        logger.exception(f"获取{code}历史数据失败")
         return {
             "success": False,
             "code": code,
-            "error": str(e),
+            "error": "获取历史数据失败，请稍后重试",
             "source": "akshare"
         }
 
@@ -162,10 +164,11 @@ def get_reits_spot():
             "source": "akshare",
             "timestamp": datetime.now().isoformat()
         }
-    except Exception as e:
+    except (RuntimeError, ValueError, TypeError, KeyError, IndexError) as e:
+        logger.exception("获取实时行情失败")
         return {
             "success": False,
-            "error": str(e),
+            "error": "获取实时行情失败，请稍后重试",
             "source": "akshare"
         }
 
@@ -198,10 +201,11 @@ def get_all_reits_history(start_date=None, end_date=None):
             "source": "akshare",
             "timestamp": datetime.now().isoformat()
         }
-    except Exception as e:
+    except (RuntimeError, ValueError, TypeError, KeyError, IndexError) as e:
+        logger.exception("获取全部历史数据失败")
         return {
             "success": False,
-            "error": str(e),
+            "error": "获取历史数据失败，请稍后重试",
             "source": "akshare"
         }
 

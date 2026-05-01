@@ -8,6 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="./css/common.css">
     <script src="./js/app-core.js?v=2"></script>
+    <script src="./js/icons.js"></script>
     <style>
         body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background-color: #f8fafc; }
         .show-card { transition: all 0.2s; }
@@ -18,8 +19,9 @@
         .slot-afternoon { border-left: 4px solid #3b82f6; }
         .slot-freestyle { border-left: 4px solid #8b5cf6; }
     </style>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 </head>
-<body class="h-screen flex flex-col overflow-hidden">
+<body class="min-h-screen md:h-screen flex flex-col overflow-x-hidden md:overflow-hidden pb-mobile-nav md:pb-0">
 
     <!-- Header -->
     <header class="h-[52px] bg-white border-b border-slate-200 flex items-center justify-between px-4 flex-none z-40">
@@ -107,9 +109,9 @@
                             ${b.has_news ? '' : `<div class="text-sm text-amber-600 bg-amber-50 px-3 py-2 rounded-lg">${b.notice || '暂无新闻'}</div>`}
                             ${(b.items || []).map(item => `
                                 <div class="bg-slate-50 rounded-lg p-3">
-                                    <div class="font-medium text-sm text-slate-900">${item.title || ''}</div>
-                                    <div class="text-xs text-slate-500 mt-1">${item.summary || ''}</div>
-                                    <div class="text-xs text-slate-400 mt-1">来源: ${item.source || ''} ${item.market ? `(${item.market})` : ''}</div>
+                                    <div class="font-medium text-sm text-slate-900">${escapeHtml(item.title || '')}</div>
+                                    <div class="text-xs text-slate-500 mt-1">${escapeHtml(item.summary || '')}</div>
+                                    <div class="text-xs text-slate-400 mt-1">来源: ${escapeHtml(item.source || '')} ${item.market ? `(${escapeHtml(item.market)})` : ''}</div>
                                 </div>
                             `).join('')}
                         </div>
@@ -117,7 +119,7 @@
                 } else if (show.slot_id === 'lunch' && content.topic) {
                     contentHtml = `
                         <div class="bg-emerald-50 rounded-lg p-4">
-                            <div class="text-lg font-medium text-emerald-800">${content.topic}</div>
+                            <div class="text-lg font-medium text-emerald-800">${escapeHtml(content.topic)}</div>
                             <div class="text-xs text-emerald-600 mt-2">情绪: ${content.sentiment || 'calm'}</div>
                         </div>
                     `;
@@ -126,16 +128,16 @@
                 }
 
                 return `
-                    <div class="show-card bg-white rounded-xl border border-slate-200 p-4 ${cfg.color}">
+                    <div class="show-card bg-white rounded-xl border border-slate-200 p-4 ${escapeHtml(cfg.color)}">
                         <div class="flex items-center justify-between mb-3">
                             <div class="flex items-center gap-2">
-                                <span class="text-2xl">${cfg.icon}</span>
+                                <span class="text-2xl">${escapeHtml(cfg.icon)}</span>
                                 <div>
-                                    <div class="font-semibold text-slate-900">${cfg.title}</div>
-                                    <div class="text-xs text-slate-500">${cfg.time} · ${show.created_at ? new Date(show.created_at).toLocaleString('zh-CN') : ''}</div>
+                                    <div class="font-semibold text-slate-900">${escapeHtml(cfg.title)}</div>
+                                    <div class="text-xs text-slate-500">${escapeHtml(cfg.time)} · ${show.created_at ? new Date(show.created_at).toLocaleString('zh-CN') : ''}</div>
                                 </div>
                             </div>
-                            <span class="text-xs px-2 py-1 bg-slate-100 text-slate-500 rounded-full">${show.slot_id}</span>
+                            <span class="text-xs px-2 py-1 bg-slate-100 text-slate-500 rounded-full">${escapeHtml(show.slot_id)}</span>
                         </div>
                         ${contentHtml}
                     </div>
@@ -143,11 +145,35 @@
             }).join('');
 
         } catch (e) {
-            container.innerHTML = `<div class="text-center py-12 text-red-500">加载失败: ${e.message}</div>`;
+            container.innerHTML = `<div class="text-center py-12 text-red-500">加载失败: ${escapeHtml(e.message)}</div>`;
         }
     }
 
     loadShows();
     </script>
+
+    <!-- Mobile Bottom Navigation -->
+    <nav class="mobile-nav md:hidden">
+        <a href="./market.html" class="mobile-nav__item ">
+            <i data-lucide="bar-chart-3" data-size="20"></i>
+            <span>行情</span>
+        </a>
+        <a href="./fund-archive.html" class="mobile-nav__item ">
+            <i data-lucide="building-2" data-size="20"></i>
+            <span>档案</span>
+        </a>
+        <a href="./announcements.html" class="mobile-nav__item ">
+            <i data-lucide="bell" data-size="20"></i>
+            <span>公告</span>
+        </a>
+        <a href="./research-center.html" class="mobile-nav__item ">
+            <i data-lucide="pie-chart" data-size="20"></i>
+            <span>投研</span>
+        </a>
+        <a href="./portfolio.html" class="mobile-nav__item ">
+            <i data-lucide="star" data-size="20"></i>
+            <span>自选</span>
+        </a>
+    </nav>
 </body>
 </html>

@@ -152,12 +152,13 @@ async def get_dividend_calendar(
             message="获取分红日历成功"
         )
 
-    except Exception as e:
+    except Exception:
+        logger.exception("获取分红日历失败")
         return DividendCalendarResponse(
             success=False,
             data=[],
             total=0,
-            message=f"获取分红日历失败: {str(e)}"
+            message="获取分红日历失败，请稍后重试"
         )
 
 
@@ -182,12 +183,13 @@ async def get_upcoming_dividends(
             end_date=end_date
         )
 
-    except Exception as e:
+    except Exception:
+        logger.exception("获取近期分红失败")
         return DividendCalendarResponse(
             success=False,
             data=[],
             total=0,
-            message=f"获取近期分红失败: {str(e)}"
+            message="获取近期分红失败，请稍后重试"
         )
 
 
@@ -248,12 +250,13 @@ async def get_fund_dividends(
             message=f"获取基金{fund_code}分红历史成功"
         )
 
-    except Exception as e:
+    except Exception:
+        logger.exception(f"获取基金{fund_code}分红历史失败")
         return DividendCalendarResponse(
             success=False,
             data=[],
             total=0,
-            message=f"获取基金{fund_code}分红历史失败: {str(e)}"
+            message="获取基金分红历史失败，请稍后重试"
         )
 
 
@@ -312,9 +315,10 @@ async def get_dividend_stats(
             "message": "获取分红统计成功"
         }
 
-    except Exception as e:
+    except Exception:
+        logger.exception("获取分红统计失败")
         return {
             "success": False,
             "data": [],
-            "message": f"获取分红统计失败: {str(e)}"
+            "message": "获取分红统计失败，请稍后重试"
         }

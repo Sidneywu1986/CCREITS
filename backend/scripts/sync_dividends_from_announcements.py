@@ -12,6 +12,7 @@ ANNOUNCEMENTS_DIR = os.path.join(os.path.dirname(BASE_DIR), 'announcements')
 
 sys.path.insert(0, BASE_DIR)
 from core.db import get_conn
+import psycopg2
 import logging
 logger = logging.getLogger(__name__)
 
@@ -143,7 +144,7 @@ def extract_dividend_from_pdf(pdf_path):
                     break
         
         return amount, record_date, ex_date
-    except Exception as e:
+    except (OSError, ValueError, TypeError) as e:
         logger.error(f"  解析PDF失败 {pdf_path}: {e}")
         return None, None, None
 
@@ -208,7 +209,7 @@ def sync_dividends():
                 """, (fund_code, dividend_date, amount, record_date, ex_date))
                 if cursor.rowcount > 0:
                     inserted += 1
-            except Exception as e:
+            except psycopg2.Error as e:
                 logger.error(f"[{fund_code}] 插入失败: {e}")
         
         conn.commit()

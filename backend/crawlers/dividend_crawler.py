@@ -14,6 +14,7 @@ import re
 import os
 import sys
 from core.db import get_conn
+import psycopg2
 import logging
 logger = logging.getLogger(__name__)
 
@@ -138,7 +139,7 @@ class SHREITsDividendCrawler(BaseREITsExchangeCrawler):
                 page += 1
                 time.sleep(0.5)
                 
-        except Exception as e:
+        except (requests.RequestException, ValueError, TypeError) as e:
             logger.error(f"[ERROR] 上交所 {fund_code} 抓取失败: {e}")
             
         return pd.DataFrame(all_items)
@@ -214,7 +215,7 @@ class SZREITsDividendCrawler(BaseREITsExchangeCrawler):
                 page += 1
                 time.sleep(0.8)
                 
-        except Exception as e:
+        except (requests.RequestException, ValueError, TypeError) as e:
             logger.error(f"[ERROR] 深交所 {fund_code} 抓取失败: {e}")
             
         return pd.DataFrame(all_items)
@@ -257,7 +258,7 @@ class REITsDividendManager:
                 else:
                     logger.info(f"  └─ 无分红公告")
                     
-            except Exception as e:
+            except (RuntimeError, ValueError, TypeError) as e:
                 logger.info(f"[ERROR] 处理 {code} 异常: {e}")
             
             time.sleep(1.5)
@@ -328,7 +329,7 @@ class REITsDividendManager:
                                 normalize_date(record_date),
                                 normalize_date(ex_date)
                             ))
-                except Exception as e:
+                except psycopg2.Error as e:
                     logger.error(f"[ERROR] 保存失败 {row['fund_code']}: {e}")
         
         logger.info(f"  └─ 保存到数据库")

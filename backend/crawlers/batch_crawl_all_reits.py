@@ -145,10 +145,10 @@ def crawl_single_reit(code, output_dir, max_count=50):
                 'status': 'failed'
             }
             
-    except Exception as e:
+    except (RuntimeError, OSError, ValueError) as e:
         return {
             'code': code,
-            'error': str(e),
+            'error': '爬取异常，请查看日志',
             'status': 'failed'
         }
 
@@ -197,7 +197,7 @@ def batch_crawl_all(
                 else:
                     stats.add_failed(result['code'], result['error'])
                     
-            except Exception as e:
+            except (RuntimeError, OSError, ValueError) as e:
                 stats.add_failed(code, f'执行异常: {e}')
             
             # 打印进度

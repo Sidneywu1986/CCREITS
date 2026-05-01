@@ -105,7 +105,7 @@ class HotspotScheduler(BaseScheduler):
                                 "author": None,
                                 "publish_time": None,
                             })
-                    except Exception as e:
+                    except (ValueError, TypeError, AttributeError) as e:
                         logger.debug(f"Weibo row parse error: {e}")
                         continue
 
@@ -114,7 +114,7 @@ class HotspotScheduler(BaseScheduler):
             logger.info(f"Weibo: fetched {len(items)} items")
             return items
 
-        except Exception as e:
+        except (RuntimeError, OSError, ValueError) as e:
             logger.warning(f"Weibo crawl failed: {e}")
             return []
 
@@ -159,7 +159,7 @@ class HotspotScheduler(BaseScheduler):
                                 "author": None,
                                 "publish_time": None,
                             })
-                    except Exception as e:
+                    except (ValueError, TypeError, AttributeError) as e:
                         logger.debug(f"Baidu card parse error: {e}")
                         continue
 
@@ -168,7 +168,7 @@ class HotspotScheduler(BaseScheduler):
             logger.info(f"Baidu: fetched {len(items)} items")
             return items
 
-        except Exception as e:
+        except (RuntimeError, OSError, ValueError) as e:
             logger.warning(f"Baidu crawl failed: {e}")
             return []
 
@@ -212,7 +212,7 @@ if __name__ == "__main__":
         except KeyboardInterrupt:
             logger.info("Scheduler stopped by user")
             break
-        except Exception as e:
+        except (RuntimeError, OSError, ValueError) as e:
             logger.error(f"Scheduler error: {e}")
 
         logger.info(f"Sleeping {scheduler.interval_minutes} minutes...")

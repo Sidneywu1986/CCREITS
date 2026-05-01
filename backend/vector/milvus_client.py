@@ -30,7 +30,7 @@ class MilvusClient:
             self._client = PyMilvusClient(self.uri)
             logger.info(f"Connected to Milvus at {self.uri}")
             return True
-        except Exception as e:
+        except (RuntimeError, ConnectionError, ValueError) as e:
             logger.warning(f"Failed to connect to Milvus: {e}")
             return False
 
@@ -91,7 +91,7 @@ class MilvusClient:
         try:
             self._client.insert(collection_name=self.collection_name, data=data)
             return True
-        except Exception as e:
+        except (RuntimeError, ConnectionError, ValueError) as e:
             logger.error(f"Insert error: {e}")
             return False
 
@@ -120,7 +120,7 @@ class MilvusClient:
                         "distance": hit.get("distance", 0),
                     })
             return results
-        except Exception as e:
+        except (RuntimeError, ConnectionError, ValueError) as e:
             logger.error(f"Search error: {e}")
             return []
 
@@ -135,7 +135,7 @@ class MilvusClient:
                 filter=f"article_id in [{ids_str}]"
             )
             return True
-        except Exception as e:
+        except (RuntimeError, ConnectionError, ValueError) as e:
             logger.error(f"Delete error: {e}")
             return False
 

@@ -8,6 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="./css/common.css">
     <script src="./js/app-core.js?v=1"></script>
+    <script src="./js/icons.js"></script>
     <style>
         body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background-color: #f8fafc; }
         .stat-card { transition: all 0.2s ease; }
@@ -18,8 +19,9 @@
         .status-dot.error { background: #ef4444; }
         @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
     </style>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 </head>
-<body class="h-screen flex flex-col overflow-hidden">
+<body class="min-h-screen md:h-screen flex flex-col overflow-x-hidden md:overflow-hidden pb-mobile-nav md:pb-0">
 
     <!-- Header -->
     <header class="h-[60px] bg-white border-b border-gray-200 flex items-center justify-between px-6 flex-none z-40">
@@ -169,5 +171,29 @@ async function loadStats() {
 
 loadStats();
 </script>
+
+    <!-- Mobile Bottom Navigation -->
+    <nav class="mobile-nav md:hidden">
+        <a href="./market.html" class="mobile-nav__item ">
+            <i data-lucide="bar-chart-3" data-size="20"></i>
+            <span>行情</span>
+        </a>
+        <a href="./fund-archive.html" class="mobile-nav__item ">
+            <i data-lucide="building-2" data-size="20"></i>
+            <span>档案</span>
+        </a>
+        <a href="./announcements.html" class="mobile-nav__item ">
+            <i data-lucide="bell" data-size="20"></i>
+            <span>公告</span>
+        </a>
+        <a href="./research-center.html" class="mobile-nav__item ">
+            <i data-lucide="pie-chart" data-size="20"></i>
+            <span>投研</span>
+        </a>
+        <a href="./portfolio.html" class="mobile-nav__item ">
+            <i data-lucide="star" data-size="20"></i>
+            <span>自选</span>
+        </a>
+    </nav>
 </body>
 </html>

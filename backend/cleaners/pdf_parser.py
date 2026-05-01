@@ -36,7 +36,7 @@ class PDFParser:
             paragraphs = self._split_into_paragraphs(full_text)
             chunks = self._merge_paragraphs(paragraphs)
 
-        except Exception as e:
+        except (OSError, ValueError, TypeError) as e:
             logger.error(f"PDF parsing failed for {pdf_path}: {e}")
             raise
 

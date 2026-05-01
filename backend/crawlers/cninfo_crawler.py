@@ -195,8 +195,8 @@ class CNInfoCrawler:
             self.log('WARN', f'未找到基金: {keyword}')
             return None
             
-        except Exception as e:
-            self.log('ERROR', f'搜索失败: {str(e)}')
+        except (requests.RequestException, json.JSONDecodeError, KeyError, ValueError) as e:
+            self.log('ERROR', f'搜索失败: {e}')
             return None
     
     def get_announcements(self, fund_code, org_id, start_date=None, end_date=None, page_size=100):
@@ -254,8 +254,8 @@ class CNInfoCrawler:
                 page += 1
                 time.sleep(0.5)
                 
-            except Exception as e:
-                self.log('ERROR', f'获取第{page}页失败: {str(e)}')
+            except (requests.RequestException, json.JSONDecodeError, KeyError, ValueError) as e:
+                self.log('ERROR', f'获取第{page}页失败: {e}')
                 break
         
         self.stats['total_found'] = len(announcements)
@@ -294,10 +294,10 @@ class CNInfoCrawler:
             self.log('INFO', f'下载成功: {filename}')
             return {'success': True, 'filepath': filepath, 'filename': filename}
             
-        except Exception as e:
+        except (OSError, requests.RequestException) as e:
             self.stats['failed'] += 1
-            self.log('ERROR', f'下载失败: {filename} - {str(e)}')
-            return {'success': False, 'error': str(e)}
+            self.log('ERROR', f'下载失败: {filename} - {e}')
+            return {'success': False, 'error': '下载失败，请检查网络和磁盘空间'}
     
     def batch_crawl(self, keyword, start_date=None, end_date=None, max_count=50, 
                     output_dir='./announcements', task_id=None):
@@ -371,9 +371,9 @@ class CNInfoCrawler:
                 from crawlers.cninfo_db_sync import save_announcements_to_db
                 db_result = save_announcements_to_db(result['announcements'], fund_info['code'])
                 result['db_sync'] = db_result
-            except Exception as e:
+            except (ImportError, RuntimeError, ValueError) as e:
                 self.log('WARN', f'数据库同步失败: {e}')
-                result['db_sync'] = {'error': str(e)}
+                result['db_sync'] = {'error': '数据库同步失败'}
             
             end_dt = datetime.now()
             result['end_time'] = end_dt.strftime('%Y-%m-%d %H:%M:%S')
@@ -381,9 +381,9 @@ class CNInfoCrawler:
             
             self.log('INFO', f"爬取完成: {fund_info['code']} - 成功{self.stats['downloaded']}/总计{self.stats['total_found']}")
             
-        except Exception as e:
-            result['error'] = str(e)
-            self.log('ERROR', f'爬取异常: {str(e)}')
+        except (RuntimeError, OSError, ValueError) as e:
+            result['error'] = '爬取异常，请查看日志'
+            self.log('ERROR', f'爬取异常: {e}')
         
         return result
 

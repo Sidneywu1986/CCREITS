@@ -37,7 +37,7 @@ class BaseScheduler(ABC):
                 self.consecutive_failures = 0
                 logger.info(f"{self.name}: crawl successful")
                 return
-            except Exception as e:
+            except (RuntimeError, ValueError, OSError) as e:
                 logger.warning(f"{self.name}: attempt {attempt + 1} failed: {e}")
                 await self._log_error(str(e))
 
@@ -55,7 +55,7 @@ class BaseScheduler(ABC):
                 error_message=error_msg[:1000],
                 retry_count=self.max_retries
             )
-        except Exception as log_error:
+        except (RuntimeError, OSError) as log_error:
             logger.error(f"Failed to log error: {log_error}")
 
     async def _send_alert(self) -> None:

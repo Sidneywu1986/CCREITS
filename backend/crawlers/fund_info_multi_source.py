@@ -144,7 +144,7 @@ def update_database():
                 else:
                     logger.info(f'{code}: 未找到记录')
                     
-            except Exception as e:
+            except (RuntimeError, ValueError) as e:
                 logger.error(f'{code}: 更新失败 - {e}')
     
     logger.info(f'\n完成: 成功更新 {success}/{len(REIT_BASE_INFO)} 只REIT')

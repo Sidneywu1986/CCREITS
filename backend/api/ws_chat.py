@@ -346,7 +346,7 @@ def get_pg_conn():
             result["prices"] = "\n".join(lines)
 
         conn.close()
-    except Exception as e:
+    except psycopg2.Error as e:
         logger.warning(f"基金数据库查询失败: {e}")
     return result
 
@@ -430,7 +430,7 @@ def _query_market_overview() -> str:
 
         return "\n".join(lines)
 
-    except Exception as e:
+    except psycopg2.Error as e:
         logger.warning(f"市场概况查询失败: {e}")
         return "【数据库查询】市场概况数据暂时不可用，请基于公开信息谨慎回答。"
 
@@ -467,7 +467,7 @@ def _build_llm_context(session: ChatSession, query: str, persona_id: str, emotio
     rag_results = []
     try:
         rag_results = search_articles_for_rag(query, top_k=5, fund_code=fund_code)
-    except Exception as e:
+    except (RuntimeError, ValueError, KeyError) as e:
         logger.warning(f"RAG failed: {e}")
 
     # 构建 RAG 上下文
@@ -584,10 +584,10 @@ async def generate_response(
             "confidence": confidence,
         }
 
-    except Exception as e:
+    except (RuntimeError, ValueError, ConnectionError) as e:
         logger.error(f"LLM failed: {e}")
         return {
-            "content": f"抱歉，AI服务暂时不可用: {str(e)}",
+            "content": "抱歉，AI服务暂时不可用，请稍后重试",
             "persona": persona_name,
             "sources": [],
             "confidence": "low",
@@ -655,9 +655,9 @@ async def generate_response_stream(
             "confidence": confidence,
         }
 
-    except Exception as e:
+    except (RuntimeError, ValueError, ConnectionError) as e:
         logger.error(f"Stream LLM failed: {e}")
-        yield {"type": "error", "content": f"抱歉，AI服务暂时不可用: {str(e)}", "persona": persona_name}
+        yield {"type": "error", "content": "抱歉，AI服务暂时不可用，请稍后重试", "persona": persona_name}
 
 
 # ============================================
@@ -1002,7 +1002,7 @@ async def _auto_opening_default(session: ChatSession, state: dict):
     try:
         market_emotion = session.sentiment_engine.get_market_emotion()
         emotion_tag = market_emotion.get("overall", "neutral")
-    except Exception:
+    except (AttributeError, KeyError, ValueError):
         emotion_tag = "neutral"
 
     # 获取热点话题作为开场引子
@@ -1108,11 +1108,11 @@ async def _run_debate_broadcast(session: ChatSession, topic: str):
             "topic_desc": state["topic_desc"],
             "topic_queue": state["topic_queue"],
         })
-    except Exception as e:
-        logger.error(f"Debate broadcast failed: {e}")
+    except Exception:
+        logger.exception("Debate broadcast failed")
         await room_manager.broadcast(DEFAULT_ROOM, {
             "type": "system",
-            "content": f"辩论会出错了: {str(e)[:80]}",
+            "content": "辩论会出错了，请稍后重试",
             "timestamp": datetime.now().isoformat(),
         })
 
@@ -1166,7 +1166,7 @@ async def websocket_chat(websocket: WebSocket):
     state = room_manager.get_room_state(DEFAULT_ROOM)
     try:
         market_emotion = session.sentiment_engine.get_market_emotion()
-    except Exception:
+    except (AttributeError, KeyError, ValueError):
         market_emotion = {"overall": "neutral", "score": 0.0}
     await websocket.send_json({
         "type": "sentiment_update",
@@ -1240,7 +1240,7 @@ async def websocket_chat(websocket: WebSocket):
                                 "persona": persona_cfg.name_cn,
                                 "persona_id": persona_cfg.name,
                             })
-                    except Exception:
+                    except (RuntimeError, ValueError, KeyError, AttributeError):
                         pass
 
                 # 2. 广播用户消息给全员
@@ -1299,7 +1299,7 @@ async def websocket_chat(websocket: WebSocket):
                 state = room_manager.get_room_state(DEFAULT_ROOM)
                 try:
                     market_emotion = session.sentiment_engine.get_market_emotion()
-                except Exception:
+                except (AttributeError, KeyError, ValueError):
                     market_emotion = {"overall": "neutral", "score": 0.0}
                 await room_manager.send_to(session_id, {
                     "type": "sentiment_update",
@@ -1373,11 +1373,11 @@ async def websocket_chat(websocket: WebSocket):
 
     except WebSocketDisconnect:
         logger.info(f"WebSocket disconnected: {session_id}")
-    except Exception as e:
-        logger.error(f"WebSocket error: {e}")
+    except Exception:
+        logger.exception("WebSocket error")
         try:
-            await room_manager.send_to(session_id, {"type": "error", "message": str(e)})
-        except:
+            await room_manager.send_to(session_id, {"type": "error", "message": "连接出错，请刷新页面重试"})
+        except Exception:
             pass
     finally:
         # 离开房间
@@ -1417,7 +1417,7 @@ async def _generate_summary(ai_messages: List[str]) -> str:
             max_tokens=1024,
         )
         return response.choices[0].message.content or ""
-    except Exception as e:
+    except (RuntimeError, ValueError, ConnectionError) as e:
         logger.error(f"Summary generation failed: {e}")
         return "摘要生成失败。"
 

@@ -35,6 +35,7 @@ from services import realtime_quotes, announcements
 import contextlib
 import logging
 import psycopg2
+import requests
 from core.db import _get_pg_dsn
 
 @contextlib.contextmanager
@@ -95,7 +96,7 @@ def get_bond_yield():
             pass
         finally:
             executor.shutdown(wait=False)
-    except Exception:
+    except (RuntimeError, OSError):
         pass
     # 超时或异常时返回旧缓存（如果有）
     if _BOND_CACHE is not None:
@@ -174,8 +175,8 @@ if TORTOISE_AVAILABLE:
             add_exception_handlers=True,
         )
         logger.info("[Tortoise] Registered ai_db (PostgreSQL)")
-    except Exception as e:
-        logger.exception("API error")
+    except (ImportError, RuntimeError, ConnectionError) as e:
+        logger.exception("Tortoise registration failed")
         logger.error("[Tortoise] Registration failed")
 
 # 启动后台定时任务（每30分钟同步一次）
@@ -183,8 +184,8 @@ try:
     from scheduler.tasks import start_scheduler
     start_scheduler(interval_minutes=30)
     logger.info("[Scheduler] Auto-sync every 30 minutes enabled")
-except Exception as e:
-    logger.exception("API error")
+except (ImportError, RuntimeError) as e:
+    logger.exception("Scheduler start failed")
     logger.error("[Scheduler] Failed to start")
 
 # 数据库路径 - 基于项目根目录的动态路径
@@ -882,7 +883,7 @@ def get_all_indices_from_sina() -> dict:
                     if data:
                         indices[code] = data
         return indices
-    except Exception:
+    except (requests.RequestException, ValueError, KeyError):
         logger.exception("获取新浪指数失败")
         return {}
 
@@ -915,7 +916,7 @@ def get_dividend_index_from_eastmoney() -> dict:
                     "changePercent": round(change_pct, 2)
                 }
         return None
-    except Exception:
+    except (requests.RequestException, json.JSONDecodeError, KeyError, ValueError, TypeError):
         logger.exception("获取东方财富中证红利失败")
         return None
 
@@ -956,7 +957,7 @@ def calculate_reits_index() -> dict:
             "change": round(change, 3),
             "changePercent": round(change_pct, 2)
         }
-    except Exception:
+    except psycopg2.Error:
         logger.exception("计算REITs指数失败")
         return None
 
@@ -1237,7 +1238,7 @@ async def get_realtime_quotes():
                 if code in yield_map:
                     q['dividend_yield'] = yield_map[code]
                     q['yield'] = yield_map[code]
-        except Exception:
+        except psycopg2.Error:
             logger.exception("合并派息率失败")
 
         return {
@@ -1505,9 +1506,9 @@ async def get_orderbook(code: str = Query(..., description="基金代码")):
             },
             'message': '获取档口数据成功'
         }
-    except Exception as e:
-        logger.exception("API error")
-        return {'success': False, 'data': None, 'message': f'获取档口数据失败: {str(e)}'}
+    except (IndexError, ValueError, ZeroDivisionError, TypeError) as e:
+        logger.exception("获取档口数据失败")
+        return {'success': False, 'data': None, 'message': '获取档口数据失败，请稍后重试'}
 
 
 # ==================== 健康检查 ====================
@@ -1531,13 +1532,12 @@ async def health_check():
             "prices_count": price_count,
             "timestamp": datetime.datetime.now().isoformat()
         }
-    except Exception as e:
-        logger.exception("API error")
+    except psycopg2.Error as e:
+        logger.exception("Health check failed")
         return {
             "status": "error",
             "service": "api-adapter",
             "database": "disconnected",
-            "error": str(e),
             "timestamp": datetime.datetime.now().isoformat()
         }
 

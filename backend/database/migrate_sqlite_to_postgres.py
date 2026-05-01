@@ -334,7 +334,7 @@ def migrate_table(sqlite_conn, pg_cur, sqlite_table, pg_table, schema, col_map):
                 pg_cur.connection.commit()
                 logger.info(f"  已迁移 {count} 条...")
 
-        except Exception as e:
+        except (sqlite3.Error, psycopg2.Error, ValueError) as e:
             errors += 1
             if errors <= 5:
                 logger.warning(f"  插入失败 (pk={row[0] if row else None}): {e}")
@@ -382,7 +382,7 @@ def main():
     except ImportError:
         logger.error("缺少psycopg2，请安装: pip install psycopg2-binary")
         sys.exit(1)
-    except Exception as e:
+    except psycopg2.Error as e:
         logger.error(f"PostgreSQL连接失败: {e}")
         sys.exit(1)
 

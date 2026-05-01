@@ -36,8 +36,9 @@
         }
         .animate-fade-in { animation: fadeIn 0.3s ease forwards; }
     </style>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 </head>
-<body class="h-screen flex flex-col overflow-hidden">
+<body class="min-h-screen md:h-screen flex flex-col overflow-x-hidden md:overflow-hidden pb-mobile-nav md:pb-0">
 
     <!-- Header -->
     <header class="h-[60px] bg-white border-b border-gray-200 flex items-center justify-between px-6 flex-none z-40">
@@ -60,7 +61,7 @@
             </nav>
         </div>
 
-        <div class="w-64 mx-2">
+        <div class="w-full md:w-64 mx-2">
             <div class="relative">
                 <input type="text" id="compare-search" placeholder="搜索基金代码或名称..." data-v="2"
                     class="w-full pl-10 pr-4 py-2 bg-gray-100 border border-transparent rounded-lg text-sm focus:outline-none focus:bg-white focus:border-blue-500 transition-all">
@@ -153,6 +154,7 @@
     </main>
 
     <script src="./js/common.js"></script>
+    <script src="./js/icons.js"></script>
     <script src="./js/api.js"></script>
     <script>
         // 状态
@@ -521,14 +523,14 @@
                 const sectorClass = (typeof SECTOR_CONFIG !== 'undefined' && SECTOR_CONFIG[fund.sector]?.tagClass) || 'bg-gray-100 text-gray-600';
 
                 html += `
-                    <div class="compare-card bg-white rounded-xl border border-gray-200 border-l-4 ${color.border} p-4 shadow-sm">
+                    <div class="compare-card bg-white rounded-xl border border-gray-200 border-l-4 ${escapeHtml(color.border)} p-4 shadow-sm">
                         <div class="flex justify-between items-start mb-3">
                             <div>
-                                <div class="text-xs text-gray-400 mono">${fund.code}</div>
-                                <div class="font-semibold text-gray-900 text-sm mt-0.5">${fund.name}</div>
-                                <span class="sector-tag ${sectorClass} text-xs mt-1.5 inline-block">${fund.sectorName}</span>
+                                <div class="text-xs text-gray-400 mono">${escapeHtml(fund.code)}</div>
+                                <div class="font-semibold text-gray-900 text-sm mt-0.5">${escapeHtml(fund.name)}</div>
+                                <span class="sector-tag ${sectorClass} text-xs mt-1.5 inline-block">${escapeHtml(fund.sectorName)}</span>
                             </div>
-                            <button onclick="removeFromCompare('${fund.code}')" class="text-gray-400 hover:text-red-500 p-1 rounded hover:bg-gray-100 transition-all" title="移除">
+                            <button onclick="removeFromCompare('${escapeHtml(fund.code)}')" class="text-gray-400 hover:text-red-500 p-1 rounded hover:bg-gray-100 transition-all" title="移除">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                             </button>
                         </div>
@@ -547,7 +549,7 @@
                             </div>
                             <div>
                                 <div class="text-xs text-gray-400">债务率</div>
-                                <div class="mono text-gray-700">${fund.debt}%</div>
+                                <div class="mono text-gray-700">${escapeHtml(fund.debt)}%</div>
                             </div>
                         </div>
                         <div class="mt-4 pt-3 border-t border-gray-100">
@@ -562,11 +564,11 @@
                                     { key: 'marketLiquidity', label: '市场流动性', val: dims.marketLiquidity }
                                 ].map(d => `
                                     <div class="flex items-center gap-2">
-                                        <span class="text-[10px] text-gray-500 w-14">${d.label}</span>
+                                        <span class="text-[10px] text-gray-500 w-14">${escapeHtml(d.label)}</span>
                                         <div class="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                                            <div class="h-full ${color.bar} rounded-full" style="width: ${Math.max(0, Math.min(100, d.val))}%"></div>
+                                            <div class="h-full ${escapeHtml(color.bar)} rounded-full" style="width: ${Math.max(0, Math.min(100, d.val))}%"></div>
                                         </div>
-                                        <span class="text-[10px] mono w-6 text-right ${d.val >= 80 ? 'text-green-600' : d.val >= 60 ? 'text-yellow-600' : 'text-red-600'}">${d.val}</span>
+                                        <span class="text-[10px] mono w-6 text-right ${d.val >= 80 ? 'text-green-600' : d.val >= 60 ? 'text-yellow-600' : 'text-red-600'}">${escapeHtml(d.val)}</span>
                                     </div>
                                 `).join('')}
                             </div>
@@ -661,9 +663,9 @@
                 <tr>
                     <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50 sticky left-0 z-10">指标</th>
                     ${funds.map(f => `
-                        <th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50 min-w-[120px]">
-                            <div class="text-gray-900 font-medium">${f.name}</div>
-                            <div class="text-gray-400 mono font-normal mt-0.5">${f.code}</div>
+                        <th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50 min-w-full md:w-[120px]">
+                            <div class="text-gray-900 font-medium">${escapeHtml(f.name)}</div>
+                            <div class="text-gray-400 mono font-normal mt-0.5">${escapeHtml(f.code)}</div>
                         </th>
                     `).join('')}
                 </tr>
@@ -737,8 +739,8 @@
                     <tr class="hover:bg-gray-50 transition-colors ${groupBg} ${groupBorder}">
                         <td class="px-4 py-3 text-sm font-semibold text-gray-700 bg-gray-50 sticky left-0 z-10">
                             <span class="inline-flex items-center gap-2">
-                                <span class="text-[10px] px-1.5 py-0.5 rounded ${metric.group === 'P0' ? 'bg-blue-100 text-blue-700' : metric.group === 'P1' ? 'bg-gray-200 text-gray-700' : 'bg-gray-100 text-gray-600'}">${metric.group}</span>
-                                ${metric.label}
+                                <span class="text-[10px] px-1.5 py-0.5 rounded ${metric.group === 'P0' ? 'bg-blue-100 text-blue-700' : metric.group === 'P1' ? 'bg-gray-200 text-gray-700' : 'bg-gray-100 text-gray-600'}">${escapeHtml(metric.group)}</span>
+                                ${escapeHtml(metric.label)}
                             </span>
                         </td>
                         ${cells}
@@ -764,12 +766,12 @@
             container.innerHTML = results.map(f => {
                 const sectorClass = (typeof SECTOR_CONFIG !== 'undefined' && SECTOR_CONFIG[f.sector]?.tagClass) || 'bg-gray-100 text-gray-600';
                 return `
-                    <div onclick="addToCompare('${f.code}', '${f.name?.replace(/'/g, '\\\'')}')" class="px-4 py-2.5 hover:bg-gray-50 cursor-pointer flex justify-between items-center border-b border-gray-100 last:border-0 transition-colors">
+                    <div onclick="addToCompare('${escapeHtml(f.code)}', '${f.name?.replace(/'/g, '\\\'')}')" class="px-4 py-2.5 hover:bg-gray-50 cursor-pointer flex justify-between items-center border-b border-gray-100 last:border-0 transition-colors">
                         <div class="flex items-center gap-2">
-                            <span class="mono text-blue-600 text-sm font-medium">${f.code}</span>
-                            <span class="text-gray-700 text-sm">${f.name}</span>
+                            <span class="mono text-blue-600 text-sm font-medium">${escapeHtml(f.code)}</span>
+                            <span class="text-gray-700 text-sm">${escapeHtml(f.name)}</span>
                         </div>
-                        <span class="sector-tag ${sectorClass} text-xs">${f.sectorName}</span>
+                        <span class="sector-tag ${sectorClass} text-xs">${escapeHtml(f.sectorName)}</span>
                     </div>
                 `;
             }).join('');
@@ -806,7 +808,7 @@
             compareList = compareList.filter(i => i.code !== code);
             saveCompareList();
             renderPage();
-            if (item) REITS.showToast(`已移除 ${item.name}`, 'info');
+            if (item) REITS.showToast(`已移除 ${escapeHtml(item.name)}`, 'info');
         }
 
         function focusSearch() {
@@ -849,7 +851,7 @@
                 return;
             }
             const funds = compareList.map(item => getFundData(item.code)).filter(f => f);
-            const headers = ['指标', '优先级', ...funds.map(f => `${f.name}(${f.code})`)];
+            const headers = ['指标', '优先级', ...funds.map(f => `${escapeHtml(f.name)}(${escapeHtml(f.code)})`)];
             
             // P0 核心指标
             const p0Rows = [
@@ -934,5 +936,29 @@
         // 启动
         window.addEventListener('DOMContentLoaded', init);
     </script>
+
+    <!-- Mobile Bottom Navigation -->
+    <nav class="mobile-nav md:hidden">
+        <a href="./market.html" class="mobile-nav__item ">
+            <i data-lucide="bar-chart-3" data-size="20"></i>
+            <span>行情</span>
+        </a>
+        <a href="./fund-archive.html" class="mobile-nav__item ">
+            <i data-lucide="building-2" data-size="20"></i>
+            <span>档案</span>
+        </a>
+        <a href="./announcements.html" class="mobile-nav__item ">
+            <i data-lucide="bell" data-size="20"></i>
+            <span>公告</span>
+        </a>
+        <a href="./research-center.html" class="mobile-nav__item ">
+            <i data-lucide="pie-chart" data-size="20"></i>
+            <span>投研</span>
+        </a>
+        <a href="./portfolio.html" class="mobile-nav__item ">
+            <i data-lucide="star" data-size="20"></i>
+            <span>自选</span>
+        </a>
+    </nav>
 </body>
 </html>

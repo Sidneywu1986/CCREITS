@@ -788,7 +788,7 @@ class SupervisorStateMachine:
         if hasattr(self.rag, 'search'):
             try:
                 rag_context = self.rag.search(topic, top_k=5)
-            except Exception:
+            except (RuntimeError, ValueError, KeyError):
                 pass
         context = {
             "topic": topic,
@@ -1088,7 +1088,7 @@ class SupervisorStateMachine:
                 bear_msg = await self.agents[bear].generate(bear_ctx)
             else:
                 bear_msg = type('obj', (object,), {'content': '【看空方】服务暂不可用'})()
-        except Exception as e:
+        except (RuntimeError, ValueError, ConnectionError) as e:
             logger.warning(f"双人快辩生成失败: {e}")
             return
         

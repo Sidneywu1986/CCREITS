@@ -168,7 +168,7 @@ def migrate():
         logger.info("Search test OK:")
         for r in results[0]:
             logger.info(f"  dist={r['distance']:.3f} | {r['entity']['chunk_text'][:60]}...")
-    except Exception as e:
+    except (RuntimeError, ConnectionError, ValueError) as e:
         logger.warning(f"Search test failed: {e}")
 
 

@@ -34,7 +34,7 @@ def extract_dividend_from_pdf(pdf_path):
                     return amount
         
         return None
-    except Exception as e:
+    except (ValueError, TypeError) as e:
         return None
 
 def main():

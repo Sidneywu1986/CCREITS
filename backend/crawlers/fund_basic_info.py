@@ -13,6 +13,7 @@ from datetime import datetime
 from typing import Dict, Optional, List
 import os
 from core.db import get_conn
+import psycopg2
 import logging
 logger = logging.getLogger(__name__)
 
@@ -88,7 +89,7 @@ class REITBasicInfoCrawler:
             
             return data if data else None
             
-        except Exception as e:
+        except (requests.RequestException, ValueError, TypeError) as e:
             logger.error(f'[东财] 获取{code}基础信息失败: {e}')
             return None
     
@@ -111,7 +112,7 @@ class REITBasicInfoCrawler:
                     'nav_date': data.get('jzrq')
                 }
             return None
-        except Exception as e:
+        except (requests.RequestException, json.JSONDecodeError, ValueError, TypeError) as e:
             logger.error(f'[东财API] 获取{code}详情失败: {e}')
             return None
     
@@ -136,7 +137,7 @@ class REITBasicInfoCrawler:
                         'name': fund.get('name')
                     }
             return None
-        except Exception as e:
+        except (requests.RequestException, json.JSONDecodeError, ValueError, TypeError) as e:
             logger.error(f'[新浪] 获取{code}基础信息失败: {e}')
             return None
     
@@ -163,7 +164,7 @@ class REITBasicInfoCrawler:
                     'category': item.get('category')
                 }
             return None
-        except Exception as e:
+        except (requests.RequestException, json.JSONDecodeError, KeyError, ValueError) as e:
             logger.error(f'[巨潮] 获取{code}基础信息失败: {e}')
             return None
     
@@ -194,7 +195,7 @@ class REITBasicInfoCrawler:
             else:
                 return "即将到期"
                 
-        except Exception as e:
+        except (ValueError, TypeError) as e:
             logger.error(f'计算剩余期限失败: {e}')
             return None
     
@@ -271,7 +272,7 @@ class REITBasicInfoCrawler:
             
             return rowcount > 0
             
-        except Exception as e:
+        except psycopg2.Error as e:
             logger.error(f"[DB] 更新{fund_data['code']}失败: {e}")
             return False
     

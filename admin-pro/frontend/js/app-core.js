@@ -279,3 +279,90 @@
 
     console.log(`[REITS Core] v${APP_VERSION} loaded`);
 })();
+
+// ==================== Mobile Responsive — Hamburger Menu ====================
+(function initMobileMenu() {
+    function createMobileMenu() {
+        const header = document.querySelector('header');
+        if (!header) return;
+        // Skip if already initialized
+        if (header.querySelector('.mobile-menu-btn')) return;
+
+        // Get current page ID from URL
+        const currentPath = window.location.pathname.split('/').pop().replace('.html', '') || 'index';
+
+        // Build hamburger button
+        const btn = document.createElement('button');
+        btn.className = 'mobile-menu-btn md:hidden p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all ml-2';
+        btn.setAttribute('aria-label', '菜单');
+        btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="18" y2="18"/></svg>`;
+
+        // Insert button into header (before last child or append)
+        const rightSection = header.querySelector('div:last-child');
+        if (rightSection) {
+            rightSection.prepend(btn);
+        } else {
+            header.appendChild(btn);
+        }
+
+        // Build mobile drawer
+        const drawer = document.createElement('div');
+        drawer.id = 'mobile-drawer';
+        drawer.className = 'fixed inset-0 z-[299] hidden';
+        drawer.innerHTML = `
+            <div class="mobile-drawer-overlay absolute inset-0 bg-black/40" onclick="closeMobileDrawer()"></div>
+            <div class="absolute right-0 top-0 bottom-0 w-[280px] bg-white shadow-xl transform translate-x-full transition-transform duration-200 flex flex-col">
+                <div class="flex items-center justify-between p-4 border-b border-gray-200">
+                    <span class="font-bold text-gray-900">菜单</span>
+                    <button onclick="closeMobileDrawer()" class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                    </button>
+                </div>
+                <nav class="flex-1 overflow-y-auto p-2">
+                    ${NAV_ITEMS.map(item => {
+                        const isActive = item.href.includes(currentPath);
+                        const activeClass = isActive ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50';
+                        const dot = item.highlight ? '<span class="w-1.5 h-1.5 bg-purple-500 rounded-full"></span>' : '';
+                        return `<a href="${item.href}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg ${activeClass} transition-colors mb-0.5">
+                            <span class="text-sm font-medium">${escapeHtml(item.label)}</span>
+                            ${dot}
+                        </a>`;
+                    }).join('')}
+                </nav>
+                <div class="p-4 border-t border-gray-200 text-xs text-gray-400 text-center">
+                    REITs数据平台 v${APP_VERSION}
+                </div>
+            </div>
+        `;
+        document.body.appendChild(drawer);
+
+        // Bind click
+        btn.addEventListener('click', openMobileDrawer);
+    }
+
+    window.openMobileDrawer = function() {
+        const drawer = document.getElementById('mobile-drawer');
+        if (!drawer) return;
+        drawer.classList.remove('hidden');
+        requestAnimationFrame(() => {
+            drawer.querySelector('.absolute.right-0').classList.remove('translate-x-full');
+        });
+        document.body.style.overflow = 'hidden';
+    };
+
+    window.closeMobileDrawer = function() {
+        const drawer = document.getElementById('mobile-drawer');
+        if (!drawer) return;
+        drawer.querySelector('.absolute.right-0').classList.add('translate-x-full');
+        setTimeout(() => {
+            drawer.classList.add('hidden');
+            document.body.style.overflow = '';
+        }, 200);
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', createMobileMenu);
+    } else {
+        createMobileMenu();
+    }
+})();

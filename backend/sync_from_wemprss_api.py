@@ -12,6 +12,7 @@ import re
 import time
 from datetime import datetime
 from core.db import get_conn
+import psycopg2
 import logging
 logger = logging.getLogger(__name__)
 
@@ -211,7 +212,7 @@ def sync_articles(client, local_links, dry_run=False):
                         })
                         local_links.add(url)  # 避免同一批次内重复
                         
-                    except Exception as e:
+                    except (RuntimeError, ValueError, TypeError, KeyError) as e:
                         logger.error(f'  detail error for {article_id}: {e}')
                         errors += 1
                 
@@ -219,7 +220,7 @@ def sync_articles(client, local_links, dry_run=False):
                     break
                 offset += limit
                 
-            except Exception as e:
+            except (RuntimeError, ValueError, TypeError, KeyError) as e:
                 logger.error(f'  list error: {e}')
                 errors += 1
                 break
@@ -239,7 +240,7 @@ def sync_articles(client, local_links, dry_run=False):
                                 VALUES (%s, %s, %s, %s, %s, FALSE)
                             """, (a['source'], a['title'], a['link'], a['published'], a['content']))
                             inserted += 1
-                        except Exception:  # psycopg2.IntegrityError
+                        except psycopg2.IntegrityError:
                             pass  # 重复，忽略
                     conn.commit()
         logger.info(f'[Sync] Inserted {inserted} articles')
@@ -269,7 +270,7 @@ def run_script(name):
                 logger.info(f'[Sync] {name} done')
         except subprocess.TimeoutExpired:
             logger.error(f'[Sync] {name} timeout')
-        except Exception as e:
+        except (subprocess.CalledProcessError, OSError, RuntimeError) as e:
             logger.error(f'[Sync] {name} error: {e}')
     else:
         logger.info(f'[Sync] Script not found: {script_path}')
@@ -291,7 +292,7 @@ def test_update_depth(client, mp_id='MP_WXS_2393306340'):
     except urllib.error.HTTPError as e:
         logger.error(f'[UpdateTest] Update HTTP error: {e.code}')
         logger.info(f'[UpdateTest] Body: {e.read().decode()[:300]}')
-    except Exception as e:
+    except (urllib.error.URLError, OSError, RuntimeError, ValueError) as e:
         logger.error(f'[UpdateTest] Update error: {type(e).__name__}: {e}')
     
     return before_total

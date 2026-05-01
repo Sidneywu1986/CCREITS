@@ -30,8 +30,9 @@
         }
         .compare-bar.show { transform: translateY(0); }
     </style>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 </head>
-<body class="h-screen flex flex-col overflow-hidden">
+<body class="min-h-screen md:h-screen flex flex-col overflow-x-hidden md:overflow-hidden pb-mobile-nav md:pb-0">
 
     <!-- Header -->
     <header class="h-[60px] bg-white border-b border-gray-200 flex items-center justify-between px-6 flex-none z-40">
@@ -224,7 +225,7 @@
         </div>
 
         <!-- 右侧AI聊天面板 -->
-        <div class="w-[450px] border-l bg-white shadow-lg flex flex-col h-full fixed right-0 top-[60px]" id="chat-panel" style="width:450px;right:0;top:60px;height:calc(100vh - 60px);">
+        <div class="w-full md:w-[450px] border-l bg-white shadow-lg flex flex-col h-full fixed right-0 top-[60px]" id="chat-panel" style="width:450px;right:0;top:60px;height:calc(100vh - 60px);">
             <div class="p-4 border-b bg-gray-50">
                 <h2 class="font-bold text-gray-800">AI 公告讨论</h2>
                 <div id="selected-announcements-header" class="hidden mt-2 text-xs font-medium text-blue-700"></div>
@@ -263,6 +264,7 @@
     </div>
 
     <script src="./js/common.js"></script>
+    <script src="./js/icons.js"></script>
     <script src="./js/api.js"></script>
     <script>
         // 公告分类配置
@@ -548,7 +550,7 @@
             const activeFiltersDiv = document.getElementById('active-filters');
             
             if (activeFilters.length > 0) {
-                filterTags.innerHTML = activeFilters.map(f => `<span class="px-2 py-0.5 bg-blue-100 text-blue-700 rounded">${f}</span>`).join('');
+                filterTags.innerHTML = activeFilters.map(f => `<span class="px-2 py-0.5 bg-blue-100 text-blue-700 rounded">${escapeHtml(f)}</span>`).join('');
                 activeFiltersDiv.classList.remove('hidden');
             } else {
                 activeFiltersDiv.classList.add('hidden');
@@ -656,26 +658,26 @@
                             <input type="checkbox"
                                    class="mt-1 w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
                                    ${selectedAnnouncementIds.includes(item.id) ? 'checked' : ''}
-                                   onclick="event.stopPropagation(); toggleSelection(${item.id}, '${item.title.replace(/'/g, "\\'")}', '${(item.summary || '').replace(/'/g, "\\'")}')">
+                                   onclick="event.stopPropagation(); toggleSelection(${item.id}, '${escapeHtml(item.title).replace(/'/g, "\\'")}', '${escapeHtml(item.summary || '').replace(/'/g, "\\'")}')">
                             <div class="flex-1 min-w-0">
                                 <div class="flex flex-wrap items-center gap-2 mb-2">
-                                    <span class="sector-tag ${catConfig.tagClass}">${catConfig.name}</span>
+                                    <span class="sector-tag ${escapeHtml(catConfig.tagClass)}">${escapeHtml(catConfig.name)}</span>
                                     ${exchangeName ? `<span class="sector-tag bg-gray-100 text-gray-600">${exchangeName}</span>` : ''}
-                                    <span class="mono text-xs text-gray-500">${item.code || '-'}</span>
-                                    ${item.name ? `<span class="text-xs text-gray-700">${item.name}</span>` : ''}
+                                    <span class="mono text-xs text-gray-500">${escapeHtml(item.code || '-')}</span>
+                                    ${item.name ? `<span class="text-xs text-gray-700">${escapeHtml(item.name)}</span>` : ''}
                                 </div>
                                 <h3 class="text-base font-bold text-gray-900 mb-2 ${!item.isRead ? 'text-blue-900' : ''} ${mainLink ? 'cursor-pointer hover:text-blue-600' : ''}"
                                     ${mainLink ? `onclick="window.open('${mainLink}', '_blank'); markAsRead(${item.id});"` : ''}>
-                                    ${item.title}
+                                    ${escapeHtml(item.title)}
                                 </h3>
                                 ${item.status ? `<span class="ml-2 px-2 py-0.5 text-xs font-medium rounded-full ${STATUS_CONFIG[item.status]?.class || 'bg-gray-100 text-gray-600'}">${STATUS_CONFIG[item.status]?.label || item.status}</span>` : ''}
                                 <p class="text-sm text-gray-600 line-clamp-2 mb-3">
-                                    ${item.summary || ''}
+                                    ${escapeHtml(item.summary || '')}
                                 </p>
                                 <p class="text-xs text-gray-500 mb-3">
-                                    ${item.publisher ? `<span class="mr-3">发行人: <span class="text-gray-700">${item.publisher}</span></span>` : `<span class="mr-3 text-gray-400">发行人: 待补充</span>`}
-                                    ${item.manager ? `<span class="mr-3">管理人: <span class="text-gray-700">${item.manager}</span></span>` : `<span class="mr-3 text-gray-400">管理人: 待补充</span>`}
-                                    ${item.ipoDate ? `<span class="mr-3">发行日期: <span class="text-gray-700">${item.ipoDate}</span></span>` : `<span class="mr-3 text-gray-400">发行日期: 待补充</span>`}
+                                    ${item.publisher ? `<span class="mr-3">发行人: <span class="text-gray-700">${escapeHtml(item.publisher)}</span></span>` : `<span class="mr-3 text-gray-400">发行人: 待补充</span>`}
+                                    ${item.manager ? `<span class="mr-3">管理人: <span class="text-gray-700">${escapeHtml(item.manager)}</span></span>` : `<span class="mr-3 text-gray-400">管理人: 待补充</span>`}
+                                    ${item.ipoDate ? `<span class="mr-3">发行日期: <span class="text-gray-700">${escapeHtml(item.ipoDate)}</span></span>` : `<span class="mr-3 text-gray-400">发行日期: 待补充</span>`}
                                     ${item.ipoMarketCap > 0 ? `<span class="mr-3">发行市值: <span class="text-gray-700">${item.ipoMarketCap}亿</span></span>` : `<span class="mr-3 text-gray-400">发行市值: 待补充</span>`}
                                     ${item.currentMarketCap > 0 ? `<span>今日市值: <span class="text-gray-700">${item.currentMarketCap}亿</span></span>` : `<span class="text-gray-400">今日市值: 待补充</span>`}
                                 </p>
@@ -691,7 +693,7 @@
                                 </div>
                                 <div class="flex items-center justify-between mt-2 pt-2 border-t">
                                     <div class="flex items-center gap-2">
-                                        ${item.status_changed_at ? `<span class="text-xs text-gray-400">状态变更: ${item.status_changed_at}</span>` : ''}
+                                        ${item.status_changed_at ? `<span class="text-xs text-gray-400">状态变更: ${escapeHtml(item.status_changed_at)}</span>` : ''}
                                     </div>
                                     ${getStatusActions(item.status, item.id)}
                                 </div>
@@ -775,9 +777,9 @@
 
             if (selectedAnnouncements.length === 1) {
                 const a = selectedAnnouncements[0];
-                addChatMessage('assistant', `我正在查看公告: "${a.title}"。\n\n摘要: ${a.summary}\n\n有什么想讨论的吗?`);
+                addChatMessage('assistant', `我正在查看公告: "${escapeHtml(a.title)}"。\n\n摘要: ${escapeHtml(a.summary)}\n\n有什么想讨论的吗?`);
             } else {
-                const summaries = selectedAnnouncements.map((a, i) => `${i+1}. [${a.title}]\n   ${a.summary}`).join('\n');
+                const summaries = selectedAnnouncements.map((a, i) => `${i+1}. [${escapeHtml(a.title)}]\n   ${escapeHtml(a.summary)}`).join('\n');
                 addChatMessage('assistant', `我正在查看以下${selectedAnnouncements.length}条公告：\n${summaries}\n\n请告诉我您想讨论什么，我可以帮您分析这些公告。`);
             }
         }
@@ -815,7 +817,7 @@
                 header.textContent = `已选公告 (${selectedAnnouncements.length}/3)`;
                 list.innerHTML = selectedAnnouncements.map((a, i) => `
                     <div class="text-xs bg-white rounded px-2 py-1 flex justify-between items-center gap-2">
-                        <span class="truncate flex-1">${i+1}. ${a.title}</span>
+                        <span class="truncate flex-1">${i+1}. ${escapeHtml(a.title)}</span>
                         <button onclick="removeFromSelection(${a.id})" class="text-gray-400 hover:text-red-500 font-bold flex-none">×</button>
                     </div>
                 `).join('');
@@ -876,7 +878,7 @@
                 // TODO: 调用真实AI接口（这里先用模拟响应）
                 await new Promise(resolve => setTimeout(resolve, 1000));
 
-                const titles = selectedAnnouncements.map((a, i) => `${i+1}. ${a.title}`).join(', ');
+                const titles = selectedAnnouncements.map((a, i) => `${i+1}. ${escapeHtml(a.title)}`).join(', ');
                 const response = `关于您选择的公告 (${titles}) 的问题: ${message}\n\n这是一个演示响应。在实际实现中，这里会调用AI接口来回答您关于这些公告的问题。`;
 
                 document.getElementById(typingId).remove();
@@ -917,7 +919,7 @@
 
             const btns = actions[status] || [];
             return btns.map(btn =>
-                `<button onclick="updateStatus(${id}, '${btn.nextStatus}')" class="px-2 py-1 text-xs rounded-lg ${btn.class}">${btn.label}</button>`
+                `<button onclick="updateStatus(${id}, '${escapeHtml(btn.nextStatus)}')" class="px-2 py-1 text-xs rounded-lg ${escapeHtml(btn.class)}">${escapeHtml(btn.label)}</button>`
             ).join('');
         }
 
@@ -959,8 +961,8 @@
 
                 items.innerHTML = list.map(item => `
                     <div class="flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-lg flex-none">
-                        <span class="text-sm text-blue-900 font-medium truncate max-w-[120px]">${item.name}</span>
-                        <button onclick="event.stopPropagation(); removeFromCompare('${item.code}'); updateCompareBar();" class="text-blue-400 hover:text-blue-600">
+                        <span class="text-sm text-blue-900 font-medium truncate max-w-full md:w-[120px]">${escapeHtml(item.name)}</span>
+                        <button onclick="event.stopPropagation(); removeFromCompare('${escapeHtml(item.code)}'); updateCompareBar();" class="text-blue-400 hover:text-blue-600">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                         </button>
                     </div>
@@ -1036,5 +1038,29 @@
         document.getElementById('about-modal').classList.remove('show');
     }
 </script>
+
+    <!-- Mobile Bottom Navigation -->
+    <nav class="mobile-nav md:hidden">
+        <a href="./market.html" class="mobile-nav__item ">
+            <i data-lucide="bar-chart-3" data-size="20"></i>
+            <span>行情</span>
+        </a>
+        <a href="./fund-archive.html" class="mobile-nav__item ">
+            <i data-lucide="building-2" data-size="20"></i>
+            <span>档案</span>
+        </a>
+        <a href="./announcements.html" class="mobile-nav__item active">
+            <i data-lucide="bell" data-size="20"></i>
+            <span>公告</span>
+        </a>
+        <a href="./research-center.html" class="mobile-nav__item ">
+            <i data-lucide="pie-chart" data-size="20"></i>
+            <span>投研</span>
+        </a>
+        <a href="./portfolio.html" class="mobile-nav__item ">
+            <i data-lucide="star" data-size="20"></i>
+            <span>自选</span>
+        </a>
+    </nav>
 </body>
 </html>

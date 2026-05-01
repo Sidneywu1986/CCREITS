@@ -86,7 +86,7 @@ def get_existing_article_ids_from_milvus(client):
             offset += batch
         logger.info(f"Existing in Milvus BGE: {len(all_ids)} articles")
         return all_ids
-    except Exception as e:
+    except (RuntimeError, ConnectionError, ValueError) as e:
         logger.warning(f"Query Milvus existing failed: {e}")
         return set()
 
@@ -196,7 +196,7 @@ def verify_batch(client, article_ids):
                 return False
         logger.info(f"  VERIFY OK: all {len(article_ids)} articles confirmed")
         return True
-    except Exception as e:
+    except (RuntimeError, ConnectionError, ValueError) as e:
         logger.error(f"  VERIFY ERROR: {e}")
         return False
 
@@ -216,7 +216,7 @@ def test_search(client, embedder):
                 f"  [{r['entity']['source']}] dist={r['distance']:.3f} | "
                 f"{r['entity']['title'][:40]}"
             )
-    except Exception as e:
+    except (RuntimeError, ConnectionError, ValueError) as e:
         logger.warning(f"Search test failed: {e}")
 
 
@@ -301,7 +301,7 @@ def migrate(batch_size: int = 50):
     try:
         stats = client.get_collection_stats(NEW_COLLECTION)
         logger.info(f"Collection stats: {stats}")
-    except Exception as e:
+    except (RuntimeError, ConnectionError, ValueError) as e:
         logger.warning(f"Stats failed: {e}")
     test_search(client, embedder)
 

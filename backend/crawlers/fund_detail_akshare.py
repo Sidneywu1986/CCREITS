@@ -58,7 +58,7 @@ def fetch_and_save_reits_data():
         logger.info(f"[AKShare] 完成! 更新了 {updated} 只基金")
         return updated
         
-    except Exception as e:
+    except (RuntimeError, ValueError) as e:
         logger.error(f"[AKShare] 错误: {e}")
         import traceback
         traceback.print_exc()

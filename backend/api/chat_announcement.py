@@ -113,7 +113,7 @@ async def chat_announcement(req: ChatAnnouncementRequest):
             else:
                 logger.warning("Milvus not healthy, using fulltext fallback")
                 contexts = await _fulltext_search_fallback(req.message, req.announcement_ids)
-        except Exception as e:
+        except (RuntimeError, ValueError, KeyError) as e:
             logger.warning(f"Vector search failed, using fallback: {e}")
             contexts = await _fulltext_search_fallback(req.message, req.announcement_ids)
 
@@ -146,9 +146,9 @@ async def chat_announcement(req: ChatAnnouncementRequest):
             )
 
             ai_content = response.choices[0].message.content
-        except Exception as e:
+        except (RuntimeError, ValueError, ConnectionError) as e:
             logger.error(f"LLM call failed: {e}")
-            ai_content = f"抱歉，AI服务暂时不可用: {str(e)}"
+            ai_content = "抱歉，AI服务暂时不可用，请稍后重试"
 
         # 6. Save AI response
         ai_msg = await AnnouncementChatMessage.create(
@@ -169,6 +169,6 @@ async def chat_announcement(req: ChatAnnouncementRequest):
 
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"chat_announcement error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        logger.exception("chat_announcement error")
+        raise HTTPException(status_code=500, detail="服务暂时不可用，请稍后重试")

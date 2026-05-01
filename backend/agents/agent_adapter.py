@@ -99,7 +99,7 @@ class AgentWrapper:
         rag_results = []
         try:
             rag_results = search_articles_for_rag(query, top_k=5)
-        except Exception as e:
+        except (RuntimeError, ValueError, KeyError) as e:
             logger.warning(f"RAG failed: {e}")
 
         rag_context = ""
@@ -234,10 +234,10 @@ class AgentWrapper:
                 citations=[{"type": "internal_research", "description": "基于内部研究资料", "count": len(rag_results)}],
             )
 
-        except Exception as e:
+        except (RuntimeError, ValueError, ConnectionError) as e:
             logger.error(f"AgentWrapper.generate failed for {self.persona_id}: {e}")
             return AgentMessage(
-                content=f"抱歉，AI服务暂时不可用: {str(e)}",
+                content="抱歉，AI服务暂时不可用，请稍后重试",
                 citations=[],
             )
 

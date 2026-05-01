@@ -36,7 +36,7 @@ def load_state():
         try:
             with open(STATE_FILE, 'r') as f:
                 return json.load(f)
-        except Exception:
+        except (OSError, json.JSONDecodeError):
             pass
     return {"last_id": 0}
 

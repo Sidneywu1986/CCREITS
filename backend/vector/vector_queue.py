@@ -45,7 +45,7 @@ class VectorQueueProcessor:
                 await record.save()
                 processed_count += 1
 
-            except Exception as e:
+            except (RuntimeError, ValueError, ConnectionError) as e:
                 logger.error(f"Vectorization failed for {record.content_type}:{record.content_id}: {e}")
                 record.retry_count += 1
                 record.error_message = str(e)[:500]
@@ -136,7 +136,7 @@ async def run_vector_queue_worker(interval_seconds: int = 5):
             processed = await processor.process_pending()
             if processed > 0:
                 logger.info(f"Vector queue processed {processed} records")
-        except Exception as e:
+        except (RuntimeError, OSError, ValueError) as e:
             logger.error(f"Vector queue worker error: {e}")
 
         await asyncio.sleep(interval_seconds)

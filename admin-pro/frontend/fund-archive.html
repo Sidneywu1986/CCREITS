@@ -80,8 +80,9 @@
         }
         .ai-thinking { animation: pulse-dot 1.5s infinite; }
     </style>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 </head>
-<body class="h-screen flex flex-col overflow-hidden bg-slate-50">
+<body class="min-h-screen md:h-screen flex flex-col overflow-x-hidden md:overflow-hidden bg-slate-50 pb-mobile-nav md:pb-0">
 
     <!-- Header -->
     <header class="h-[60px] bg-white border-b border-gray-200 flex items-center justify-between px-6 flex-none z-40">
@@ -330,6 +331,7 @@
     </main>
 
     <script src="./js/common.js"></script>
+    <script src="./js/icons.js"></script>
     <script src="./js/api.js"></script>
     <script>
         const AI_API_BASE = 'http://localhost:5074/api/ai';
@@ -350,13 +352,13 @@
                 const isSelected = selectedFunds.includes(fund.code);
                 return `
                     <div class="fund-card rounded-lg p-3 cursor-pointer bg-white ${isSelected ? 'selected' : ''}" 
-                         onclick="toggleFund('${fund.code}')" data-code="${fund.code}">
+                         onclick="toggleFund('${escapeHtml(fund.code)}')" data-code="${escapeHtml(fund.code)}">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-2">
                                 <span class="text-base">${sectorInfo?.icon || ''}</span>
                                 <div>
-                                    <div class="font-medium text-gray-900 text-sm">${fund.name}</div>
-                                    <div class="text-xs text-gray-400 mono">${fund.code}</div>
+                                    <div class="font-medium text-gray-900 text-sm">${escapeHtml(fund.name)}</div>
+                                    <div class="text-xs text-gray-400 mono">${escapeHtml(fund.code)}</div>
                                 </div>
                             </div>
                             <div class="text-right">
@@ -557,7 +559,7 @@
             addMessage(message, 'user');
             input.value = '';
             const funds = allFundsData.filter(f => selectedFunds.includes(f.code));
-            const fundContext = funds.map(f => `${f.code} ${f.name}`).join('、');
+            const fundContext = funds.map(f => `${escapeHtml(f.code)} ${escapeHtml(f.name)}`).join('、');
             const thinkingId = addThinkingIndicator();
             try {
                 const response = await fetchWithTimeout(`${AI_API_BASE}/chat-reits`, {
@@ -689,5 +691,29 @@
             window.addEventListener('resize', () => radarChart?.resize());
         };
     </script>
+
+    <!-- Mobile Bottom Navigation -->
+    <nav class="mobile-nav md:hidden">
+        <a href="./market.html" class="mobile-nav__item ">
+            <i data-lucide="bar-chart-3" data-size="20"></i>
+            <span>行情</span>
+        </a>
+        <a href="./fund-archive.html" class="mobile-nav__item active">
+            <i data-lucide="building-2" data-size="20"></i>
+            <span>档案</span>
+        </a>
+        <a href="./announcements.html" class="mobile-nav__item ">
+            <i data-lucide="bell" data-size="20"></i>
+            <span>公告</span>
+        </a>
+        <a href="./research-center.html" class="mobile-nav__item ">
+            <i data-lucide="pie-chart" data-size="20"></i>
+            <span>投研</span>
+        </a>
+        <a href="./portfolio.html" class="mobile-nav__item ">
+            <i data-lucide="star" data-size="20"></i>
+            <span>自选</span>
+        </a>
+    </nav>
 </body>
 </html>

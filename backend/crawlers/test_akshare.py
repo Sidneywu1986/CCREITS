@@ -18,5 +18,5 @@ for name, fn in tests:
         print(f"分红相关列: {cols}")
         print(df.head(2).to_string() if not df.empty else "empty")
         print()
-    except Exception as e:
+    except (RuntimeError, ValueError) as e:
         print(f"失败: {e}\n")

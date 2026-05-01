@@ -149,9 +149,9 @@ class REITsDividendPDFDownloader:
             
             time.sleep(self.download_delay)
             
-        except Exception as e:
-            result['error'] = f"异常: {str(e)}"
-            logger.error(f"[ERROR] {file_id}: {result['error']}")
+        except (requests.RequestException, OSError) as e:
+            result['error'] = "下载异常，请检查网络和磁盘空间"
+            logger.error(f"[ERROR] {file_id}: {e}")
         
         return result
     

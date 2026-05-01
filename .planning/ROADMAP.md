@@ -1,0 +1,135 @@
+# ROADMAP — CCREITS 中国公募REITs数据平台
+
+> GSD Roadmap — Phase-driven execution plan. Each phase delivers a shippable outcome.
+
+---
+
+## Milestone v2.1 — 安全加固与前端整改
+
+**Goal:** 修复核心安全漏洞，完成前端UI深度整改，达到生产部署标准。
+
+**Deadline:** 2026-05-31
+
+---
+
+## Phase 1 — 安全审计收尾
+
+**Status:** ✅ Complete
+
+**Goal:** 修复CRITICAL和HIGH安全问题
+
+**Deliverables:**
+- 硬编码密码移除
+- 异常信息泄露修复
+- CORS收窄 + Cookie HMAC签名
+- API速率限制部署
+- print→logging迁移
+- except Exception精确化（87处已收窄）
+
+**Depends on:** —
+
+---
+
+## Phase 2 — 前端UI深度整改
+
+**Status:** 🔄 In Planning
+
+**Goal:** 解决157处innerHTML XSS漏洞，建立现代前端工程化体系，重构管理后台
+
+**Deliverables:**
+- XSS漏洞全面修复（innerHTML → textContent/escapeHtml）
+- 前端组件化架构设计
+- 设计系统建立（色彩、字体、间距、组件规范）
+- 管理后台架构拆分（admin_app.py 4870行 → 多层结构）
+- 前端构建工具引入（Vite / 现代打包）
+- 响应式布局优化
+- 前端状态管理引入
+
+**Depends on:** Phase 1
+
+**UI-SPEC:** `02-UI-SPEC.md`
+
+---
+
+## Phase 3 — API JWT认证体系
+
+**Status:** ⏳ Pending
+
+**Goal:** 为全部 `/api/*` 端点添加身份验证
+
+**Deliverables:**
+- JWT认证中间件
+- 用户注册/登录/刷新Token
+- 前端登录页面
+- API权限分级（公开/用户/管理员）
+- 测试覆盖
+
+**Depends on:** Phase 2
+
+---
+
+## Phase 4 — 性能与稳定性优化
+
+**Status:** ⏳ Pending
+
+**Goal:** 数据库连接池化、缓存优化、监控告警
+
+**Deliverables:**
+- asyncpg连接池替代逐请求新建连接
+- Redis缓存层引入
+- 数据库索引优化
+- 健康检查与监控
+- 日志聚合与告警
+
+**Depends on:** Phase 3
+
+---
+
+## Milestone v2.2 — 功能增强
+
+**Goal:** 新增投研分析功能，提升数据覆盖度
+
+---
+
+## Phase 5 — 投研分析平台
+
+**Status:** ⏳ Backlog
+
+**Goal:** 深度投研报告、对比分析、估值模型
+
+**Deliverables:**
+- 基金对比分析工具
+- 估值模型（NAV、IRR、CapRate）
+- 投研报告自动生成
+- 研报PDF导出
+
+**Depends on:** Milestone v2.1
+
+---
+
+## Phase 6 — 数据覆盖扩展
+
+**Status:** ⏳ Backlog
+
+**Goal:** 接入更多数据源，提升数据质量
+
+**Deliverables:**
+- 上交所/深交所官方公告API
+- 基金净值自动校准
+- 机构持仓数据
+- 舆情情绪分析增强
+
+**Depends on:** Phase 5
+
+---
+
+## Out of Scope (v2.x)
+
+- 移动端原生App
+- 交易执行系统
+- 多市场（港股/新加坡REITs）
+- 付费订阅与会员系统
+
+---
+
+*Last updated: 2026-05-01*

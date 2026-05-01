@@ -73,7 +73,7 @@ class EmbeddingService:
         except ImportError:
             logger.warning("openai not installed")
             return None
-        except Exception as e:
+        except (ImportError, RuntimeError, ValueError) as e:
             logger.warning(f"OpenAI client init failed: {e}")
             return None
 
@@ -91,7 +91,7 @@ class EmbeddingService:
             if hasattr(self._local_model.config, 'hidden_size'):
                 self.dimension = self._local_model.config.hidden_size
             logger.info(f"Local model loaded, dim={self.dimension}")
-        except Exception as e:
+        except (ImportError, RuntimeError, OSError, ValueError) as e:
             logger.error(f"Failed to load local model: {e}")
             raise
 
@@ -106,7 +106,7 @@ class EmbeddingService:
                 return self._embed_openai(text)
             elif self.provider == "local":
                 return self._embed_local(text)
-        except Exception as e:
+        except (RuntimeError, ValueError, TypeError) as e:
             logger.error(f"Embedding failed for provider {self.provider}: {e}")
             raise
 

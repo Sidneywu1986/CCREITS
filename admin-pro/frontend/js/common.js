@@ -142,12 +142,12 @@ function initGlobalSearchDropdown() {
             return;
         }
         dropdown.innerHTML = results.map(f => `
-            <div class="px-4 py-2 hover:bg-gray-50 cursor-pointer flex items-center justify-between" onclick="window.location.href='./fund-detail.html?code=${f.code}'">
+            <div class="px-4 py-2 hover:bg-gray-50 cursor-pointer flex items-center justify-between" onclick="window.location.href='./fund-detail.html?code=${escapeHtml(f.code)}'">
                 <div class="flex items-center gap-2">
-                    <span class="mono text-blue-600 text-sm">${f.code}</span>
-                    <span class="text-sm text-gray-800">${f.name}</span>
+                    <span class="mono text-blue-600 text-sm">${escapeHtml(f.code)}</span>
+                    <span class="text-sm text-gray-800">${escapeHtml(f.name)}</span>
                 </div>
-                <span class="text-xs text-gray-400">${f.sectorName || ''}</span>
+                <span class="text-xs text-gray-400">${escapeHtml(f.sectorName || '')}</span>
             </div>
         `).join('');
         dropdown.classList.remove('hidden');

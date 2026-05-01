@@ -183,7 +183,7 @@ async def api_login(request: LoginRequest):
         try:
             if not bcrypt.verify(request.password, user["password_hash"]):
                 return LoginResponse(code=401, message="用户名或密码错误")
-        except Exception as e:
+        except Exception:
             return LoginResponse(code=401, message="密码验证失败")
         
         token = secrets.token_urlsafe(32)
@@ -2716,10 +2716,11 @@ async def funds_import(
             required_columns = ["基金代码", "基金名称"]
             if not all(col in df.columns for col in required_columns):
                 raise ValueError("Excel文件缺少必要的列: 基金代码, 基金名称")
-        except Exception as e:
-            return HTMLResponse(content=f"""
+        except Exception:
+            logger.exception("Excel文件读取失败")
+            return HTMLResponse(content="""
                 <script>
-                    alert("Excel文件读取失败: {str(e)}");
+                    alert("Excel文件读取失败，请检查文件格式");
                     window.location.href = "/admin/funds/import";
                 </script>
             """)
@@ -2964,8 +2965,9 @@ async def start_crawler(request: Request, crawler_name: str = "all"):
     try:
         start_crawler_service(crawler_name)
         return JSONResponse(content={"success": True, "message": f"爬虫 {crawler_name} 已启动"})
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+    except Exception:
+        logger.exception("Admin API error")
+        return JSONResponse(status_code=500, content={"error": "操作失败，请稍后重试"})
 
 
 # 停止爬虫
@@ -2978,8 +2980,9 @@ async def stop_crawler(request: Request, crawler_name: str = "all"):
     try:
         stop_crawler_service(crawler_name)
         return JSONResponse(content={"success": True, "message": f"爬虫 {crawler_name} 已停止"})
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+    except Exception:
+        logger.exception("Admin API error")
+        return JSONResponse(status_code=500, content={"error": "操作失败，请稍后重试"})
 
 
 # 触发爬虫
@@ -2995,8 +2998,9 @@ async def trigger_crawler(request: Request, crawler_name: str = "all", params: d
     try:
         result = trigger_crawler_execution(crawler_name, params)
         return JSONResponse(content={"success": True, "result": result})
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+    except Exception:
+        logger.exception("Admin API error")
+        return JSONResponse(status_code=500, content={"error": "操作失败，请稍后重试"})
 
 
 # 爬虫日志
@@ -3052,8 +3056,9 @@ async def update_crawler_config(request: Request):
         config_data = await request.json()
         save_crawler_config(config_data)
         return JSONResponse(content={"success": True, "message": "配置已更新"})
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+    except Exception:
+        logger.exception("Admin API error")
+        return JSONResponse(status_code=500, content={"error": "操作失败，请稍后重试"})
 
 
 # 爬虫统计
@@ -3375,8 +3380,9 @@ async def integrity_check(request: Request, check_type: str = "all"):
             "message": f"完整性检查完成: {result['passed']}通过, {result['failed']}失败",
             "result": result
         })
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+    except Exception:
+        logger.exception("Admin API error")
+        return JSONResponse(status_code=500, content={"error": "操作失败，请稍后重试"})
 
 
 # 完整性状态API
@@ -3404,8 +3410,9 @@ async def integrity_fix(request: Request, issue_id: str = "all", fix_type: str =
             "message": f"修复完成: {result['fixed']}个问题已修复",
             "result": result
         })
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+    except Exception:
+        logger.exception("Admin API error")
+        return JSONResponse(status_code=500, content={"error": "操作失败，请稍后重试"})
 
 
 # 完整性告警
@@ -3418,8 +3425,9 @@ async def integrity_alert(request: Request, level: str = "warning", message: str
     try:
         send_integrity_alert(level, message)
         return JSONResponse(content={"success": True, "message": "告警已发送"})
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+    except Exception:
+        logger.exception("Admin API error")
+        return JSONResponse(status_code=500, content={"error": "操作失败，请稍后重试"})
 
 
 # 完整性报告
@@ -3526,8 +3534,9 @@ async def update_integrity_settings(request: Request):
         settings_data = await request.json()
         save_integrity_settings(settings_data)
         return JSONResponse(content={"success": True, "message": "设置已更新"})
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+    except Exception:
+        logger.exception("Admin API error")
+        return JSONResponse(status_code=500, content={"error": "操作失败，请稍后重试"})
 
 
 # ========== 数据完整性检查辅助函数 ==========
@@ -3878,8 +3887,9 @@ async def logs_view(request: Request, log_name: str = "crawler.log", lines: int 
             "lines": lines,
             "total_lines": get_total_lines(log_name)
         })
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+    except Exception:
+        logger.exception("Admin API error")
+        return JSONResponse(status_code=500, content={"error": "操作失败，请稍后重试"})
 
 
 # 日志搜索API
@@ -3896,8 +3906,9 @@ async def logs_search(request: Request, keyword: str = "", log_name: str = None,
             "results": results,
             "total_found": len(results)
         })
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+    except Exception:
+        logger.exception("Admin API error")
+        return JSONResponse(status_code=500, content={"error": "操作失败，请稍后重试"})
 
 
 # 日志清除API
@@ -3915,8 +3926,9 @@ async def logs_clear(request: Request):
             "message": f"已清理 {cleared['files']} 个文件，释放 {cleared['space']} 空间",
             "result": cleared
         })
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+    except Exception:
+        logger.exception("Admin API error")
+        return JSONResponse(status_code=500, content={"error": "操作失败，请稍后重试"})
 
 
 # 日志下载API
@@ -3949,8 +3961,9 @@ async def logs_download(request: Request, log_name: str = None, date_range: str 
                 media_type="application/zip",
                 headers={"Content-Disposition": "attachment; filename=logs.zip"}
             )
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+    except Exception:
+        logger.exception("Admin API error")
+        return JSONResponse(status_code=500, content={"error": "操作失败，请稍后重试"})
 
 
 # 日志配置页面
@@ -4034,8 +4047,9 @@ async def update_logs_config(request: Request):
         config_data = await request.json()
         save_logs_config(config_data)
         return JSONResponse(content={"success": True, "message": "配置已更新"})
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+    except Exception:
+        logger.exception("Admin API error")
+        return JSONResponse(status_code=500, content={"error": "操作失败，请稍后重试"})
 
 
 # 日志统计API
@@ -4048,8 +4062,9 @@ async def logs_stats_api(request: Request):
     try:
         stats = get_logs_statistics()
         return JSONResponse(content=stats)
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+    except Exception:
+        logger.exception("Admin API error")
+        return JSONResponse(status_code=500, content={"error": "操作失败，请稍后重试"})
 
 
 # 日志导出API
@@ -4067,8 +4082,9 @@ async def logs_export(request: Request, date_range: str = None, format: str = "z
             "file_path": export_result['file_path'],
             "size": export_result['size']
         })
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+    except Exception:
+        logger.exception("Admin API error")
+        return JSONResponse(status_code=500, content={"error": "操作失败，请稍后重试"})
 
 
 # ========== 系统日志查看器辅助函数 ==========
@@ -4121,8 +4137,9 @@ def read_log_file(log_name, lines=100):
         if len(all_lines) > lines:
             return '\n'.join(all_lines[-lines:])
         return content
-    except Exception as e:
-        return f"读取日志文件失败: {str(e)}"
+    except Exception:
+        logger.exception("读取日志文件失败")
+        return "读取日志文件失败，请稍后重试"
 
 
 def get_total_lines(log_name):
@@ -4492,8 +4509,9 @@ async def create_alert_rule(request: Request):
         rule_data = await request.json()
         save_alert_rule(rule_data)
         return JSONResponse(content={"success": True, "message": "告警规则已创建"})
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+    except Exception:
+        logger.exception("Admin API error")
+        return JSONResponse(status_code=500, content={"error": "操作失败，请稍后重试"})
 
 
 # 编辑告警规则
@@ -4592,8 +4610,9 @@ async def update_alert_rule(request: Request, rule_id: int):
         rule_data = await request.json()
         update_alert_rule_db(rule_id, rule_data)
         return JSONResponse(content={"success": True, "message": "告警规则已更新"})
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+    except Exception:
+        logger.exception("Admin API error")
+        return JSONResponse(status_code=500, content={"error": "操作失败，请稍后重试"})
 
 
 # 删除告警规则
@@ -4606,8 +4625,9 @@ async def delete_alert_rule(request: Request, rule_id: int):
     try:
         delete_alert_rule_db(rule_id)
         return JSONResponse(content={"success": True, "message": "告警规则已删除"})
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+    except Exception:
+        logger.exception("Admin API error")
+        return JSONResponse(status_code=500, content={"error": "操作失败，请稍后重试"})
 
 
 # 告警历史
@@ -4769,8 +4789,9 @@ async def update_alert_settings(request: Request):
         settings_data = await request.json()
         save_alert_settings(settings_data)
         return JSONResponse(content={"success": True, "message": "告警设置已更新"})
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+    except Exception:
+        logger.exception("Admin API error")
+        return JSONResponse(status_code=500, content={"error": "操作失败，请稍后重试"})
 
 
 # 告警统计
@@ -4794,8 +4815,9 @@ async def test_alert_api(request: Request, alert_type: str = "test", test_data: 
     try:
         result = test_alert_system(alert_type, test_data or {})
         return JSONResponse(content={"success": True, "message": "告警测试成功", "result": result})
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+    except Exception:
+        logger.exception("Admin API error")
+        return JSONResponse(status_code=500, content={"error": "操作失败，请稍后重试"})
 
 
 # ========== 告警管理辅助函数 ==========

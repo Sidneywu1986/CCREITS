@@ -11,6 +11,7 @@ import logging
 import schedule
 import time
 import asyncio
+import psycopg2
 from datetime import datetime
 
 logger = logging.getLogger("scheduler")
@@ -29,7 +30,7 @@ def run_sync_pipeline():
         from database.task_lock import task_lock
         from core.db import get_conn
         _run_sync_pipeline_locked(get_conn)
-    except Exception as e:
+    except (ImportError, RuntimeError, ValueError) as e:
         logger.error(f"[Scheduler] Sync pipeline failed: {e}")
 
 
@@ -40,7 +41,7 @@ def _run_sync_pipeline_locked(get_conn):
             from sync_from_wemprss_api import main as sync_main
             sync_main()
             logger.info("[Scheduler] Article sync completed")
-        except Exception as e:
+        except (ImportError, RuntimeError, ValueError) as e:
             logger.error(f"[Scheduler] Article sync failed: {e}")
 
         # 2. 自动清洗脏数据
@@ -48,7 +49,7 @@ def _run_sync_pipeline_locked(get_conn):
             from scripts.auto_clean_dirty import main as clean_main
             clean_main()
             logger.info("[Scheduler] Auto clean completed")
-        except Exception as e:
+        except (ImportError, RuntimeError, ValueError) as e:
             logger.error(f"[Scheduler] Auto clean failed: {e}")
 
         # 3. 基金标签匹配
@@ -60,7 +61,7 @@ def _run_sync_pipeline_locked(get_conn):
             job = BatchRetagJob()
             stats = job.run(only_untagged=True, limit=20)
             logger.info(f"[Scheduler] LLM tagging: {stats}")
-        except Exception as e:
+        except (ImportError, RuntimeError, ValueError) as e:
             logger.error(f"[Scheduler] LLM tagging failed: {e}")
 
         # 5. TF-IDF 增量向量化
@@ -72,7 +73,7 @@ def _run_sync_pipeline_locked(get_conn):
             tfidf_main()
             sys.argv = old_argv
             logger.info("[Scheduler] TF-IDF vectorization completed")
-        except Exception as e:
+        except (ImportError, RuntimeError, ValueError) as e:
             logger.error(f"[Scheduler] TF-IDF vectorization failed: {e}")
 
         # 6. TF-IDF 同步到 Milvus
@@ -80,7 +81,7 @@ def _run_sync_pipeline_locked(get_conn):
             from scripts.sync_tfidf_to_milvus import sync as tfidf_sync
             tfidf_sync()
             logger.info("[Scheduler] TF-IDF Milvus sync completed")
-        except Exception as e:
+        except (ImportError, RuntimeError, ValueError) as e:
             logger.error(f"[Scheduler] TF-IDF Milvus sync failed: {e}")
 
         logger.info("[Scheduler] Sync pipeline finished")
@@ -111,7 +112,7 @@ def run_morning_news():
                 SET content = EXCLUDED.content, created_at = CURRENT_TIMESTAMP
             ''', ('morning_news', '🌍 晨间通讯社', json.dumps(result)))
             conn.commit()
-    except Exception as e:
+    except (ImportError, RuntimeError, psycopg2.Error, ValueError) as e:
         logger.error(f"[Agents] Morning news failed: {e}")
 
 
@@ -137,7 +138,7 @@ def run_lunch_whisper():
                 SET content = EXCLUDED.content, created_at = CURRENT_TIMESTAMP
             ''', ('lunch', '🌿 午间悄悄话', json.dumps(result)))
             conn.commit()
-    except Exception as e:
+    except (ImportError, RuntimeError, psycopg2.Error, ValueError) as e:
         logger.error(f"[Agents] Lunch whisper failed: {e}")
 
 

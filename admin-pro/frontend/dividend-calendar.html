@@ -59,8 +59,9 @@
         }
         .compare-bar.show { transform: translateY(0); }
     </style>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 </head>
-<body class="h-screen flex flex-col overflow-hidden">
+<body class="min-h-screen md:h-screen flex flex-col overflow-x-hidden md:overflow-hidden pb-mobile-nav md:pb-0">
 
     <!-- Header -->
     <header class="h-[60px] bg-white border-b border-gray-200 flex items-center justify-between px-6 flex-none z-40">
@@ -243,6 +244,7 @@
     </div>
 
     <script src="./js/common.js"></script>
+    <script src="./js/icons.js"></script>
     <script src="./js/api.js"></script>
     <script>
         // 全局基金数据
@@ -435,7 +437,7 @@
                 if (hasDividend) {
                     html += `<div class="flex-1 flex flex-col justify-center gap-1 mt-1">`;
                     dividends.slice(0, 3).forEach(d => {
-                        html += `<div class="dividend-tag ${getSectorTagClass(d.sector)}" title="${d.name} ${d.amount}元/份">${d.shortName} ¥${d.amount}</div>`;
+                        html += `<div class="dividend-tag ${getSectorTagClass(d.sector)}" title="${escapeHtml(d.name)} ${d.amount}元/份">${escapeHtml(d.shortName)} ¥${d.amount}</div>`;
                     });
                     if (dividends.length > 3) {
                         html += `<div class="text-xs text-amber-600 font-bold text-center">+${dividends.length - 3}</div>`;
@@ -462,13 +464,13 @@
                 const isUrgent = daysLeft >= 0 && daysLeft <= 3;
                 
                 return `
-                    <div class="p-2 border border-gray-100 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors" onclick="window.location.href='./fund-archive.html?code=${d.code}'">
+                    <div class="p-2 border border-gray-100 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors" onclick="window.location.href='./fund-archive.html?code=${escapeHtml(d.code)}'">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-2 min-w-0">
                                 <span class="w-2 h-2 rounded-full ${getSectorTagClass(d.sector).replace('sector-', 'bg-').replace('text-', '')}"></span>
                                 <div class="min-w-0">
-                                    <div class="font-medium text-xs text-gray-900 truncate">${d.name}</div>
-                                    <div class="text-xs text-gray-400 mono">${d.code}</div>
+                                    <div class="font-medium text-xs text-gray-900 truncate">${escapeHtml(d.name)}</div>
+                                    <div class="text-xs text-gray-400 mono">${escapeHtml(d.code)}</div>
                                 </div>
                             </div>
                             <div class="text-right flex-none ml-2">
@@ -524,15 +526,15 @@
                 else if (idx === 2) rankClass = 'bg-orange-100 text-orange-700';
                 
                 return `
-                    <div class="p-2 border border-gray-100 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors" onclick="window.location.href='./fund-archive.html?code=${item.code}'">
+                    <div class="p-2 border border-gray-100 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors" onclick="window.location.href='./fund-archive.html?code=${escapeHtml(item.code)}'">
                         <div class="flex items-center gap-2">
                             <div class="w-5 h-5 rounded ${rankClass} flex items-center justify-center text-xs font-bold flex-none">${idx + 1}</div>
                             <div class="flex-1 min-w-0">
                                 <div class="flex items-center gap-1">
                                     <span class="w-1.5 h-1.5 rounded-full ${getSectorTagClass(item.sector).replace('tag-', 'bg-').replace('text-', '')}"></span>
-                                    <div class="font-medium text-xs text-gray-900 truncate">${item.name}</div>
+                                    <div class="font-medium text-xs text-gray-900 truncate">${escapeHtml(item.name)}</div>
                                 </div>
-                                <div class="text-xs text-gray-400 mono">${item.code}</div>
+                                <div class="text-xs text-gray-400 mono">${escapeHtml(item.code)}</div>
                             </div>
                         </div>
                         <div class="flex items-center justify-between mt-1 text-xs">
@@ -561,7 +563,7 @@
                 return `
                     <div class="flex items-center justify-between p-2 bg-yellow-50 border border-yellow-100 rounded-lg">
                         <div class="min-w-0">
-                            <div class="font-medium text-xs text-gray-900 truncate">${d.shortName}</div>
+                            <div class="font-medium text-xs text-gray-900 truncate">${escapeHtml(d.shortName)}</div>
                             <div class="text-xs text-gray-500">${d.paymentDate.slice(5)} 到账</div>
                         </div>
                         <div class="text-right flex-none ml-2">
@@ -580,11 +582,11 @@
             
             document.getElementById('modal-title').textContent = `${currentYear}年${currentMonth}月${day}日 分红详情`;
             document.getElementById('modal-content').innerHTML = dividends.map(d => `
-                <div class="p-2 border border-gray-100 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors" onclick="window.location.href='./fund-archive.html?code=${d.code}'">
+                <div class="p-2 border border-gray-100 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors" onclick="window.location.href='./fund-archive.html?code=${escapeHtml(d.code)}'">
                     <div class="flex justify-between items-start">
                         <div class="min-w-0">
-                            <div class="font-medium text-xs text-gray-900 truncate">${d.name}</div>
-                            <div class="text-xs text-gray-400 mono">${d.code}</div>
+                            <div class="font-medium text-xs text-gray-900 truncate">${escapeHtml(d.name)}</div>
+                            <div class="text-xs text-gray-400 mono">${escapeHtml(d.code)}</div>
                         </div>
                         <div class="text-right flex-none ml-2">
                             <div class="text-red-600 font-bold text-xs">${d.amount}元/份</div>
@@ -683,5 +685,29 @@
         document.getElementById('about-modal').classList.remove('show');
     }
 </script>
+
+    <!-- Mobile Bottom Navigation -->
+    <nav class="mobile-nav md:hidden">
+        <a href="./market.html" class="mobile-nav__item ">
+            <i data-lucide="bar-chart-3" data-size="20"></i>
+            <span>行情</span>
+        </a>
+        <a href="./fund-archive.html" class="mobile-nav__item ">
+            <i data-lucide="building-2" data-size="20"></i>
+            <span>档案</span>
+        </a>
+        <a href="./announcements.html" class="mobile-nav__item ">
+            <i data-lucide="bell" data-size="20"></i>
+            <span>公告</span>
+        </a>
+        <a href="./research-center.html" class="mobile-nav__item ">
+            <i data-lucide="pie-chart" data-size="20"></i>
+            <span>投研</span>
+        </a>
+        <a href="./portfolio.html" class="mobile-nav__item ">
+            <i data-lucide="star" data-size="20"></i>
+            <span>自选</span>
+        </a>
+    </nav>
 </body>
 </html>

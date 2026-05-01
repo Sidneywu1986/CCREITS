@@ -52,7 +52,7 @@ def import_dividends():
                     """, (code, formatted_date, amount, formatted_date, formatted_date))
                     if cursor.rowcount > 0:
                         inserted += 1
-                except Exception as e:
+                except psycopg2.Error as e:
                     logger.error(f"插入失败 {code} {formatted_date}: {e}")
         
         conn.commit()

@@ -16,6 +16,7 @@ from typing import List, Dict, Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from core.db import get_conn
+import psycopg2
 import logging
 logger = logging.getLogger(__name__)
 
@@ -88,7 +89,7 @@ def _get_fund_info_map():
                     'manager': row[2] or '',
                     'custodian': row[3] or ''
                 }
-    except Exception as e:
+    except psycopg2.Error as e:
         logger.error(f"获取基金信息失败: {e}")
     return fund_map
 
@@ -154,7 +155,7 @@ def fetch_sse_announcements(limit_per_stock: int = 30) -> List[Dict]:
                 'source': 'sse'
             })
 
-    except Exception as e:
+    except (requests.RequestException, json.JSONDecodeError, KeyError, ValueError) as e:
         logger.error(f"[SSE API] 获取失败: {e}")
 
     return all_announcements
@@ -210,7 +211,7 @@ def fetch_cninfo_announcements(limit_per_stock: int = 30) -> List[Dict]:
                         'confidence': 0.9,
                         'source': 'cninfo'
                     })
-            except Exception as e:
+            except (requests.RequestException, json.JSONDecodeError, KeyError, ValueError) as e:
                 logger.error(f"  [CNInfo] {code} 获取失败: {e}")
                 continue
 
@@ -348,7 +349,7 @@ def get_cached_announcements(limit: int = 100) -> List[Dict]:
             })
 
         return announcements
-    except Exception as e:
+    except (ValueError, TypeError, KeyError) as e:
         logger.error(f"获取缓存公告失败: {e}")
         return []
 
@@ -386,13 +387,13 @@ def save_announcements_to_db(announcements: List[Dict]) -> int:
                     ))
                     if cursor.rowcount > 0:
                         inserted += 1
-                except Exception as e:
+                except psycopg2.Error as e:
                     pass
 
             conn.commit()
         logger.info(f"[公告服务] 保存 {inserted} 条新公告到数据库")
         return inserted
-    except Exception as e:
+    except psycopg2.Error as e:
         logger.error(f"保存公告失败: {e}")
         return 0
 
@@ -435,7 +436,7 @@ def get_announcements_by_fund(code: str, limit: int = 20) -> List[Dict]:
             'status_changed_at': row[14] or '',
             'is_suspicious': row[15] if row[15] is not None else 0
         } for row in rows]
-    except Exception as e:
+    except psycopg2.Error as e:
         logger.error(f"获取基金公告失败: {e}")
         return []
 
@@ -476,7 +477,7 @@ def get_announcements_by_category(category: str, limit: int = 50) -> List[Dict]:
             'status_changed_at': row[14] or '',
             'is_suspicious': row[15] if row[15] is not None else 0
         } for row in rows]
-    except Exception as e:
+    except psycopg2.Error as e:
         logger.error(f"按分类获取公告失败: {e}")
         return []
 
@@ -489,7 +490,7 @@ def mark_as_read(announcement_id: int) -> bool:
             cursor.execute("UPDATE business.announcements SET is_important = TRUE WHERE id = %s", (announcement_id,))
             conn.commit()
         return True
-    except Exception as e:
+    except psycopg2.Error as e:
         logger.error(f"标记已读失败: {e}")
         return False
 

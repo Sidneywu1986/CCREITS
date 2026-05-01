@@ -61,7 +61,7 @@ async def _fulltext_search_fallback(query: str, top_k: int = 5) -> List[dict]:
             title__icontains=query
         ).limit(top_k).all()
         return [{"type": "hotspot", "id": r.id, "title": r.title[:100]} for r in results]
-    except Exception:
+    except (RuntimeError, ValueError, TypeError):
         return []
 
 
@@ -157,7 +157,7 @@ async def chat_reits(req: ChatReitsRequest):
             market_emotion = get_sentiment_engine().get_market_emotion()
             emotion_tag = market_emotion.get("overall", "neutral")
             logger.info(f"Market emotion: {emotion_tag} ({market_emotion.get('score', 0)})")
-        except Exception as e:
+        except (AttributeError, KeyError, ValueError) as e:
             logger.warning(f"Sentiment analysis failed: {e}")
             emotion_tag = "neutral"
 
@@ -194,7 +194,7 @@ async def chat_reits(req: ChatReitsRequest):
         rag_results = []
         try:
             rag_results = search_articles_for_rag(req.message, top_k=5)
-        except Exception as e:
+        except (RuntimeError, ValueError, KeyError) as e:
             logger.warning(f"Vector search failed: {e}")
 
         # 6. Call LLM with persona + emotion + internal RAG context
@@ -269,9 +269,9 @@ async def chat_reits(req: ChatReitsRequest):
             # 使用的人设名称
             agent_display_name = persona_cfg.name_cn
 
-        except Exception as e:
+        except (RuntimeError, ValueError, ConnectionError) as e:
             logger.error(f"LLM call failed: {e}")
-            ai_content = f"抱歉，AI服务暂时不可用: {str(e)}"
+            ai_content = "抱歉，AI服务暂时不可用，请稍后重试"
             confidence = "low"
             rag_results = []
             agent_display_name = req.agent_name or "AI助手"
@@ -299,9 +299,9 @@ async def chat_reits(req: ChatReitsRequest):
 
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"chat_reits error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        logger.exception("chat_reits error")
+        raise HTTPException(status_code=500, detail="服务暂时不可用，请稍后重试")
 
 
 @router.get("/agents")
@@ -325,9 +325,9 @@ async def get_agents():
                 for a in agents
             ]
         }
-    except Exception as e:
-        logger.error(f"get_agents error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        logger.exception("get_agents error")
+        raise HTTPException(status_code=500, detail="获取智能体列表失败，请稍后重试")
 
 
 @router.get("/hotspots")
@@ -433,6 +433,6 @@ async def get_hotspots(limit: int = 20):
                 for h in items
             ]
         }
-    except Exception as e:
-        logger.error(f"get_hotspots error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        logger.exception("get_hotspots error")
+        raise HTTPException(status_code=500, detail="获取热点失败，请稍后重试")

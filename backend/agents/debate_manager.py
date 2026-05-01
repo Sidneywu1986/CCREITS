@@ -257,7 +257,7 @@ class DebateManager:
                 stream=False,
             )
             return response.choices[0].message.content or ""
-        except Exception as e:
+        except (RuntimeError, ValueError, ConnectionError) as e:
             logger.error(f"LLM call failed for {agent_id}: {e}")
             return f"【{self._agent_name(agent_id)}】服务暂时不可用。"
 

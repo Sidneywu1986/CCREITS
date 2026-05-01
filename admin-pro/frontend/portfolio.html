@@ -47,8 +47,9 @@
         @keyframes flashUp { 0%,100%{background:transparent} 50%{background:rgba(220,38,38,0.08)} }
         @keyframes flashDown { 0%,100%{background:transparent} 50%{background:rgba(22,163,74,0.08)} }
     </style>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 </head>
-<body class="h-screen flex flex-col overflow-hidden">
+<body class="min-h-screen md:h-screen flex flex-col overflow-x-hidden md:overflow-hidden pb-mobile-nav md:pb-0">
 
     <!-- Header -->
     <header class="h-[60px] bg-white border-b border-gray-200 flex items-center justify-between px-6 flex-none z-40">
@@ -146,7 +147,7 @@
             </div>
 
             <!-- 自选列表卡片 -->
-            <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden overflow-x-auto">
                 <div class="px-4 md:px-6 py-3 border-b border-gray-200 flex items-center justify-between bg-gray-50/50">
                     <h2 class="font-semibold text-gray-900 flex items-center gap-2 text-sm md:text-base">⭐ 我的自选股</h2>
                     <div class="text-xs text-gray-500">共 <span id="list-count">0</span> 只 · 拖拽👋可排序</div>
@@ -195,6 +196,7 @@
     </div>
 
     <script src="./js/common.js"></script>
+    <script src="./js/icons.js"></script>
     <script src="./js/api.js"></script>
     <script>
         // 状态
@@ -367,36 +369,36 @@
                 const isSelected = selectedItems.has(fund.code);
 
                 return `
-                    <tr class="fund-row ${isSelected ? 'bg-blue-50' : ''}" draggable="${!batchMode}" data-index="${index}" data-code="${fund.code}">
+                    <tr class="fund-row ${isSelected ? 'bg-blue-50' : ''}" draggable="${!batchMode}" data-index="${index}" data-code="${escapeHtml(fund.code)}">
                         ${batchMode ? `
                             <td class="px-3 md:px-4 py-3">
-                                <input type="checkbox" class="select-item rounded border-gray-300 text-blue-600 focus:ring-blue-500 h-4 w-4" data-code="${fund.code}" ${isSelected ? 'checked' : ''}>
+                                <input type="checkbox" class="select-item rounded border-gray-300 text-blue-600 focus:ring-blue-500 h-4 w-4" data-code="${escapeHtml(fund.code)}" ${isSelected ? 'checked' : ''}>
                             </td>
                         ` : ''}
                         <td class="px-3 md:px-4 py-3 text-center drag-handle text-gray-400">
                             <span class="text-sm select-none">👋</span>
                         </td>
                         <td class="px-3 md:px-4 py-3">
-                            <span class="mono text-blue-600 font-medium text-sm">${fund.code}</span>
+                            <span class="mono text-blue-600 font-medium text-sm">${escapeHtml(fund.code)}</span>
                         </td>
                         <td class="px-3 md:px-4 py-3">
-                            <div class="font-medium text-gray-900 text-sm">${fund.name}</div>
+                            <div class="font-medium text-gray-900 text-sm">${escapeHtml(fund.name)}</div>
                         </td>
                         <td class="px-3 md:px-4 py-3 hidden sm:table-cell">
-                            <span class="sector-tag ${sectorClass}">${fund.sectorName}</span>
+                            <span class="sector-tag ${sectorClass}">${escapeHtml(fund.sectorName)}</span>
                         </td>
-                        <td class="px-3 md:px-4 py-3 text-right mono text-sm text-gray-900" id="price-${fund.code}">${fund.price.toFixed(3)}</td>
-                        <td class="px-3 md:px-4 py-3 text-right mono text-sm ${fund.change >= 0 ? 'text-red-600' : 'text-green-600'}" id="change-${fund.code}">
+                        <td class="px-3 md:px-4 py-3 text-right mono text-sm text-gray-900" id="price-${escapeHtml(fund.code)}">${fund.price.toFixed(3)}</td>
+                        <td class="px-3 md:px-4 py-3 text-right mono text-sm ${fund.change >= 0 ? 'text-red-600' : 'text-green-600'}" id="change-${escapeHtml(fund.code)}">
                             ${fund.change >= 0 ? '+' : ''}${fund.change.toFixed(2)}%
                         </td>
                         <td class="px-3 md:px-4 py-3 text-right mono text-sm text-red-600 hidden lg:table-cell">${fund.yield.toFixed(2)}%</td>
                         <td class="px-3 md:px-4 py-3 text-center">
                             <div class="quick-actions flex items-center justify-center gap-1">
-                                <button onclick="toggleCompare('${fund.code}')" 
+                                <button onclick="toggleCompare('${escapeHtml(fund.code)}')" 
                                     class="p-1.5 rounded transition-all ${inCompare ? 'text-blue-600 bg-blue-50' : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'}" title="加入对比">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                 </button>
-                                <button onclick="removeFromWatchlist('${fund.code}')" class="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-all" title="删除自选">
+                                <button onclick="removeFromWatchlist('${escapeHtml(fund.code)}')" class="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-all" title="删除自选">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                 </button>
                             </div>
@@ -471,8 +473,8 @@
                     fund.price = parseFloat((fund.price * (1 + change / 100)).toFixed(3));
                     fund.change = parseFloat((fund.change + change).toFixed(2));
 
-                    const priceEl = document.getElementById(`price-${fund.code}`);
-                    const changeEl = document.getElementById(`change-${fund.code}`);
+                    const priceEl = document.getElementById(`price-${escapeHtml(fund.code)}`);
+                    const changeEl = document.getElementById(`change-${escapeHtml(fund.code)}`);
                     if (priceEl) {
                         priceEl.textContent = fund.price.toFixed(3);
                         priceEl.classList.add(fund.change >= 0 ? 'flash-up' : 'flash-down');
@@ -627,8 +629,8 @@
 
             items.innerHTML = list.map(item => `
                 <div class="flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-lg flex-none">
-                    <span class="text-sm text-blue-900 font-medium truncate max-w-[120px]">${item.name}</span>
-                    <button onclick="removeFromCompare('${item.code}'); updateCompareBar(); renderWatchlist();" class="text-blue-400 hover:text-blue-600">
+                    <span class="text-sm text-blue-900 font-medium truncate max-w-full md:w-[120px]">${escapeHtml(item.name)}</span>
+                    <button onclick="removeFromCompare('${escapeHtml(item.code)}'); updateCompareBar(); renderWatchlist();" class="text-blue-400 hover:text-blue-600">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                     </button>
                 </div>
@@ -729,5 +731,29 @@
         document.getElementById('about-modal').classList.remove('show');
     }
 </script>
+
+    <!-- Mobile Bottom Navigation -->
+    <nav class="mobile-nav md:hidden">
+        <a href="./market.html" class="mobile-nav__item ">
+            <i data-lucide="bar-chart-3" data-size="20"></i>
+            <span>行情</span>
+        </a>
+        <a href="./fund-archive.html" class="mobile-nav__item ">
+            <i data-lucide="building-2" data-size="20"></i>
+            <span>档案</span>
+        </a>
+        <a href="./announcements.html" class="mobile-nav__item ">
+            <i data-lucide="bell" data-size="20"></i>
+            <span>公告</span>
+        </a>
+        <a href="./research-center.html" class="mobile-nav__item ">
+            <i data-lucide="pie-chart" data-size="20"></i>
+            <span>投研</span>
+        </a>
+        <a href="./portfolio.html" class="mobile-nav__item active">
+            <i data-lucide="star" data-size="20"></i>
+            <span>自选</span>
+        </a>
+    </nav>
 </body>
 </html>

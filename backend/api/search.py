@@ -36,7 +36,7 @@ def _get_fund_name(fund_code: str) -> Optional[str]:
             cur.execute("SELECT fund_name FROM business.funds WHERE fund_code = %s", (fund_code,))
             row = cur.fetchone()
             return row['fund_name'] if row else None
-    except Exception:
+    except psycopg2.Error:
         return None
 
 
@@ -49,7 +49,7 @@ def _get_fund_articles_pg(fund_code: str) -> set:
             cur.execute("SELECT article_id FROM business.article_fund_tags WHERE fund_code = %s", (fund_code,))
             rows = cur.fetchall()
             return {r[0] for r in rows}
-    except Exception:
+    except psycopg2.Error:
         return set()
 
 
@@ -131,7 +131,7 @@ def search_articles_for_rag(query: str, top_k: int = 5, fund_code: Optional[str]
             logger.info(f"[RAG] local_tfidf | q='{query[:30]}' | {len(filtered)}/{len(results)} results | {elapsed:.1f}ms")
             return filtered
         logger.info(f"[RAG] local_tfidf empty | q='{query[:30]}' | {elapsed:.1f}ms")
-    except Exception as e:
+    except (RuntimeError, ValueError, KeyError) as e:
         logger.warning(f"Local TF-IDF search failed: {e}")
 
     # 2. Fallback to TF-IDF (Milvus)
@@ -145,7 +145,7 @@ def search_articles_for_rag(query: str, top_k: int = 5, fund_code: Optional[str]
             logger.info(f"[RAG] milvus_tfidf | q='{query[:30]}' | {len(milvus_results)} results | {elapsed:.1f}ms")
             return milvus_results
         logger.info(f"[RAG] milvus_tfidf empty | q='{query[:30]}' | {elapsed:.1f}ms")
-    except Exception as e:
+    except (RuntimeError, ValueError, KeyError) as e:
         logger.warning(f"TF-IDF Milvus search failed: {e}")
 
     # 3. Fallback to BGE-M3 (Milvus)
@@ -159,7 +159,7 @@ def search_articles_for_rag(query: str, top_k: int = 5, fund_code: Optional[str]
             logger.info(f"[RAG] milvus_bge | q='{query[:30]}' | {len(milvus_results)} results | {elapsed:.1f}ms")
             return milvus_results
         logger.info(f"[RAG] milvus_bge empty | q='{query[:30]}' | {elapsed:.1f}ms")
-    except Exception as e:
+    except (RuntimeError, ValueError, KeyError) as e:
         logger.warning(f"BGE Milvus search failed: {e}")
         return []
 
@@ -181,9 +181,9 @@ async def get_search_stats():
             "embedding_dim": stats["embedding_dim"],
             "status": "ready",
         }
-    except Exception as e:
-        logger.error(f"Stats error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        logger.exception("Stats error")
+        raise HTTPException(status_code=500, detail="获取搜索统计失败，请稍后重试")
 
 
 # ⚠️ 以下接口已移除，保护独家内容资产：

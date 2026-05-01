@@ -16,6 +16,7 @@ from typing import List, Dict
 # 添加数据库路径
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from core.db import get_conn
+import psycopg2
 import logging
 logger = logging.getLogger(__name__)
 
@@ -108,7 +109,7 @@ def get_stock_news(symbol: str) -> List[Dict]:
                     'confidence': 0.85
                 })
                 
-    except Exception as e:
+    except (RuntimeError, ValueError, TypeError, KeyError, IndexError) as e:
         logger.error(f"  获取 {symbol} 新闻失败: {e}")
     
     return announcements
@@ -130,7 +131,7 @@ def crawl_all_announcements(limit_per_stock: int = 5, max_stocks: int = 20) -> L
             news = news[:limit_per_stock]
             all_announcements.extend(news)
             logger.info(f"  [{i+1}/{len(stocks_to_crawl)}] {code}: {len(news)} 条")
-        except Exception as e:
+        except (RuntimeError, ValueError, TypeError, KeyError, IndexError) as e:
             logger.error(f"  [{i+1}/{len(stocks_to_crawl)}] {code}: 失败")
     
     # 去重并按日期排序
@@ -176,7 +177,7 @@ def save_to_database(announcements: List[Dict]) -> int:
                     ))
                     if cursor.rowcount > 0:
                         inserted += 1
-                except Exception as e:
+                except psycopg2.Error as e:
                     logger.error(f"插入失败: {e}")
             
             conn.commit()
@@ -184,7 +185,7 @@ def save_to_database(announcements: List[Dict]) -> int:
         logger.info(f"保存到数据库: {inserted} 条新公告")
         return inserted
         
-    except Exception as e:
+    except psycopg2.Error as e:
         logger.error(f"数据库保存失败: {e}")
         return 0
 

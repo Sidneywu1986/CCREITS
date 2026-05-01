@@ -82,7 +82,7 @@ class AKShareServer:
                 })
 
             return results
-        except Exception as e:
+        except (RuntimeError, ValueError, TypeError, KeyError, IndexError) as e:
             logger.error(f"获取REITs列表失败: {e}")
             return []
 
@@ -115,12 +115,12 @@ class AKShareServer:
                             volume=int(row['成交量']) if row['成交量'] else 0,
                             change_percent=(price - prev_close) / prev_close * 100 if prev_close > 0 else 0
                         ))
-                except Exception as e:
+                except (RuntimeError, ValueError, TypeError, KeyError, IndexError) as e:
                     logger.error(f"获取基金{code}价格失败: {e}")
                     continue
 
             return results
-        except Exception as e:
+        except (RuntimeError, ValueError, TypeError, KeyError, IndexError) as e:
             logger.error(f"获取REITs价格失败: {e}")
             return []
 
@@ -164,8 +164,9 @@ async def get_reits_list():
     try:
         funds = await akshare_server.get_reits_list()
         return {"success": True, "data": funds}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except (RuntimeError, ValueError, TypeError, KeyError, IndexError) as e:
+        logger.exception("获取REITs列表失败")
+        raise HTTPException(status_code=500, detail="获取REITs列表失败，请稍后重试")
 
 
 @app.get("/api/reits/price")
@@ -181,8 +182,9 @@ async def get_reits_price(codes: str = ""):
 
         prices = await akshare_server.get_reits_price(fund_codes)
         return {"success": True, "data": prices}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except (RuntimeError, ValueError, TypeError, KeyError, IndexError) as e:
+        logger.exception("获取REITs价格失败")
+        raise HTTPException(status_code=500, detail="获取REITs价格失败，请稍后重试")
 
 
 @app.get("/api/fund/detail/{fund_code}")
@@ -209,8 +211,9 @@ async def get_fund_detail(fund_code: str):
                 "nav_date": latest['净值日期'].strftime('%Y-%m-%d') if '净值日期' in df.columns else None,
             }
         }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except (RuntimeError, ValueError, TypeError, KeyError, IndexError) as e:
+        logger.exception(f"获取{code}净值失败")
+        raise HTTPException(status_code=500, detail="获取净值失败，请稍后重试")
 
 
 if __name__ == "__main__":

@@ -14,6 +14,7 @@ from typing import List, Dict, Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from core.db import get_conn
+import psycopg2
 import logging
 logger = logging.getLogger(__name__)
 
@@ -26,7 +27,7 @@ def _load_sector_mapping() -> Dict[str, str]:
         path = os.path.normpath(SECTOR_MAPPING_PATH)
         with open(path, 'r', encoding='utf-8') as f:
             return json.load(f)
-    except Exception as e:
+    except (OSError, json.JSONDecodeError) as e:
         logger.error(f"加载板块映射失败: {e}")
         return {}
 
@@ -48,7 +49,7 @@ def _load_shares_mapping() -> Dict[str, float]:
             for row in cursor.fetchall():
                 if row[1]:
                     shares[row[0]] = row[1]
-    except Exception as e:
+    except psycopg2.Error as e:
         logger.error(f"加载数据库份额失败: {e}")
     # 用scale_mapping.json补充缺失数据
     try:
@@ -58,7 +59,7 @@ def _load_shares_mapping() -> Dict[str, float]:
             for code, scale in scale_data.items():
                 if code not in shares and scale:
                     shares[code] = scale
-    except Exception as e:
+    except (OSError, json.JSONDecodeError) as e:
         logger.error(f"加载scale_mapping失败: {e}")
     return shares
 
@@ -113,7 +114,7 @@ def calculate_period_change(fund_code: str, current_price: float) -> tuple:
         KLINE_CACHE[fund_code] = (now, klines)
 
         return _calc_change_from_klines(klines, current_price)
-    except Exception as e:
+    except (ValueError, TypeError, IndexError, ZeroDivisionError) as e:
         logger.error(f"计算周期涨跌幅失败 {fund_code}: {e}")
         return (None, None)
 
@@ -240,7 +241,7 @@ def parse_sina_data(code: str, data: str) -> Optional[Dict]:
             'time': time_str,
             'timestamp': f"{date_str} {time_str}" if date_str and time_str else ''
         }
-    except Exception as e:
+    except (ValueError, IndexError, KeyError, TypeError) as e:
         logger.error(f"解析失败 {code}: {e}")
         return None
 
@@ -277,7 +278,7 @@ def fetch_realtime_quote(codes: List[str]) -> List[Dict]:
             _fill_period_changes_parallel(results)
 
         return results
-    except Exception as e:
+    except (requests.RequestException, json.JSONDecodeError, psycopg2.Error, ValueError, KeyError) as e:
         logger.error(f"获取实时行情失败: {e}")
         return []
 
@@ -321,7 +322,7 @@ def _fill_period_changes_parallel(results: List[Dict], max_workers: int = 10):
                     if r['fund_code'] == code:
                         r['change_5d'], r['change_20d'] = calculate_period_change_from_klines(klines, r['current_price'])
                         break
-            except Exception as e:
+            except (ValueError, TypeError, IndexError, ZeroDivisionError) as e:
                 pass
 
 
@@ -348,7 +349,7 @@ def calculate_period_change_no_cache(fund_code: str) -> list:
         KLINE_CACHE[fund_code] = (datetime.datetime.now().timestamp(), klines)
 
         return klines
-    except Exception as e:
+    except (requests.RequestException, json.JSONDecodeError, ValueError, KeyError, IndexError) as e:
         logger.error(f"获取K线失败 {fund_code}: {e}")
         return None
 
@@ -424,7 +425,7 @@ def save_to_database(quotes: List[Dict], db_path: str = None):
 
             conn.commit()
         return inserted
-    except Exception as e:
+    except psycopg2.Error as e:
         logger.error(f"保存失败: {e}")
         return 0
 

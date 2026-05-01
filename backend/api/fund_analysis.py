@@ -236,21 +236,21 @@ def _parse_llm_json(raw: str) -> Optional[dict]:
     # 尝试直接解析
     try:
         return json.loads(raw)
-    except Exception:
+    except (json.JSONDecodeError, ValueError):
         pass
     # 尝试提取 ```json ... ``` 代码块
     m = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', raw, re.DOTALL)
     if m:
         try:
             return json.loads(m.group(1))
-        except Exception:
+        except (json.JSONDecodeError, ValueError):
             pass
     # 尝试提取最外层 { ... }
     m = re.search(r'(\{.*\})', raw, re.DOTALL)
     if m:
         try:
             return json.loads(m.group(1))
-        except Exception:
+        except (json.JSONDecodeError, ValueError):
             pass
     return None
 
@@ -306,9 +306,9 @@ async def analyze_funds(req: FundAnalysisRequest):
             raise HTTPException(status_code=404, detail="未找到选中的基金数据")
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"获取基金数据失败: {e}")
-        raise HTTPException(status_code=500, detail=f"数据读取失败: {e}")
+    except Exception:
+        logger.exception("获取基金数据失败")
+        raise HTTPException(status_code=500, detail="数据读取失败，请稍后重试")
 
     # 2. 构建数据上下文
     fund_context = _build_fund_context(profiles, req.analysis_type)
@@ -318,7 +318,7 @@ async def analyze_funds(req: FundAnalysisRequest):
     try:
         query = f"{' '.join(p['fund_name'] for p in profiles)} {req.analysis_type}分析"
         rag_results = search_articles_for_rag(query, top_k=5)
-    except Exception as e:
+    except (RuntimeError, ValueError, KeyError) as e:
         logger.warning(f"RAG检索失败: {e}")
 
     internal_context = ""
@@ -405,7 +405,7 @@ async def analyze_funds(req: FundAnalysisRequest):
 
     except HTTPException:
         raise
-    except Exception as e:
+    except (RuntimeError, ValueError, ConnectionError) as e:
         logger.error(f"LLM 调用失败: {e}")
         return FundAnalysisResponse(
             success=False,
@@ -413,5 +413,5 @@ async def analyze_funds(req: FundAnalysisRequest):
             metrics=_default_metrics(),
             conclusion=_default_conclusion(),
             sources=[],
-            message=f"AI 分析暂时不可用: {str(e)}"
+            message="AI 分析暂时不可用，请稍后重试"
         )
