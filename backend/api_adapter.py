@@ -9,7 +9,7 @@ import sys
 import re
 from typing import Optional
 from pathlib import Path
-from fastapi import FastAPI, Query, Body
+from fastapi import FastAPI, Query, Body, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import json
@@ -117,6 +117,37 @@ adapter_app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ========== 速率限制中间件 ==========
+import time
+from collections import defaultdict
+
+class RateLimiter:
+    """基于内存的滑动窗口速率限制器（单实例有效；多实例部署需配合 Redis）"""
+    def __init__(self):
+        self._store = defaultdict(list)
+
+    def is_allowed(self, key: str, max_requests: int, window: int = 60) -> bool:
+        now = time.time()
+        self._store[key] = [t for t in self._store[key] if now - t < window]
+        if len(self._store[key]) >= max_requests:
+            return False
+        self._store[key].append(now)
+        return True
+
+_rate_limiter = RateLimiter()
+
+@adapter_app.middleware("http")
+async def rate_limit_middleware(request: Request, call_next):
+    path = request.url.path
+    client_ip = request.client.host if request.client else "unknown"
+    if path.startswith("/api/ai/"):
+        if not _rate_limiter.is_allowed(f"ai:{client_ip}", max_requests=30):
+            raise HTTPException(status_code=429, detail="请求过于频繁，请稍后再试")
+    elif path.startswith("/api/"):
+        if not _rate_limiter.is_allowed(f"api:{client_ip}", max_requests=120):
+            raise HTTPException(status_code=429, detail="请求过于频繁，请稍后再试")
+    return await call_next(request)
 
 # AI API 路由注册
 from api import chat_reits_router, chat_announcement_router, research_router, search_router, fund_analysis_router
