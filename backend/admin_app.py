@@ -137,11 +137,10 @@ async def api_login(request: LoginRequest):
     conn = await asyncpg.connect(DB_DSN)
     try:
         
-        cursor = await db.execute(
-            "SELECT id, username, email, password_hash, is_active, is_superuser FROM admin.users WHERE username = ?",
-            (request.username,)
+        user = await conn.fetchrow(
+            "SELECT id, username, email, password_hash, is_active, is_superuser FROM admin.users WHERE username = $1",
+            request.username
         )
-        user = await cursor.fetchone()
         
         if not user:
             return LoginResponse(code=401, message="用户名或密码错误")
@@ -205,18 +204,18 @@ async def api_dashboard_stats():
     conn = await asyncpg.connect(DB_DSN)
     try:
         
-        cursor = await db.execute("SELECT COUNT(*) as cnt FROM business.funds")
-        fund_count = _row["cnt"] if _row else 0
+        row = await conn.fetchrow("SELECT COUNT(*) as cnt FROM business.funds")
+        fund_count = row["cnt"] if row else 0
         
-        cursor = await db.execute("SELECT COUNT(*) as cnt FROM business.announcements")
-        announcement_count = _row["cnt"] if _row else 0
+        row = await conn.fetchrow("SELECT COUNT(*) as cnt FROM business.announcements")
+        announcement_count = row["cnt"] if row else 0
         
         today = str(date.today())
-        cursor = await db.execute("SELECT COUNT(*) as cnt FROM business.announcements WHERE date(publish_date) = ?", (today,))
-        today_announcements = _row["cnt"] if _row else 0
+        row = await conn.fetchrow("SELECT COUNT(*) as cnt FROM business.announcements WHERE date(publish_date) = $1", today)
+        today_announcements = row["cnt"] if row else 0
         
-        cursor = await db.execute("SELECT COUNT(*) as cnt FROM admin.users")
-        user_count = _row["cnt"] if _row else 0
+        row = await conn.fetchrow("SELECT COUNT(*) as cnt FROM admin.users")
+        user_count = row["cnt"] if row else 0
         
         return {
             "code": 200,
@@ -269,24 +268,24 @@ async def api_list_funds(page: int = 1, page_size: int = 20, keyword: str = ""):
         offset = (page - 1) * page_size
         
         if keyword:
-            count_query = "SELECT COUNT(*) as cnt FROM business.funds WHERE fund_code LIKE ? OR fund_name LIKE ?"
-            cursor = await db.execute(count_query, (f"%{keyword}%", f"%{keyword}%"))
+            count_query = "SELECT COUNT(*) as cnt FROM business.funds WHERE fund_code LIKE $1 OR fund_name LIKE $2"
+            count_row = await conn.fetchrow(count_query, f"%{keyword}%", f"%{keyword}%")
             
             data_query = """
                 SELECT id, fund_code, fund_name, exchange, ipo_date, nav, status
                 FROM business.funds 
-                WHERE fund_code LIKE ? OR fund_name LIKE ?
-                LIMIT ? OFFSET ?
+                WHERE fund_code LIKE $1 OR fund_name LIKE $2
+                LIMIT $3 OFFSET $4
             """
-            cursor = await db.execute(data_query, (f"%{keyword}%", f"%{keyword}%", page_size, offset))
+            rows = await conn.fetch(data_query, f"%{keyword}%", f"%{keyword}%", page_size, offset)
         else:
             count_query = "SELECT COUNT(*) as cnt FROM business.funds"
-            cursor = await db.execute(count_query)
+            count_row = await conn.fetchrow(count_query)
             
-            data_query = "SELECT id, fund_code, fund_name, exchange, ipo_date, nav, status FROM business.funds LIMIT ? OFFSET ?"
-            cursor = await db.execute(data_query, (page_size, offset))
+            data_query = "SELECT id, fund_code, fund_name, exchange, ipo_date, nav, status FROM business.funds LIMIT $1 OFFSET $2"
+            rows = await conn.fetch(data_query, page_size, offset)
         
-        rows = await cursor.fetchall()
+        total = count_row["cnt"] if count_row else 0
         
         return {
             "code": 200,
@@ -321,30 +320,30 @@ async def api_list_announcements(page: int = 1, page_size: int = 20, fund_code: 
         offset = (page - 1) * page_size
         
         if fund_code:
-            count_query = "SELECT COUNT(*) as cnt FROM business.announcements WHERE fund_code = ?"
-            cursor = await db.execute(count_query, (fund_code,))
+            count_query = "SELECT COUNT(*) as cnt FROM business.announcements WHERE fund_code = $1"
+            count_row = await conn.fetchrow(count_query, fund_code)
             
             data_query = """
                 SELECT id, fund_code, title, publish_date, category, source_url
                 FROM business.announcements 
-                WHERE fund_code = ?
+                WHERE fund_code = $1
                 ORDER BY publish_date DESC
-                LIMIT ? OFFSET ?
+                LIMIT $2 OFFSET $3
             """
-            cursor = await db.execute(data_query, (fund_code, page_size, offset))
+            rows = await conn.fetch(data_query, fund_code, page_size, offset)
         else:
             count_query = "SELECT COUNT(*) as cnt FROM business.announcements"
-            cursor = await db.execute(count_query)
+            count_row = await conn.fetchrow(count_query)
             
             data_query = """
                 SELECT id, fund_code, title, publish_date, category, source_url
                 FROM business.announcements 
                 ORDER BY publish_date DESC
-                LIMIT ? OFFSET ?
+                LIMIT $1 OFFSET $2
             """
-            cursor = await db.execute(data_query, (page_size, offset))
+            rows = await conn.fetch(data_query, page_size, offset)
         
-        rows = await cursor.fetchall()
+        total = count_row["cnt"] if count_row else 0
         
         return {
             "code": 200,
@@ -378,24 +377,24 @@ async def api_list_users(page: int = 1, page_size: int = 10, keyword: str = ""):
         offset = (page - 1) * page_size
         
         if keyword:
-            count_query = "SELECT COUNT(*) as cnt FROM admin.users WHERE username LIKE ? OR email LIKE ?"
-            cursor = await db.execute(count_query, (f"%{keyword}%", f"%{keyword}%"))
+            count_query = "SELECT COUNT(*) as cnt FROM admin.users WHERE username LIKE $1 OR email LIKE $2"
+            count_row = await conn.fetchrow(count_query, f"%{keyword}%", f"%{keyword}%")
             
             data_query = """
                 SELECT id, username, email, is_active, is_superuser, created_at
                 FROM admin.users 
-                WHERE username LIKE ? OR email LIKE ?
-                LIMIT ? OFFSET ?
+                WHERE username LIKE $1 OR email LIKE $2
+                LIMIT $3 OFFSET $4
             """
-            cursor = await db.execute(data_query, (f"%{keyword}%", f"%{keyword}%", page_size, offset))
+            rows = await conn.fetch(data_query, f"%{keyword}%", f"%{keyword}%", page_size, offset)
         else:
             count_query = "SELECT COUNT(*) as cnt FROM admin.users"
-            cursor = await db.execute(count_query)
+            count_row = await conn.fetchrow(count_query)
             
-            data_query = "SELECT id, username, email, is_active, is_superuser, created_at FROM admin.users LIMIT ? OFFSET ?"
-            cursor = await db.execute(data_query, (page_size, offset))
+            data_query = "SELECT id, username, email, is_active, is_superuser, created_at FROM admin.users LIMIT $1 OFFSET $2"
+            rows = await conn.fetch(data_query, page_size, offset)
         
-        rows = await cursor.fetchall()
+        total = count_row["cnt"] if count_row else 0
         
         return {
             "code": 200,

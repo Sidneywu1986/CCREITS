@@ -40,7 +40,14 @@ class Settings:
     )
     
     # JWT
-    JWT_SECRET = os.getenv("JWT_SECRET", "your-secret-key-change-in-production")
+    _jwt_env = os.getenv("JWT_SECRET")
+    if _jwt_env:
+        JWT_SECRET = _jwt_env
+    elif DEBUG:
+        import secrets as _secrets
+        JWT_SECRET = _secrets.token_urlsafe(32)
+    else:
+        raise ValueError("JWT_SECRET environment variable must be set in production")
     JWT_ALGORITHM = "HS256"
     JWT_EXPIRE_MINUTES = 60 * 24  # 24小时
     
@@ -57,7 +64,13 @@ class Settings:
     
     # 管理员默认账号
     DEFAULT_ADMIN_USERNAME = "admin"
-    DEFAULT_ADMIN_PASSWORD = "admin123"  # 生产环境必须修改
+    DEFAULT_ADMIN_PASSWORD = os.getenv("ADMIN_INITIAL_PASSWORD")
+    if not DEFAULT_ADMIN_PASSWORD:
+        if DEBUG:
+            import secrets as _secrets
+            DEFAULT_ADMIN_PASSWORD = _secrets.token_urlsafe(12)
+        else:
+            raise ValueError("ADMIN_INITIAL_PASSWORD environment variable must be set in production")
     
     # 爬虫
     CRAWLER_ENABLED = os.getenv("CRAWLER_ENABLED", "true").lower() == "true"

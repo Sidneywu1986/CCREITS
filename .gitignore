@@ -104,3 +104,15 @@ fix_js.py
 update_key.py
 screenshot_*.py
 get-docker.sh
+
+# Backup & temp files
+*.bak*
+*_new.html
+*_rebuild*.py
+
+# Deployment artifacts
+*.tar.gz
+
+# Data & DB
+data/backups/
+backend/*.db

@@ -14,9 +14,9 @@ from datetime import datetime
 from core.db import get_conn
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-API_BASE = 'http://43.134.236.80:3000'
-USERNAME = 'admin'
-PASSWORD = 'admin@123'
+API_BASE = os.getenv('WEMPRSS_API_BASE', 'http://localhost:3000')
+USERNAME = os.getenv('WEMPRSS_USERNAME', '')
+PASSWORD = os.getenv('WEMPRSS_PASSWORD', '')
 
 
 class WemprssClient:
@@ -29,6 +29,8 @@ class WemprssClient:
     def login(self):
         """登录获取 token"""
         url = f'{API_BASE}/api/v1/wx/auth/login'
+        if not USERNAME or not PASSWORD:
+            raise ValueError('WEMPRSS_USERNAME and WEMPRSS_PASSWORD must be set via environment variables')
         data = f'username={USERNAME}&password={PASSWORD}'
         req = urllib.request.Request(url, data=data.encode(), 
                                      headers={'Content-Type': 'application/x-www-form-urlencoded'})
