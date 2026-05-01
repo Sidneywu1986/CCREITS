@@ -30,6 +30,10 @@ class SearchResult:
 class SklearnEmbedder:
     """轻量 Embedding（TF-IDF + SVD），复用自 vectorize_articles.py"""
 
+    MODEL_DIR = os.path.join(os.path.dirname(__file__), "..", "models")
+    VECTORIZER_PATH = os.path.join(MODEL_DIR, "tfidf_vectorizer.pkl")
+    SVD_PATH = os.path.join(MODEL_DIR, "tfidf_svd.pkl")
+
     def __init__(self, dim: int = 256):
         self.dim = dim
         self._vectorizer = None
@@ -67,6 +71,34 @@ class SklearnEmbedder:
         vectors = self._svd.transform(tfidf)
         vectors = normalize(vectors)
         return vectors.tolist()
+
+    def save_to_disk(self):
+        """保存模型到磁盘"""
+        import pickle
+        os.makedirs(self.MODEL_DIR, exist_ok=True)
+        with open(self.VECTORIZER_PATH, "wb") as f:
+            pickle.dump(self._vectorizer, f)
+        with open(self.SVD_PATH, "wb") as f:
+            pickle.dump(self._svd, f)
+        logger.info(f"Saved TF-IDF model to {self.MODEL_DIR}")
+
+    def load_from_disk(self) -> bool:
+        """从磁盘加载模型，返回是否成功"""
+        import pickle
+        if not os.path.exists(self.VECTORIZER_PATH) or not os.path.exists(self.SVD_PATH):
+            return False
+        try:
+            with open(self.VECTORIZER_PATH, "rb") as f:
+                self._vectorizer = pickle.load(f)
+            with open(self.SVD_PATH, "rb") as f:
+                self._svd = pickle.load(f)
+            self.dim = self._svd.n_components
+            self._fitted = True
+            logger.info(f"Loaded TF-IDF model from disk (dim={self.dim})")
+            return True
+        except Exception as e:
+            logger.warning(f"Failed to load model from disk: {e}")
+            return False
 
 
 class LocalVectorRetriever:
@@ -116,23 +148,23 @@ class LocalVectorRetriever:
             vectors_list = []
 
             for row in rows:
-                vec = json.loads(row[2])
+                vec = json.loads(row['vector'])
                 vectors_list.append(vec)
-                texts.append(row[3])  # chunk_text for fitting
+                texts.append(row['chunk_text'])  # chunk_text for fitting
                 self._meta.append({
-                    "article_id": row[0],
-                    "chunk_index": row[1],
-                    "chunk_text": row[3],
-                    "source": row[4],
-                    "title": row[5],
-                    "publish_date": str(row[6]) if row[6] else None,
+                    "article_id": row['article_id'],
+                    "chunk_index": row['chunk_index'],
+                    "chunk_text": row['chunk_text'],
+                    "source": row['source'],
+                    "title": row['title'],
+                    "publish_date": str(row['published']) if row['published'] else None,
                 })
 
             # Load article_fund_tags mapping
             cur.execute("SELECT article_id, fund_code FROM business.article_fund_tags")
             for row in cur.fetchall():
-                aid = row[0]
-                fc = row[1]
+                aid = row['article_id']
+                fc = row['fund_code']
                 if aid not in self._article_fund_tags:
                     self._article_fund_tags[aid] = set()
                 self._article_fund_tags[aid].add(fc)
@@ -140,9 +172,13 @@ class LocalVectorRetriever:
                     self._fund_article_tags[fc] = set()
                 self._fund_article_tags[fc].add(aid)
 
-        # Fit embedder on all chunk texts
+        # Load or fit embedder
         self._embedder = SklearnEmbedder(dim=256)
-        self._embedder.fit(texts)
+        model_loaded = self._embedder.load_from_disk()
+        if not model_loaded:
+            logger.info("Pre-saved model not found, fitting from corpus...")
+            self._embedder.fit(texts)
+            self._embedder.save_to_disk()
 
         # Pre-normalize all vectors for fast cosine similarity
         self._vectors = np.array(vectors_list, dtype=np.float32)
@@ -323,8 +359,8 @@ class LocalVectorRetriever:
             if not row:
                 return None
             return {
-                "id": row[0], "source": row[1], "title": row[2],
-                "link": row[3], "published": str(row[4]) if row[4] else None, "content_length": row[5]
+                "id": row['id'], "source": row['source'], "title": row['title'],
+                "link": row['link'], "published": str(row['published']) if row['published'] else None, "content_length": row['content_length']
             }
 
     def get_stats(self) -> Dict:

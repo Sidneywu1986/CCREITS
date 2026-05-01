@@ -116,12 +116,12 @@ class Settings:
     LLM_CONFIG = {
         "deepseek": {
             "api_key": os.getenv("DEEPSEEK_API_KEY", ""),
-            "model": os.getenv("DEEPSEEK_MODEL", "deepseek-chat"),
+            "model": os.getenv("DEEPSEEK_MODEL", "deepseek-v4-flash"),
             "base_url": os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com"),
         },
         "deepseek_pro": {
             "api_key": os.getenv("DEEPSEEK_API_KEY", ""),
-            "model": os.getenv("DEEPSEEK_PRO_MODEL", "deepseek-chat"),
+            "model": os.getenv("DEEPSEEK_PRO_MODEL", "deepseek-v4-pro"),
             "base_url": os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com"),
         },
         "gpt_4o_mini": {

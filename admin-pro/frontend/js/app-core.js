@@ -18,12 +18,12 @@
         'consumer': { name: '消费基础设施', icon: '🛒', tagClass: 'sector-consumer', color: 'pink' },
         'energy': { name: '能源基础设施', icon: '⚡', tagClass: 'sector-energy', color: 'yellow' },
         'housing': { name: '租赁住房', icon: '🏠', tagClass: 'sector-housing', color: 'purple' },
-        'eco': { name: '生态环�?, icon: '🌿', tagClass: 'sector-eco', color: 'emerald' },
+        'eco': { name: '生态环保', icon: '🌿', tagClass: 'sector-eco', color: 'emerald' },
         'water': { name: '水利设施', icon: '💧', tagClass: 'sector-water', color: 'cyan' },
-        'municipal': { name: '市政设施', icon: '🏛�?, tagClass: 'sector-municipal', color: 'gray' },
-        'datacenter': { name: '数据中心', icon: '🖥�?, tagClass: 'sector-datacenter', color: 'orange' },
+        'municipal': { name: '市政设施', icon: '🏛', tagClass: 'sector-municipal', color: 'gray' },
+        'datacenter': { name: '数据中心', icon: '🖥', tagClass: 'sector-datacenter', color: 'orange' },
         'commercial': { name: '商业办公', icon: '🏢', tagClass: 'sector-commercial', color: 'slate' },
-        'elderly': { name: '养老设�?, icon: '👴', tagClass: 'sector-elderly', color: 'rose' },
+        'elderly': { name: '养老设施', icon: '👴', tagClass: 'sector-elderly', color: 'rose' },
         'other': { name: '其他', icon: '📌', tagClass: 'sector-other', color: 'gray' }
     };
 
@@ -33,8 +33,8 @@
         { id: 'fund-detail', label: '详情', href: './fund-detail.html' },
         { id: 'ai-chat', label: 'AI聊REITs', href: './ai-chat.html', highlight: true, highlightClass: 'purple' },
         { id: 'announcements', label: '公告', href: './announcements.html' },
-        { id: 'article-search', label: '知识�?, href: './article-search.html' },
-        { id: 'portfolio', label: '自�?, href: './portfolio.html' },
+        { id: 'article-search', label: '知识库', href: './article-search.html' },
+        { id: 'portfolio', label: '自选', href: './portfolio.html' },
         { id: 'compare', label: '对比', href: './compare.html' },
         { id: 'tools', label: '工具', href: './tools.html' },
         { id: 'dividend-calendar', label: '分红', href: './dividend-calendar.html' },
@@ -136,7 +136,7 @@
         } catch (e) { return { data: [] }; }
     }
 
-    // ==================== 数据加载�?====================
+    // ==================== 数据加载器====================
     async function loadFunds(mockData = []) {
         try {
             const result = await getFunds();
@@ -179,7 +179,7 @@
         return sorted;
     }
 
-    // ==================== 对比栏功�?====================
+    // ==================== 对比栏功能====================
     function getCompareList() {
         try {
             const data = localStorage.getItem('reits_compare');
@@ -199,10 +199,10 @@
         const idx = list.findIndex(c => c.code === code);
         if (idx >= 0) {
             list.splice(idx, 1);
-            showToast('已从对比栏移�?, 'info');
+            showToast('已从对比栏移除', 'info');
         } else {
             if (list.length >= 4) {
-                showToast('对比栏已满（最�?只）', 'warning');
+                showToast('对比栏已满（最多4只）', 'warning');
                 return false;
             }
             list.push({ code, name, sector });

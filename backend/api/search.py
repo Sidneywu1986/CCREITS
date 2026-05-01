@@ -53,11 +53,14 @@ def _get_fund_articles_pg(fund_code: str) -> set:
         return set()
 
 
-def _search_milvus(query: str, top_k: int = 5, fund_code: Optional[str] = None) -> List[SearchResult]:
+def _search_milvus(query: str, top_k: int = 5, fund_code: Optional[str] = None, collection: Optional[str] = None) -> List[SearchResult]:
     """使用 Milvus 做向量检索（BGE-M3 编码）"""
     milvus = get_milvus_client()
     if not milvus.connect():
         return []
+    # Use BGE collection by default, fallback to default if specified
+    if collection:
+        milvus.collection_name = collection
 
     # 获取查询向量：使用 BGE-M3 编码
     from rag.bge_embedder import get_embedder
@@ -90,6 +93,8 @@ def _search_milvus(query: str, top_k: int = 5, fund_code: Optional[str] = None) 
 
     search_results = []
     for score, r in reranked[:top_k]:
+        if score < 0.5:
+            continue
         search_results.append(SearchResult(
             article_id=r.get("article_id", 0),
             source=r.get("source", ""),
@@ -106,32 +111,56 @@ def search_articles_for_rag(query: str, top_k: int = 5, fund_code: Optional[str]
     """
     供 chat_reits.py 直接调用的函数，不走 HTTP。
     返回 SearchResult 列表，供注入 Prompt。
-    fund_code: 若指定，优先返回包含该基金标签的文章，并将基金名称融入查询增强语义匹配。
+    策略：优先 本地 TF-IDF (内存) → TF-IDF (Milvus) → BGE-M3 (Milvus)
     """
-    # 1. 优先尝试 Milvus
-    try:
-        enhanced_query = query
-        if fund_code:
-            fund_name = _get_fund_name(fund_code)
-            if fund_name:
-                enhanced_query = f"{query} {fund_name}"
-        milvus_results = _search_milvus(enhanced_query, top_k=top_k, fund_code=fund_code)
-        if milvus_results:
-            return milvus_results
-    except Exception as e:
-        logger.warning(f"Milvus search failed: {e}")
+    import time
+    t0 = time.time()
+    enhanced_query = query
+    if fund_code:
+        fund_name = _get_fund_name(fund_code)
+        if fund_name:
+            enhanced_query = f"{query} {fund_name}"
 
-    # 2. Fallback to SQLite local retriever
+    # 1. 优先本地 TF-IDF (内存，无锁、最快)
     try:
         retriever = get_retriever()
-        enhanced_query = query
-        if fund_code:
-            fund_name = _get_fund_name(fund_code)
-            if fund_name:
-                enhanced_query = f"{query} {fund_name}"
-        return retriever.search(enhanced_query, top_k=top_k, fund_code=fund_code)
+        results = retriever.search(enhanced_query, top_k=top_k, fund_code=fund_code)
+        elapsed = (time.time() - t0) * 1000
+        if results:
+            filtered = [r for r in results if r.score >= 0.3]
+            logger.info(f"[RAG] local_tfidf | q='{query[:30]}' | {len(filtered)}/{len(results)} results | {elapsed:.1f}ms")
+            return filtered
+        logger.info(f"[RAG] local_tfidf empty | q='{query[:30]}' | {elapsed:.1f}ms")
     except Exception as e:
-        logger.warning(f"RAG search failed: {e}")
+        logger.warning(f"Local TF-IDF search failed: {e}")
+
+    # 2. Fallback to TF-IDF (Milvus)
+    try:
+        milvus_results = _search_milvus(
+            enhanced_query, top_k=top_k, fund_code=fund_code,
+            collection="reit_wechat_articles_tfidf"
+        )
+        elapsed = (time.time() - t0) * 1000
+        if milvus_results:
+            logger.info(f"[RAG] milvus_tfidf | q='{query[:30]}' | {len(milvus_results)} results | {elapsed:.1f}ms")
+            return milvus_results
+        logger.info(f"[RAG] milvus_tfidf empty | q='{query[:30]}' | {elapsed:.1f}ms")
+    except Exception as e:
+        logger.warning(f"TF-IDF Milvus search failed: {e}")
+
+    # 3. Fallback to BGE-M3 (Milvus)
+    try:
+        milvus_results = _search_milvus(
+            enhanced_query, top_k=top_k, fund_code=fund_code,
+            collection="reit_wechat_articles_bge"
+        )
+        elapsed = (time.time() - t0) * 1000
+        if milvus_results:
+            logger.info(f"[RAG] milvus_bge | q='{query[:30]}' | {len(milvus_results)} results | {elapsed:.1f}ms")
+            return milvus_results
+        logger.info(f"[RAG] milvus_bge empty | q='{query[:30]}' | {elapsed:.1f}ms")
+    except Exception as e:
+        logger.warning(f"BGE Milvus search failed: {e}")
         return []
 
 

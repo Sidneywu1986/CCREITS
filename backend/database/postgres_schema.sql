@@ -1233,5 +1233,19 @@ BEGIN
 END $$;
 
 -- ============================================================
+-- Agents 剧场秀结果表
+-- ============================================================
+CREATE TABLE IF NOT EXISTS business.agent_shows (
+    id SERIAL PRIMARY KEY,
+    slot_id VARCHAR(50) NOT NULL,
+    slot_name VARCHAR(100),
+    content JSONB,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    show_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    UNIQUE(slot_id, show_date)
+);
+CREATE INDEX IF NOT EXISTS idx_agent_shows_date ON business.agent_shows(show_date);
+
+-- ============================================================
 -- Schema 创建完成
 -- ============================================================

@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>剧场秀 - REITs数据平台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./css/common.css">
+    <script src="./js/app-core.js?v=2"></script>
+    <style>
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background-color: #f8fafc; }
+        .show-card { transition: all 0.2s; }
+        .show-card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.08); }
+        .slot-morning-news { border-left: 4px solid #f59e0b; }
+        .slot-morning { border-left: 4px solid #ef4444; }
+        .slot-lunch { border-left: 4px solid #10b981; }
+        .slot-afternoon { border-left: 4px solid #3b82f6; }
+        .slot-freestyle { border-left: 4px solid #8b5cf6; }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+    <!-- Header -->
+    <header class="h-[52px] bg-white border-b border-slate-200 flex items-center justify-between px-4 flex-none z-40">
+        <div class="flex items-center gap-3">
+            <div class="w-7 h-7 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-lg flex items-center justify-center text-white font-bold text-xs">R</div>
+            <span class="font-bold text-slate-900 text-base tracking-tight">REITs数据平台</span>
+            <nav class="hidden md:flex items-center gap-0.5 ml-3">
+                <a href="./market.html" class="px-2.5 py-1 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-all">市场</a>
+                <a href="./fund-detail.html" class="px-2.5 py-1 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-all">详情</a>
+                <a href="./ai-chat.html" class="px-2.5 py-1 text-sm font-medium text-purple-600 bg-purple-50 rounded-lg transition-all flex items-center gap-1">
+                    <span class="w-1.5 h-1.5 bg-purple-500 rounded-full animate-pulse"></span>AI聊REITs
+                </a>
+                <a href="./announcements.html" class="px-2.5 py-1 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-all">公告</a>
+                <a href="./portfolio.html" class="px-2.5 py-1 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-all">自选</a>
+                <a href="./compare.html" class="px-2.5 py-1 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-all">对比</a>
+                <a href="./dividend-calendar.html" class="px-2.5 py-1 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-all">分红</a>
+                <a href="./research-center.html" class="px-2.5 py-1 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-all">投研中心</a>
+                <a href="./agent-shows.html" class="px-2.5 py-1 text-sm font-medium text-orange-600 bg-orange-50 rounded-lg">剧场秀</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main -->
+    <main class="flex-1 overflow-y-auto p-4">
+        <div class="max-w-4xl mx-auto">
+            <div class="flex items-center justify-between mb-4">
+                <h1 class="text-xl font-bold text-slate-900">🎭 AI 剧场秀</h1>
+                <div class="flex items-center gap-2">
+                    <input type="date" id="show-date" class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500" onchange="loadShows()">
+                    <button onclick="loadShows()" class="px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-all">刷新</button>
+                </div>
+            </div>
+
+            <div id="shows-container" class="space-y-3">
+                <div class="text-center py-12 text-slate-400">
+                    <div class="w-8 h-8 border-2 border-slate-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-3"></div>
+                    加载中...
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+    const API_BASE = 'http://localhost:5074';
+
+    // 默认今天
+    document.getElementById('show-date').value = new Date().toISOString().split('T')[0];
+
+    async function loadShows() {
+        const date = document.getElementById('show-date').value;
+        const container = document.getElementById('shows-container');
+        container.innerHTML = '<div class="text-center py-12 text-slate-400"><div class="w-8 h-8 border-2 border-slate-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-3"></div>加载中...</div>';
+
+        try {
+            const res = await fetch(`${API_BASE}/api/v1/agents/shows?show_date=${date}`);
+            const data = await res.json();
+
+            if (!data.shows || data.shows.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-12 text-slate-400">
+                        <div class="text-4xl mb-3">🎭</div>
+                        <p>暂无剧场秀内容</p>
+                        <p class="text-xs mt-1">定时任务：08:00 晨间 / 13:00 午间 / 14:00 午盘</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const slotConfig = {
+                'morning_news': { icon: '🌅', title: '晨间通讯社', color: 'slot-morning-news', time: '08:00-08:50' },
+                'morning': { icon: '🎭', title: '早盘热点剧场', color: 'slot-morning', time: '09:30-10:15' },
+                'lunch': { icon: '🌿', title: '午间悄悄话', color: 'slot-lunch', time: '13:00-13:50' },
+                'afternoon': { icon: '🎭', title: '午盘热点剧场', color: 'slot-afternoon', time: '14:00-14:45' },
+            };
+
+            container.innerHTML = data.shows.map(show => {
+                const cfg = slotConfig[show.slot_id] || { icon: '💬', title: show.slot_name || show.slot_id, color: 'slot-freestyle', time: '' };
+                const content = typeof show.content === 'string' ? JSON.parse(show.content) : show.content;
+
+                let contentHtml = '';
+                if (show.slot_id === 'morning_news' && content.bulletin) {
+                    const b = content.bulletin;
+                    contentHtml = `
+                        <div class="space-y-2">
+                            ${b.has_news ? '' : `<div class="text-sm text-amber-600 bg-amber-50 px-3 py-2 rounded-lg">${b.notice || '暂无新闻'}</div>`}
+                            ${(b.items || []).map(item => `
+                                <div class="bg-slate-50 rounded-lg p-3">
+                                    <div class="font-medium text-sm text-slate-900">${item.title || ''}</div>
+                                    <div class="text-xs text-slate-500 mt-1">${item.summary || ''}</div>
+                                    <div class="text-xs text-slate-400 mt-1">来源: ${item.source || ''} ${item.market ? `(${item.market})` : ''}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                } else if (show.slot_id === 'lunch' && content.topic) {
+                    contentHtml = `
+                        <div class="bg-emerald-50 rounded-lg p-4">
+                            <div class="text-lg font-medium text-emerald-800">${content.topic}</div>
+                            <div class="text-xs text-emerald-600 mt-2">情绪: ${content.sentiment || 'calm'}</div>
+                        </div>
+                    `;
+                } else {
+                    contentHtml = `<pre class="text-xs bg-slate-50 p-3 rounded-lg overflow-x-auto">${JSON.stringify(content, null, 2)}</pre>`;
+                }
+
+                return `
+                    <div class="show-card bg-white rounded-xl border border-slate-200 p-4 ${cfg.color}">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="flex items-center gap-2">
+                                <span class="text-2xl">${cfg.icon}</span>
+                                <div>
+                                    <div class="font-semibold text-slate-900">${cfg.title}</div>
+                                    <div class="text-xs text-slate-500">${cfg.time} · ${show.created_at ? new Date(show.created_at).toLocaleString('zh-CN') : ''}</div>
+                                </div>
+                            </div>
+                            <span class="text-xs px-2 py-1 bg-slate-100 text-slate-500 rounded-full">${show.slot_id}</span>
+                        </div>
+                        ${contentHtml}
+                    </div>
+                `;
+            }).join('');
+
+        } catch (e) {
+            container.innerHTML = `<div class="text-center py-12 text-red-500">加载失败: ${e.message}</div>`;
+        }
+    }
+
+    loadShows();
+    </script>
+</body>
+</html>

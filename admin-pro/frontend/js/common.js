@@ -34,12 +34,12 @@ const ALL_FUNDS = [
     { code: "180402", name: "工银蒙能清洁能源 RREIT", sector: "energy", sectorName: "能源基础设施", price: 1.0, change: 0.0, premium: 0.0, yield: 0.0, debt: 0, volume: 0, nav: 0.0, scale: 0.0, marketCap: 0.0, propertyType: "能源设施", listingDate: "", remainingYears: "" },
     { code: "180501", name: "红土创新深圳安居 RREIT", sector: "other", sectorName: "租赁住房", price: 1.0, change: 0.0, premium: 0.0, yield: 0.0, debt: 0, volume: 0, nav: 0.0, scale: 0.0, marketCap: 0.0, propertyType: "其他", listingDate: "", remainingYears: "" },
     { code: "180502", name: "招商基金蛇口租赁 RREIT", sector: "other", sectorName: "租赁住房", price: 1.0, change: 0.0, premium: 0.0, yield: 0.0, debt: 0, volume: 0, nav: 0.0, scale: 0.0, marketCap: 0.0, propertyType: "其他", listingDate: "", remainingYears: "" },
-    { code: "180601", name: "华夏华润商业 REIREIT", sector: "consumer", sectorName: "消费基础设施", price: 1.0, change: 0.0, premium: 0.0, yield: 0.0, debt: 0, volume: 0, nav: 0.0, scale: 0.0, marketCap: 0.0, propertyType: "购物中心", listingDate: "", remainingYears: "" },
+    { code: "180601", name: "华夏华润消费 REIT", sector: "consumer", sectorName: "消费基础设施", price: 1.0, change: 0.0, premium: 0.0, yield: 0.0, debt: 0, volume: 0, nav: 0.0, scale: 0.0, marketCap: 0.0, propertyType: "购物中心", listingDate: "", remainingYears: "" },
     { code: "180602", name: "中金印力消费 REIREIT", sector: "consumer", sectorName: "消费基础设施", price: 1.0, change: 0.0, premium: 0.0, yield: 0.0, debt: 0, volume: 0, nav: 0.0, scale: 0.0, marketCap: 0.0, propertyType: "购物中心", listingDate: "", remainingYears: "" },
-    { code: "180603", name: "华夏大悦城商业 REREIT", sector: "consumer", sectorName: "消费基础设施", price: 1.0, change: 0.0, premium: 0.0, yield: 0.0, debt: 0, volume: 0, nav: 0.0, scale: 0.0, marketCap: 0.0, propertyType: "购物中心", listingDate: "", remainingYears: "" },
+    { code: "180603", name: "华夏大悦城消费 REIT", sector: "consumer", sectorName: "消费基础设施", price: 1.0, change: 0.0, premium: 0.0, yield: 0.0, debt: 0, volume: 0, nav: 0.0, scale: 0.0, marketCap: 0.0, propertyType: "购物中心", listingDate: "", remainingYears: "" },
     { code: "180605", name: "易方达华威市场 REREIT", sector: "consumer", sectorName: "消费基础设施", price: 1.0, change: 0.0, premium: 0.0, yield: 0.0, debt: 0, volume: 0, nav: 0.0, scale: 0.0, marketCap: 0.0, propertyType: "购物中心", listingDate: "", remainingYears: "" },
-    { code: "180606", name: "中金中国绿发商业 RREIT", sector: "consumer", sectorName: "消费基础设施", price: 1.0, change: 0.0, premium: 0.0, yield: 0.0, debt: 0, volume: 0, nav: 0.0, scale: 0.0, marketCap: 0.0, propertyType: "购物中心", listingDate: "", remainingYears: "" },
-    { code: "180607", name: "华夏中海商业 REIREIT", sector: "consumer", sectorName: "消费基础设施", price: 1.0, change: 0.0, premium: 0.0, yield: 0.0, debt: 0, volume: 0, nav: 0.0, scale: 0.0, marketCap: 0.0, propertyType: "购物中心", listingDate: "", remainingYears: "" },
+    { code: "180606", name: "中金中国绿发消费 REIT", sector: "consumer", sectorName: "消费基础设施", price: 1.0, change: 0.0, premium: 0.0, yield: 0.0, debt: 0, volume: 0, nav: 0.0, scale: 0.0, marketCap: 0.0, propertyType: "购物中心", listingDate: "", remainingYears: "" },
+    { code: "180607", name: "华夏中海消费 REIT", sector: "consumer", sectorName: "消费基础设施", price: 1.0, change: 0.0, premium: 0.0, yield: 0.0, debt: 0, volume: 0, nav: 0.0, scale: 0.0, marketCap: 0.0, propertyType: "购物中心", listingDate: "", remainingYears: "" },
     { code: "180701", name: "银华绍兴原水水利 RREIT", sector: "water", sectorName: "水利设施", price: 1.0, change: 0.0, premium: 0.0, yield: 0.0, debt: 0, volume: 0, nav: 0.0, scale: 0.0, marketCap: 0.0, propertyType: "水利设施", listingDate: "", remainingYears: "" },
     { code: "180801", name: "中航首钢绿能 REIREIT", sector: "eco", sectorName: "生态环保", price: 1.0, change: 0.0, premium: 0.0, yield: 0.0, debt: 0, volume: 0, nav: 0.0, scale: 0.0, marketCap: 0.0, propertyType: "生态环保", listingDate: "", remainingYears: "" },
     { code: "180901", name: "南方润泽科技数据 RREIT", sector: "datacenter", sectorName: "数据中心", price: 1.0, change: 0.0, premium: 0.0, yield: 0.0, debt: 0, volume: 0, nav: 0.0, scale: 0.0, marketCap: 0.0, propertyType: "数据中心", listingDate: "", remainingYears: "" },
@@ -58,7 +58,7 @@ const ALL_FUNDS = [
     { code: "508012", name: "招商科创 REIT", sector: "industrial", sectorName: "产业园区", price: 1.0, change: 0.0, premium: 0.0, yield: 0.0, debt: 0, volume: 0, nav: 0.0, scale: 0.0, marketCap: 0.0, propertyType: "产业园", listingDate: "", remainingYears: "" },
     { code: "508015", name: "中信建投明阳智能 EREIT", sector: "energy", sectorName: "能源基础设施", price: 1.0, change: 0.0, premium: 0.0, yield: 0.0, debt: 0, volume: 0, nav: 0.0, scale: 0.0, marketCap: 0.0, propertyType: "能源设施", listingDate: "", remainingYears: "" },
     { code: "508016", name: "华夏华电清洁能源REREIT", sector: "energy", sectorName: "能源基础设施", price: 1.0, change: 0.0, premium: 0.0, yield: 0.0, debt: 0, volume: 0, nav: 0.0, scale: 0.0, marketCap: 0.0, propertyType: "能源设施", listingDate: "", remainingYears: "" },
-    { code: "508017", name: "华夏金茂商业 REIREIT", sector: "consumer", sectorName: "消费基础设施", price: 1.0, change: 0.0, premium: 0.0, yield: 0.0, debt: 0, volume: 0, nav: 0.0, scale: 0.0, marketCap: 0.0, propertyType: "购物中心", listingDate: "", remainingYears: "" },
+    { code: "508017", name: "华夏金茂消费 REIT", sector: "consumer", sectorName: "消费基础设施", price: 1.0, change: 0.0, premium: 0.0, yield: 0.0, debt: 0, volume: 0, nav: 0.0, scale: 0.0, marketCap: 0.0, propertyType: "购物中心", listingDate: "", remainingYears: "" },
     { code: "508018", name: "华夏中国交建 REIREIT", sector: "transport", sectorName: "交通基础设施", price: 1.0, change: 0.0, premium: 0.0, yield: 0.0, debt: 0, volume: 0, nav: 0.0, scale: 0.0, marketCap: 0.0, propertyType: "收费公路", listingDate: "", remainingYears: "" },
     { code: "508019", name: "中金湖北科投光谷 RREIT", sector: "industrial", sectorName: "产业园区", price: 1.0, change: 0.0, premium: 0.0, yield: 0.0, debt: 0, volume: 0, nav: 0.0, scale: 0.0, marketCap: 0.0, propertyType: "产业园", listingDate: "", remainingYears: "" },
     { code: "508021", name: "国泰海通临港创新 RREIT", sector: "industrial", sectorName: "产业园区", price: 1.0, change: 0.0, premium: 0.0, yield: 0.0, debt: 0, volume: 0, nav: 0.0, scale: 0.0, marketCap: 0.0, propertyType: "产业园", listingDate: "", remainingYears: "" },
@@ -91,7 +91,7 @@ const ALL_FUNDS = [
     { code: "508088", name: "国泰海通东久新经 RREIT", sector: "industrial", sectorName: "产业园区", price: 1.0, change: 0.0, premium: 0.0, yield: 0.0, debt: 0, volume: 0, nav: 0.0, scale: 0.0, marketCap: 0.0, propertyType: "产业园", listingDate: "", remainingYears: "" },
     { code: "508089", name: "华夏特变电工新能 RREIT", sector: "energy", sectorName: "能源基础设施", price: 1.0, change: 0.0, premium: 0.0, yield: 0.0, debt: 0, volume: 0, nav: 0.0, scale: 0.0, marketCap: 0.0, propertyType: "能源设施", listingDate: "", remainingYears: "" },
     { code: "508090", name: "中银中外运仓储物 RREIT", sector: "logistics", sectorName: "仓储物流", price: 1.0, change: 0.0, premium: 0.0, yield: 0.0, debt: 0, volume: 0, nav: 0.0, scale: 0.0, marketCap: 0.0, propertyType: "仓储物流", listingDate: "", remainingYears: "" },
-    { code: "508091", name: "华夏凯德商业 REIREIT", sector: "consumer", sectorName: "消费基础设施", price: 1.0, change: 0.0, premium: 0.0, yield: 0.0, debt: 0, volume: 0, nav: 0.0, scale: 0.0, marketCap: 0.0, propertyType: "购物中心", listingDate: "", remainingYears: "" },
+    { code: "508091", name: "华夏凯德消费 REIT", sector: "consumer", sectorName: "消费基础设施", price: 1.0, change: 0.0, premium: 0.0, yield: 0.0, debt: 0, volume: 0, nav: 0.0, scale: 0.0, marketCap: 0.0, propertyType: "购物中心", listingDate: "", remainingYears: "" },
     { code: "508092", name: "华夏金隅智造工场 RREIT", sector: "industrial", sectorName: "产业园区", price: 1.0, change: 0.0, premium: 0.0, yield: 0.0, debt: 0, volume: 0, nav: 0.0, scale: 0.0, marketCap: 0.0, propertyType: "产业园", listingDate: "", remainingYears: "" },
     { code: "508096", name: "中航京能国际能源 RREIT", sector: "energy", sectorName: "能源基础设施", price: 1.0, change: 0.0, premium: 0.0, yield: 0.0, debt: 0, volume: 0, nav: 0.0, scale: 0.0, marketCap: 0.0, propertyType: "能源设施", listingDate: "", remainingYears: "" },
     { code: "508097", name: "华泰南京建邺 REIREIT", sector: "industrial", sectorName: "产业园区", price: 1.0, change: 0.0, premium: 0.0, yield: 0.0, debt: 0, volume: 0, nav: 0.0, scale: 0.0, marketCap: 0.0, propertyType: "产业园", listingDate: "", remainingYears: "" },
@@ -105,7 +105,8 @@ function initGlobalSearchDropdown() {
     const searchInput = document.getElementById('global-search');
     if (!searchInput) return;
 
-    // 创建下拉框容器    let dropdown = document.getElementById('global-search-dropdown');
+    // 创建下拉框容器
+    let dropdown = document.getElementById('global-search-dropdown');
     if (!dropdown) {
         dropdown = document.createElement('div');
         dropdown.id = 'global-search-dropdown';

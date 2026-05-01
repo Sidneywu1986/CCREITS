@@ -80,9 +80,9 @@
                 <a href="./announcements.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">公告</a>
                 <a href="./portfolio.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">自选</a>
                 <a href="./compare.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">对比</a>
-                <a href="./tools.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">工具</a>
+                <a href="./research-center.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">投研中心</a>
                 <a href="./dividend-calendar.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">分红</a>
-                <a href="./fund-archive.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">AI投研</a>
+                <a href="./research-center.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">投研中心</a>
             </nav>
         </div>
         
@@ -536,10 +536,18 @@
             // 排序
             const [field, order] = sortBy.split('-');
             data.sort((a, b) => {
-                let va = a[field], vb = b[field];
+                let va, vb;
+                if (field === 'yield') {
+                    // 年化派息率是计算值，不是原始字段
+                    va = getAnnualDividendYield(a) || 0;
+                    vb = getAnnualDividendYield(b) || 0;
+                } else {
+                    va = a[field];
+                    vb = b[field];
+                }
                 // 安全获取数值，处理 undefined/null/NaN
-                va = (va === undefined || va === null || isNaN(va)) ? 0 : va;
-                vb = (vb === undefined || vb === null || isNaN(vb)) ? 0 : vb;
+                va = (va === undefined || va === null || isNaN(va)) ? 0 : Number(va);
+                vb = (vb === undefined || vb === null || isNaN(vb)) ? 0 : Number(vb);
                 return order === 'asc' ? va - vb : vb - va;
             });
             

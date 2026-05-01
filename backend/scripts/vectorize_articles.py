@@ -30,6 +30,10 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 class SklearnEmbedder:
     """Lightweight embedding using TF-IDF + SVD"""
 
+    MODEL_DIR = os.path.join(os.path.dirname(__file__), "..", "models")
+    VECTORIZER_PATH = os.path.join(MODEL_DIR, "tfidf_vectorizer.pkl")
+    SVD_PATH = os.path.join(MODEL_DIR, "tfidf_svd.pkl")
+
     def __init__(self, dim: int = VECTOR_DIM):
         self.dim = dim
         self._vectorizer = None
@@ -39,6 +43,11 @@ class SklearnEmbedder:
     def _ensure_fitted(self, texts: List[str]):
         if self._fitted:
             return
+
+        # Try load pre-saved model first
+        if self.load_from_disk():
+            return
+
         from sklearn.feature_extraction.text import TfidfVectorizer
         from sklearn.decomposition import TruncatedSVD
 
@@ -56,6 +65,7 @@ class SklearnEmbedder:
         self._svd.fit(tfidf)
         self.dim = actual_dim
         self._fitted = True
+        self.save_to_disk()
         logger.info(f"Embedding dim set to {self.dim}")
 
     def encode(self, texts: List[str]) -> List[List[float]]:
@@ -66,6 +76,32 @@ class SklearnEmbedder:
         vectors = self._svd.transform(tfidf)
         vectors = normalize(vectors)
         return vectors.tolist()
+
+    def save_to_disk(self):
+        import pickle
+        os.makedirs(self.MODEL_DIR, exist_ok=True)
+        with open(self.VECTORIZER_PATH, "wb") as f:
+            pickle.dump(self._vectorizer, f)
+        with open(self.SVD_PATH, "wb") as f:
+            pickle.dump(self._svd, f)
+        logger.info(f"Saved TF-IDF model to {self.MODEL_DIR}")
+
+    def load_from_disk(self) -> bool:
+        import pickle
+        if not os.path.exists(self.VECTORIZER_PATH) or not os.path.exists(self.SVD_PATH):
+            return False
+        try:
+            with open(self.VECTORIZER_PATH, "rb") as f:
+                self._vectorizer = pickle.load(f)
+            with open(self.SVD_PATH, "rb") as f:
+                self._svd = pickle.load(f)
+            self.dim = self._svd.n_components
+            self._fitted = True
+            logger.info(f"Loaded TF-IDF model from disk (dim={self.dim})")
+            return True
+        except Exception as e:
+            logger.warning(f"Failed to load model from disk: {e}")
+            return False
 
 
 # ---------- 分块逻辑 ----------

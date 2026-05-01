@@ -98,9 +98,9 @@
                 <a href="./announcements.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">公告</a>
                 <a href="./portfolio.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">自选</a>
                 <a href="./compare.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">对比</a>
-                <a href="./tools.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">工具</a>
+                <a href="./research-center.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">投研中心</a>
                 <a href="./dividend-calendar.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">分红</a>
-                <a href="./fund-archive.html" class="px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg">AI投研</a>
+                <a href="./research-center.html" class="px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg">投研中心</a>
             </nav>
         </div>
         
@@ -423,6 +423,20 @@
             window.location.href = './compare.html?from=ai';
         }
 
+        // fetch with timeout
+        async function fetchWithTimeout(url, options = {}, timeoutMs = 12000) {
+            const controller = new AbortController();
+            const id = setTimeout(() => controller.abort(), timeoutMs);
+            try {
+                const response = await fetch(url, { ...options, signal: controller.signal });
+                clearTimeout(id);
+                return response;
+            } catch (error) {
+                clearTimeout(id);
+                throw error;
+            }
+        }
+
         async function startAnalysis() {
             if (selectedFunds.length === 0) return;
             if (isAnalyzing) return;
@@ -436,14 +450,14 @@
             renderSkeletonLoading();
             
             try {
-                const response = await fetch(`${AI_API_BASE}/analyze-funds`, {
+                const response = await fetchWithTimeout(`${AI_API_BASE}/analyze-funds`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         codes: selectedFunds,
                         analysis_type: currentAnalysisType
                     })
-                });
+                }, 30000);
                 
                 const data = await response.json();
                 currentAnalysisData = data;
@@ -457,8 +471,13 @@
                 }
             } catch (error) {
                 console.error('分析请求失败:', error);
-                renderFallbackResult('网络连接失败，请稍后重试');
-                document.getElementById('analysis-status').textContent = '分析失败';
+                if (error.name === 'AbortError') {
+                    renderFallbackResult('AI分析请求超时，请检查网络或稍后重试');
+                    document.getElementById('analysis-status').textContent = '请求超时';
+                } else {
+                    renderFallbackResult('网络连接失败，请稍后重试');
+                    document.getElementById('analysis-status').textContent = '分析失败';
+                }
             } finally {
                 document.getElementById('analysis-status').classList.remove('ai-thinking');
                 isAnalyzing = false;
@@ -541,11 +560,11 @@
             const fundContext = funds.map(f => `${f.code} ${f.name}`).join('、');
             const thinkingId = addThinkingIndicator();
             try {
-                const response = await fetch(`${AI_API_BASE}/chat-reits`, {
+                const response = await fetchWithTimeout(`${AI_API_BASE}/chat-reits`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ message: message, agent_name: 'AI投研助手', fund_context: fundContext || undefined })
-                });
+                }, 30000);
                 removeThinkingIndicator(thinkingId);
                 if (!response.ok) { addMessage('抱歉，AI服务暂时不可用。请检查 API Key 是否已配置。', 'ai'); return; }
                 const data = await response.json();
@@ -555,7 +574,11 @@
             } catch (error) {
                 removeThinkingIndicator(thinkingId);
                 console.error('聊天请求失败:', error);
-                addMessage('网络连接失败，请稍后重试。', 'ai');
+                if (error.name === 'AbortError') {
+                    addMessage('AI响应超时，请检查网络连接或稍后重试。', 'ai');
+                } else {
+                    addMessage('网络连接失败，请稍后重试。', 'ai');
+                }
             }
         }
 
@@ -591,8 +614,40 @@
         }
         function escapeHtml(text) { const div = document.createElement('div'); div.textContent = text; return div.innerHTML; }
 
+        // 中文板块名 -> 英文键映射
+        const SECTOR_CN_TO_EN = {
+            '交通基础设施': 'transport', '仓储物流': 'logistics', '产业园区': 'industrial',
+            '消费基础设施': 'consumer', '能源基础设施': 'energy', '租赁住房': 'housing',
+            '生态环保': 'eco', '水利设施': 'water', '市政设施': 'municipal',
+            '数据中心': 'datacenter', '商业办公': 'commercial', '养老设施': 'elderly'
+        };
+
+        function normalizeFundData(fund) {
+            const sectorEn = SECTOR_CN_TO_EN[fund.sector] || fund.sector || 'other';
+            const sectorInfo = SECTOR_CONFIG[sectorEn] || SECTOR_CONFIG['other'];
+            return {
+                code: fund.code || '',
+                name: fund.name || '',
+                sector: sectorEn,
+                sectorName: sectorInfo.name,
+                price: fund.nav || fund.price || 1.0,
+                change: fund.change || 0.0,
+                premium: fund.premium || 0,
+                yield: fund.yield || fund.dividend_yield || 0,
+                debt: fund.debt || 0,
+                volume: fund.volume || 0,
+                nav: fund.nav || 0,
+                scale: fund.scale || 0,
+                marketCap: fund.marketCap || 0,
+                propertyType: fund.propertyType || '',
+                listingDate: fund.listing_date || fund.listingDate || '',
+                remainingYears: fund.remainingYears || '',
+                exchange: fund.exchange || ''
+            };
+        }
+
         // 基金数据（优先API，降级Mock）
-        let allFundsData = ALL_FUNDS || [];
+        let allFundsData = (typeof ALL_FUNDS !== 'undefined' ? ALL_FUNDS : []).map(normalizeFundData);
         
         // 异步加载基金数据
         async function loadFunds() {
@@ -600,27 +655,32 @@
                 console.log('🔄 正在从API加载基金列表...');
                 const response = await REITS_API.getFunds();
                 if (response.data && response.data.length > 0) {
-                    allFundsData = response.data;
+                    allFundsData = response.data.map(normalizeFundData);
                     console.log('✅ API数据加载成功:', allFundsData.length, '只基金');
                     showDataSource('API');
                 }
             } catch (error) {
                 console.warn('⚠️ API加载失败，使用Mock数据:', error.message);
-                allFundsData = ALL_FUNDS || [];
+                allFundsData = (typeof ALL_FUNDS !== 'undefined' ? ALL_FUNDS : []).map(normalizeFundData);
                 showDataSource('Mock');
             }
         }
         
         // 显示数据来源
         function showDataSource(source) {
-            const indicator = document.createElement('div');
-            indicator.className = 'fixed bottom-4 left-4 text-xs px-3 py-1.5 rounded-full z-50 transition-all ' + 
+            let indicator = document.getElementById('data-source-indicator');
+            if (!indicator) {
+                indicator = document.createElement('div');
+                indicator.id = 'data-source-indicator';
+                indicator.className = 'fixed bottom-4 right-80 mr-4 text-xs px-3 py-1.5 rounded-full z-50 transition-all pointer-events-none';
+                document.body.appendChild(indicator);
+            }
+            indicator.className = 'fixed bottom-4 right-80 mr-4 text-xs px-3 py-1.5 rounded-full z-50 transition-all pointer-events-none ' + 
                 (source === 'API' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700');
             indicator.innerHTML = source === 'API' 
                 ? '🟢 实时数据（API）' 
                 : '🟡 模拟数据（Mock）';
-            document.body.appendChild(indicator);
-            setTimeout(() => { indicator.style.opacity = '0.5'; }, 3000);
+            setTimeout(() => { if (indicator) indicator.style.opacity = '0.5'; }, 3000);
         }
         
         window.onload = async function() {

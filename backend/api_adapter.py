@@ -118,6 +118,7 @@ adapter_app.add_middleware(
 
 # AI API 路由注册
 from api import chat_reits_router, chat_announcement_router, research_router, search_router, fund_analysis_router
+from api.agents_show import router as agents_show_router
 from api.ws_chat import router as ws_chat_router
 from api.schedule import router as schedule_router
 
@@ -128,6 +129,7 @@ adapter_app.include_router(search_router)
 adapter_app.include_router(ws_chat_router)
 adapter_app.include_router(fund_analysis_router)
 adapter_app.include_router(schedule_router)
+adapter_app.include_router(agents_show_router)
 
 # Register Tortoise ORM for PostgreSQL (ai_db)
 if TORTOISE_AVAILABLE:

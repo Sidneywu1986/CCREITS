@@ -11,6 +11,7 @@ import logging
 import re
 import json
 import os
+import time
 from pathlib import Path
 
 from api.search import search_articles_for_rag
@@ -21,6 +22,30 @@ from core.db import get_conn
 
 router = APIRouter(prefix="/api/ai", tags=["AI投研分析"])
 logger = logging.getLogger(__name__)
+
+# ---------- 缓存 ----------
+_analysis_cache: dict = {}
+_CACHE_TTL_SECONDS = 300  # 5分钟缓存
+
+def _cache_key(codes: List[str], analysis_type: str) -> str:
+    return f"{'|'.join(sorted(codes))}:{analysis_type}"
+
+def _get_cached(codes: List[str], analysis_type: str):
+    key = _cache_key(codes, analysis_type)
+    entry = _analysis_cache.get(key)
+    if entry and (time.time() - entry["ts"]) < _CACHE_TTL_SECONDS:
+        logger.info(f"Cache hit for {key}")
+        return entry["data"]
+    return None
+
+def _set_cached(codes: List[str], analysis_type: str, data: dict):
+    key = _cache_key(codes, analysis_type)
+    _analysis_cache[key] = {"ts": time.time(), "data": data}
+    # 清理过期条目
+    now = time.time()
+    expired = [k for k, v in _analysis_cache.items() if (now - v["ts"]) > _CACHE_TTL_SECONDS]
+    for k in expired:
+        _analysis_cache.pop(k, None)
 
 
 class FundAnalysisRequest(BaseModel):
@@ -267,6 +292,13 @@ async def analyze_funds(req: FundAnalysisRequest):
     if len(req.codes) > 5:
         raise HTTPException(status_code=400, detail="最多选择5只基金")
 
+    # 0. 检查缓存
+    cached = _get_cached(req.codes, req.analysis_type)
+    if cached:
+        logger.info(f"CACHE HIT for {req.codes} {req.analysis_type}")
+        return FundAnalysisResponse(**cached)
+    logger.info(f"CACHE MISS for {req.codes} {req.analysis_type}")
+
     # 1. 获取基金数据
     try:
         profiles = _get_fund_profiles(req.codes)
@@ -360,7 +392,7 @@ async def analyze_funds(req: FundAnalysisRequest):
         confidence = "high" if avg_score > 0.75 else "medium" if avg_score > 0.6 else "low"
         sources = _build_public_sources(rag_results, confidence)
 
-        return FundAnalysisResponse(
+        result = FundAnalysisResponse(
             success=True,
             scores=scores,
             metrics=metrics,
@@ -368,6 +400,8 @@ async def analyze_funds(req: FundAnalysisRequest):
             sources=sources,
             message=None
         )
+        _set_cached(req.codes, req.analysis_type, result.model_dump())
+        return result
 
     except HTTPException:
         raise

@@ -26,7 +26,14 @@ class BGEEmbedder:
     DIM = 1024
 
     def __init__(self, device: Optional[str] = None, cache_dir: Optional[str] = None):
-        self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+        if device:
+            self.device = device
+        elif torch.cuda.is_available():
+            self.device = "cuda"
+        elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
+            self.device = "mps"
+        else:
+            self.device = "cpu"
         self.cache_dir = cache_dir
         self._tokenizer = None
         self._model = None

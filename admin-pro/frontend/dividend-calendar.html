@@ -17,20 +17,21 @@
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 2px; }
         
-        /* 紧凑日历样式 */
-        .mini-calendar { 
-            font-size: 12px; 
-        }
+        /* 大月历样式 */
+        .mini-calendar { font-size: 14px; }
         .mini-calendar .day-cell {
-            min-height: 48px;
-            padding: 2px;
+            min-height: 90px;
+            padding: 6px;
+        }
+        .mini-calendar .day-cell:hover {
+            background: #f1f5f9;
         }
         .dividend-tag {
             font-size: 11px;
-            line-height: 1.2;
-            padding: 1px 2px;
-            border-radius: 2px;
-            margin-bottom: 1px;
+            line-height: 1.3;
+            padding: 2px 4px;
+            border-radius: 4px;
+            margin-bottom: 2px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -76,9 +77,9 @@
                 <a href="./announcements.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">公告</a>
                 <a href="./portfolio.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">自选</a>
                 <a href="./compare.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">对比</a>
-                <a href="./tools.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">工具</a>
+                <a href="./research-center.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">投研中心</a>
                 <a href="./dividend-calendar.html" class="px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg">分红</a>
-                <a href="./fund-archive.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">AI投研</a>
+                <a href="./research-center.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">投研中心</a>
             </nav>
         </div>
         
@@ -111,24 +112,24 @@
     <main class="flex-1 overflow-auto bg-slate-50">
         <div class="w-full h-full flex flex-col">
             
-            <!-- 顶部：紧凑日历条 -->
-            <div class="bg-white border-b border-gray-200 p-3 flex-none">
-                <div class="flex items-center justify-between mb-2">
-                    <h2 class="text-base font-bold text-gray-900">📅 分红日历</h2>
-                    <div class="flex items-center gap-2">
-                        <button id="prev-month" class="p-1 hover:bg-gray-100 rounded text-gray-600">
+            <!-- 顶部：大月历 -->
+            <div class="bg-white border-b border-slate-200 p-4 lg:p-6 flex-none">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-900">📅 分红日历</h2>
+                        <p class="text-xs text-slate-500 mt-0.5">点击日期查看分红详情，黄色标记为分红日</p>
+                    </div>
+                    <div class="flex items-center gap-2 bg-slate-100 rounded-lg p-1">
+                        <button id="prev-month" class="p-1.5 hover:bg-white rounded-md text-slate-600 transition-all shadow-sm">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
                         </button>
-                        <span id="current-month-display" class="text-sm font-medium text-gray-900">2026年3月</span>
-                        <button id="next-month" class="p-1 hover:bg-gray-100 rounded text-gray-600">
+                        <span id="current-month-display" class="text-sm font-semibold text-slate-900 w-24 text-center">2026年3月</span>
+                        <button id="next-month" class="p-1.5 hover:bg-white rounded-md text-slate-600 transition-all shadow-sm">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                         </button>
                     </div>
                 </div>
-                <!-- 紧凑日历网格 -->
-                <div id="mini-calendar" class="mini-calendar">
-                    <!-- 动态生成 -->
-                </div>
+                <div id="mini-calendar" class="mini-calendar"></div>
             </div>
 
             <!-- 三栏布局 -->
@@ -247,21 +248,10 @@
         // 全局基金数据
         let calendarFundsData = ALL_FUNDS || [];
         
-        // 异步加载基金数据
+        // 加载基金数据（直接使用本地数据，避免fetch挂住）
         async function loadCalendarFunds() {
-            try {
-                console.log('🔄 正在从API加载基金数据...');
-                const response = await REITS_API.getFunds();
-                if (response.data && response.data.length > 0) {
-                    calendarFundsData = response.data;
-                    console.log('✅ API数据加载成功:', calendarFundsData.length, '只基金');
-                    showDataSource('API');
-                }
-            } catch (error) {
-                console.warn('⚠️ API加载失败，使用Mock数据:', error.message);
-                calendarFundsData = ALL_FUNDS || [];
-                showDataSource('Mock');
-            }
+            calendarFundsData = (typeof ALL_FUNDS !== 'undefined') ? ALL_FUNDS : [];
+            console.log('📊 本地基金数据:', calendarFundsData.length, '只');
         }
         
         // 显示数据来源
@@ -279,6 +269,14 @@
         // 生成分红模拟数据
         function generateDividendData() {
             const dividends = [];
+            // 确保基金数据不为空
+            if (!calendarFundsData || calendarFundsData.length === 0) {
+                calendarFundsData = ALL_FUNDS || [];
+            }
+            if (!calendarFundsData || calendarFundsData.length === 0) {
+                console.warn('⚠️ 基金数据为空，无法生成分红数据');
+                return dividends;
+            }
             const startDate = new Date('2025-01-01');
             const endDate = new Date('2026-12-31');
             const totalDays = Math.floor((endDate - startDate) / (1000 * 60 * 60 * 24));
@@ -313,12 +311,25 @@
         
         // 异步初始化数据
         async function initCalendarData() {
-            await loadCalendarFunds();
+            // 1. 加载基金数据
+            try {
+                await loadCalendarFunds();
+            } catch (e) {
+                console.warn('基金加载失败，使用ALL_FUNDS:', e.message);
+            }
+            if (!calendarFundsData || calendarFundsData.length === 0) {
+                calendarFundsData = (typeof ALL_FUNDS !== 'undefined') ? ALL_FUNDS : [];
+            }
+            console.log('📊 基金数据:', calendarFundsData.length, '只');
             
-            // 优先从API加载真实分红数据
+            // 2. 加载分红数据（带超时）
+            let apiSuccess = false;
             try {
                 const apiBase = (typeof API_BASE !== 'undefined') ? API_BASE : 'http://localhost:5074/api';
-                const response = await fetch(`${apiBase}/dividend-calendar/list?start_date=2024-01-01&end_date=2026-12-31&page_size=500`);
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 3000);
+                const response = await fetch(`${apiBase}/dividend-calendar/list?start_date=2024-01-01&end_date=2026-12-31&page_size=500`, { signal: controller.signal });
+                clearTimeout(timeoutId);
                 const result = await response.json();
                 
                 if (result.success && result.data && result.data.length > 0) {
@@ -329,7 +340,7 @@
                             id: d.id,
                             code: d.fund_code,
                             name: name,
-                            shortName: name.replace('REIT', '').slice(0, 4),
+                            shortName: name.replace(/REITs?/g, '').replace(/基础设施/g, '').slice(0, 4),
                             sector: fund.sector || 'industrial',
                             exDate: d.ex_dividend_date || d.dividend_date,
                             recordDate: d.record_date || d.dividend_date,
@@ -340,16 +351,20 @@
                     });
                     console.log('✅ 分红API数据加载成功:', DIVIDEND_DATA.length, '条记录');
                     showDataSource('API');
-                } else {
-                    throw new Error('API返回空数据');
+                    apiSuccess = true;
                 }
             } catch (error) {
-                console.warn('⚠️ 分红API加载失败，使用模拟数据:', error.message);
+                console.warn('⚠️ 分红API加载失败:', error.message);
+            }
+            
+            // 3. 如果API失败或返回空数据，使用模拟数据
+            if (!apiSuccess || !DIVIDEND_DATA || DIVIDEND_DATA.length === 0) {
                 DIVIDEND_DATA = generateDividendData();
                 showDataSource('Mock');
             }
             
-            initCalendar(); // 初始化日历显示
+            console.log('📅 分红数据:', DIVIDEND_DATA.length, '条');
+            initCalendar();
         }
         
         // 获取板块颜色标签（使用统一规范）
@@ -378,7 +393,7 @@
             return DIVIDEND_DATA.filter(d => d.exDate === dateStr);
         }
         
-        // 渲染紧凑日历
+        // 渲染大月历
         function renderMiniCalendar() {
             const firstDay = new Date(currentYear, currentMonth - 1, 1);
             const lastDay = new Date(currentYear, currentMonth, 0);
@@ -388,19 +403,19 @@
             const isCurrentMonth = today.getFullYear() === currentYear && today.getMonth() + 1 === currentMonth;
             
             // 星期标题
-            let html = '<div class="grid grid-cols-7 gap-1 text-center mb-1">';
+            let html = '<div class="grid grid-cols-7 gap-2 text-center mb-2">';
             ['日', '一', '二', '三', '四', '五', '六'].forEach((day, idx) => {
-                const colorClass = idx === 0 ? 'text-red-500' : idx === 6 ? 'text-blue-500' : 'text-gray-600';
-                html += `<div class="py-1 ${colorClass} font-medium text-xs">${day}</div>`;
+                const colorClass = idx === 0 ? 'text-red-500' : idx === 6 ? 'text-blue-500' : 'text-slate-600';
+                html += `<div class="py-2 ${colorClass} font-semibold text-sm">${day}</div>`;
             });
             html += '</div>';
             
             // 日期格子
-            html += '<div class="grid grid-cols-7 gap-1">';
+            html += '<div class="grid grid-cols-7 gap-2">';
             
             // 空白占位
             for (let i = 0; i < startWeekday; i++) {
-                html += `<div class="day-cell bg-gray-50 rounded"></div>`;
+                html += `<div class="day-cell bg-slate-50 rounded-lg"></div>`;
             }
             
             // 日期
@@ -410,19 +425,22 @@
                 const isToday = isCurrentMonth && today.getDate() === day;
                 
                 let bgClass = 'bg-white';
-                if (isToday) bgClass = 'bg-blue-50 border-2 border-blue-500';
-                else if (hasDividend) bgClass = 'bg-yellow-50';
+                let borderClass = 'border-slate-100';
+                if (isToday) { bgClass = 'bg-blue-50'; borderClass = 'border-blue-400 ring-2 ring-blue-200'; }
+                else if (hasDividend) { bgClass = 'bg-amber-50'; borderClass = 'border-amber-200'; }
                 
-                html += `<div class="day-cell ${bgClass} border border-gray-100 rounded cursor-pointer hover:shadow-md transition-all" onclick="${hasDividend ? `showDividendDetail(${day})` : ''}">`;
-                html += `<div class="text-xs font-medium ${isToday ? 'text-blue-600' : 'text-gray-700'} text-center">${day}</div>`;
+                html += `<div class="day-cell ${bgClass} ${borderClass} border rounded-lg cursor-pointer hover:shadow-md transition-all flex flex-col" onclick="${hasDividend ? `showDividendDetail(${day})` : ''}">`;
+                html += `<div class="text-sm font-bold ${isToday ? 'text-blue-600' : 'text-slate-700'} ${hasDividend && !isToday ? 'text-amber-700' : ''}">${day}</div>`;
                 
                 if (hasDividend) {
-                    dividends.slice(0, 2).forEach(d => {
+                    html += `<div class="flex-1 flex flex-col justify-center gap-1 mt-1">`;
+                    dividends.slice(0, 3).forEach(d => {
                         html += `<div class="dividend-tag ${getSectorTagClass(d.sector)}" title="${d.name} ${d.amount}元/份">${d.shortName} ¥${d.amount}</div>`;
                     });
-                    if (dividends.length > 2) {
-                        html += `<div class="text-xs text-orange-600 text-center">+${dividends.length - 2}</div>`;
+                    if (dividends.length > 3) {
+                        html += `<div class="text-xs text-amber-600 font-bold text-center">+${dividends.length - 3}</div>`;
                     }
+                    html += `</div>`;
                 }
                 
                 html += '</div>';
@@ -610,14 +628,24 @@
             renderMonthlyChart();
             renderRanking();
             renderUpcomingReminder();
-            updateCompareBar();
+            if (typeof updateCompareBar === 'function') updateCompareBar();
+        }
+        
+        // 兼容：updateCompareBar 可能未定义
+        if (typeof updateCompareBar === 'undefined') {
+            window.updateCompareBar = function() {};
         }
         
         // 页面加载时异步初始化
-        window.addEventListener('DOMContentLoaded', () => {
-            initGlobalSearchDropdown();
+        function startInit() {
+            try { initGlobalSearchDropdown(); } catch(e) { console.warn('搜索下拉初始化失败:', e.message); }
             initCalendarData();
-        });
+        }
+        if (document.readyState === 'loading') {
+            window.addEventListener('DOMContentLoaded', startInit);
+        } else {
+            startInit();
+        }
     </script>
 <!-- 关于平台弹窗 -->
 <div id="about-modal" class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center opacity-0 invisible transition-all" onclick="if(event.target===this)closeAbout()">

@@ -385,7 +385,7 @@ class SessionDirector:
 class SupervisorStateMachine:
     """主管状态机 —— 含对戏系统"""
     
-    DEFAULT_ORDER = ["lao_k", "su_su", "guest_li", "guest_chen", "guest_wang"]
+    DEFAULT_ORDER = ["lao_k", "su_su", "lao_li", "xiao_chen", "wang_bo"]
     SILENCE_THRESHOLD = 10
     MAX_ROUNDS_PER_TOPIC = 6
 
@@ -632,9 +632,9 @@ class SupervisorStateMachine:
         keywords = {
             "lao_k": ["分红", "持有", "长期", "价值", "历史", "稳健", "刀"],
             "su_su": ["生活", "估值", "常识", "逻辑", "怎么看", "外婆", "假打"],
-            "guest_li": ["宏观", "政策", "利率", "经济", "解读"],
-            "guest_chen": ["技术", "短线", "波动", "K线", "交易"],
-            "guest_wang": ["模型", "NAV", "DCF", "学术", "论文"],
+            "lao_li": ["宏观", "政策", "利率", "经济", "解读"],
+            "xiao_chen": ["技术", "短线", "波动", "K线", "交易"],
+            "wang_bo": ["模型", "NAV", "DCF", "学术", "论文"],
         }
         scores = {k: sum(1 for w in v if w in topic_lower) for k, v in keywords.items()}
         best = max(scores, key=scores.get)
@@ -764,8 +764,8 @@ class SupervisorStateMachine:
         requester = trigger.payload["agent_id"]
         current = self.context.current_speaker
         allowed_pairs = {
-            "su_su": ["lao_k", "guest_li"],
-            "lao_k": ["guest_wang", "guest_chen"],
+            "su_su": ["lao_k", "lao_li"],
+            "lao_k": ["wang_bo", "xiao_chen"],
         }
         if current and requester in allowed_pairs and current in allowed_pairs.get(requester, []):
             self.floor.unlock(current)
@@ -1025,9 +1025,9 @@ class SupervisorStateMachine:
         conflict_pairs = {
             "lao_k": "su_su",        # 老K看空 → 苏苏看多/生活视角
             "su_su": "lao_k",        # 苏苏生活 → 老K数据
-            "guest_wang": "lao_k",   # 王博士模型 → 老K经验
-            "guest_li": "guest_chen", # 老李宏观 → 小陈技术
-            "guest_chen": "guest_li", # 小陈短线 → 老李长期
+            "wang_bo": "lao_k",   # 王博士模型 → 老K经验
+            "lao_li": "xiao_chen", # 老李宏观 → 小陈技术
+            "xiao_chen": "lao_li", # 小陈短线 → 老李长期
         }
         
         # 优先按冲突对
@@ -1044,9 +1044,9 @@ class SupervisorStateMachine:
         keywords = {
             "lao_k": ["基础设施", "高速", "硬核", "风险", "泡沫", "虚高"],
             "su_su": ["生活", "消费", "民生", "感受", "温度", "春天"],
-            "guest_li": ["宏观", "政策", "利率", "经济", "财政", "GDP"],
-            "guest_chen": ["技术", "短线", "季报", "K线", "轮动", "信号"],
-            "guest_wang": ["模型", "估值", "学术", "论文", "理论", "框架"],
+            "lao_li": ["宏观", "政策", "利率", "经济", "财政", "GDP"],
+            "xiao_chen": ["技术", "短线", "季报", "K线", "轮动", "信号"],
+            "wang_bo": ["模型", "估值", "学术", "论文", "理论", "框架"],
         }
         scores = {}
         for agent_id, kws in keywords.items():
@@ -1111,9 +1111,9 @@ class SupervisorStateMachine:
     def _pick_by_stance(self, stance: str, exclude: list) -> str:
         """按立场选AI"""
         stance_map = {
-            "bullish": ["guest_chen", "su_su", "guest_li"],
-            "bearish": ["lao_k", "guest_wang"],
-            "neutral": ["guest_wang", "su_su"],
+            "bullish": ["xiao_chen", "su_su", "lao_li"],
+            "bearish": ["lao_k", "wang_bo"],
+            "neutral": ["wang_bo", "su_su"],
         }
         candidates = [a for a in stance_map.get(stance, []) if a in self.agents and a not in exclude]
         if candidates:

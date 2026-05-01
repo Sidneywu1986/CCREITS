@@ -4,740 +4,1218 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>分析工具 - REITs数据平台</title>
-    <link rel="stylesheet" href="./css/tailwind.css">
+    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="./css/common.css">
     <script src="./js/app-core.js?v=1"></script>
     <style>
-        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background-color: #f8fafc; }
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
         .mono { font-family: 'JetBrains Mono', monospace; }
-
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-
-        .compare-bar {
-            transform: translateY(100%);
-            transition: transform 0.3s ease;
-        }
+        .calc-input { border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 12px; width: 100%; font-size: 13px; transition: all 0.2s; background: #fff; }
+        .calc-input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.08); }
+        .tab-btn { transition: all 0.2s ease; }
+        .tab-btn.active { background: #2563eb; color: #fff; box-shadow: 0 2px 8px rgba(37,99,235,0.2); }
+        .spinner { width: 20px; height: 20px; border: 2.5px solid #e2e8f0; border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .compare-bar { transform: translateY(100%); transition: transform 0.3s ease; }
         .compare-bar.show { transform: translateY(0); }
-
-        .calc-input {
-            border: 1px solid #e2e8f0;
-            border-radius: 12px;
-            padding: 12px 16px;
-            width: 100%;
-            font-size: 14px;
-            transition: all 0.2s;
-            background: #fff;
-        }
-        .calc-input:focus {
-            outline: none;
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
-        }
-
-        .gradient-number {
-            font-size: 32px;
-            font-weight: 700;
-            background: linear-gradient(135deg, #2563eb, #7c3aed);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-        }
     </style>
 </head>
-<body class="h-screen flex flex-col overflow-hidden">
+<body class="h-screen flex flex-col overflow-hidden bg-slate-50">
 
     <!-- Header -->
-    <header class="h-[60px] bg-white border-b border-gray-200 flex items-center justify-between px-6 flex-none z-40">
-        <div class="flex items-center gap-4">
-            <div class="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-lg flex items-center justify-center text-white font-bold text-sm">R</div>
-            <span class="font-bold text-gray-900 text-lg tracking-tight">REITs数据平台</span>
-            <nav class="hidden md:flex items-center gap-0.5 ml-4">
-                <a href="./market.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">市场</a>
-                <a href="./fund-detail.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">详情</a>
-                <a href="./ai-chat.html" class="px-3 py-1.5 text-sm font-medium text-purple-600 bg-purple-50 rounded-lg transition-all flex items-center gap-1">
-                    <span class="w-1.5 h-1.5 bg-purple-500 rounded-full animate-pulse"></span>
-                    AI聊REITs
+    <header class="h-[52px] bg-white border-b border-slate-200 flex items-center justify-between px-4 flex-none z-40">
+        <div class="flex items-center gap-3">
+            <div class="w-7 h-7 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-lg flex items-center justify-center text-white font-bold text-xs">R</div>
+            <span class="font-bold text-slate-900 text-base tracking-tight">REITs数据平台</span>
+            <nav class="hidden md:flex items-center gap-0.5 ml-3">
+                <a href="./market.html" class="px-2.5 py-1 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-all">市场</a>
+                <a href="./fund-detail.html" class="px-2.5 py-1 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-all">详情</a>
+                <a href="./ai-chat.html" class="px-2.5 py-1 text-sm font-medium text-purple-600 bg-purple-50 rounded-lg transition-all flex items-center gap-1">
+                    <span class="w-1.5 h-1.5 bg-purple-500 rounded-full animate-pulse"></span>AI聊REITs
                 </a>
-                <a href="./announcements.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">公告</a>
-                <a href="./portfolio.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">自选</a>
-                <a href="./compare.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">对比</a>
-                <a href="./tools.html" class="px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg">工具</a>
-                <a href="./dividend-calendar.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">分红</a>
-                <a href="./fund-archive.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-all">AI投研</a>
+                <a href="./announcements.html" class="px-2.5 py-1 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-all">公告</a>
+                <a href="./portfolio.html" class="px-2.5 py-1 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-all">自选</a>
+                <a href="./compare.html" class="px-2.5 py-1 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-all">对比</a>
+                <a href="./research-center.html" class="px-2.5 py-1 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg">投研中心</a>
+                <a href="./dividend-calendar.html" class="px-2.5 py-1 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-all">分红</a>
+                <a href="./research-center.html" class="px-2.5 py-1 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-all">投研中心</a>
             </nav>
         </div>
-
-        <div class="w-40 mx-2">
+        <div class="w-48 mx-2 hidden sm:block">
             <div class="relative">
                 <input type="text" id="global-search" placeholder="搜索基金代码或名称..."
-                    class="w-full pl-10 pr-4 py-2 bg-gray-100 border border-transparent rounded-lg text-sm focus:outline-none focus:bg-white focus:border-blue-500 transition-all">
-                <svg class="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    class="w-full pl-9 pr-3 py-1.5 bg-slate-100 border border-transparent rounded-lg text-sm focus:outline-none focus:bg-white focus:border-blue-500 transition-all">
+                <svg class="w-4 h-4 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                 </svg>
             </div>
         </div>
-
-        <div class="flex items-center gap-3 md:gap-4">
-            <button class="p-2 text-gray-500 hover:text-gray-700 relative" onclick="window.location.href='./announcements.html'">
+        <div class="flex items-center gap-2">
+            <button class="p-1.5 text-slate-500 hover:text-slate-700 relative" onclick="window.location.href='./announcements.html'">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
                 </svg>
-                <span id="nav-badge" class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full hidden"></span>
+                <span id="nav-badge" class="absolute top-0.5 right-0.5 w-2 h-2 bg-red-500 rounded-full hidden"></span>
             </button>
-            <button onclick="window.location.href='./portfolio.html'" class="hidden sm:flex px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-medium rounded-lg hover:shadow-lg hover:shadow-blue-200 transition-all items-center gap-2">
+            <button onclick="window.location.href='./portfolio.html'" class="hidden sm:flex px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-all items-center gap-1.5">
                 <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
                 自选
             </button>
-            <button onclick="showAbout()" class="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-full flex items-center justify-center text-xs hover:shadow-lg transition-all" title="关于平台">?</button>
+            <button onclick="showAbout()" class="w-7 h-7 bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-full flex items-center justify-center text-xs hover:shadow-lg transition-all" title="关于平台">?</button>
         </div>
     </header>
 
-    <!-- 主内容区 -->
+    <!-- Main -->
     <main class="flex-1 overflow-auto">
-        <div class="max-w-7xl mx-auto p-4 md:p-6 space-y-5">
+        <div class="max-w-7xl mx-auto p-4 lg:p-6 space-y-4">
 
-            <!-- 工具标签页 -->
-            <div class="flex flex-wrap gap-2 border-b border-gray-200 pb-3">
-                <button class="tab-btn px-5 py-2.5 rounded-xl text-sm font-medium bg-blue-600 text-white transition-all" data-tab="yield">💰 收益率计算器</button>
-                <button class="tab-btn px-5 py-2.5 rounded-xl text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all" data-tab="valuation">📊 估值工具</button>
-                <button class="tab-btn px-5 py-2.5 rounded-xl text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all" data-tab="premium">📈 折溢价分析</button>
-                <button class="tab-btn px-5 py-2.5 rounded-xl text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all" data-tab="attribution">📉 业绩归因</button>
+            <!-- Tab Nav + Export -->
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div class="flex gap-1 bg-slate-100 rounded-xl p-1">
+                    <button class="tab-btn active px-4 py-2 rounded-lg text-sm font-medium" data-tab="yield">💰 收益率</button>
+                    <button class="tab-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-slate-900" data-tab="valuation">📊 估值</button>
+                    <button class="tab-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-slate-900" data-tab="premium">📈 折溢价</button>
+                    <button class="tab-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-slate-900" data-tab="attribution">📉 归因</button>
+                </div>
+                <button onclick="exportReport()" class="px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-all flex items-center gap-2 shadow-sm">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                    导出报告
+                </button>
             </div>
 
-            <!-- Tab 1 - 收益率计算器 -->
+            <!-- ===== Tab 1: 收益率计算器 ===== -->
             <div id="tab-yield" class="tab-content">
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                    <div class="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
-                        <h3 class="font-bold text-gray-900 text-lg mb-4">📝 输入参数</h3>
-                        <div class="space-y-4">
-                            <div>
-                                <label class="block text-sm text-gray-600 mb-1.5">买入价格 (元)</label>
-                                <input type="number" id="buy-price" class="calc-input" value="5.00" step="0.01">
-                            </div>
-                            <div>
-                                <label class="block text-sm text-gray-600 mb-1.5">卖出价格 (元)</label>
-                                <input type="number" id="sell-price" class="calc-input" value="5.50" step="0.01">
-                            </div>
-                            <div>
-                                <label class="block text-sm text-gray-600 mb-1.5">持有期间分红 (元/份)</label>
-                                <input type="number" id="dividend-received" class="calc-input" value="0.30" step="0.01">
-                            </div>
-                            <div>
-                                <label class="block text-sm text-gray-600 mb-1.5">持有年限</label>
-                                <input type="number" id="hold-years" class="calc-input" value="1" step="0.5" min="0.5">
-                            </div>
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                    <!-- 左侧: 持仓表格 (7/12) -->
+                    <div class="lg:col-span-7 bg-white rounded-xl border border-slate-200 p-4 lg:p-5">
+                        <div class="flex justify-between items-center mb-3">
+                            <h2 class="font-semibold text-slate-900 text-sm flex items-center gap-2">
+                                <span>📝</span> 持仓记录
+                            </h2>
+                            <button onclick="addPositionRow()" class="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-blue-50 transition-all">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                添加持仓
+                            </button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-xs">
+                                <thead>
+                                    <tr class="text-slate-500 border-b border-slate-100">
+                                        <th class="text-left pb-2 font-medium w-[28%]">基金</th>
+                                        <th class="text-right pb-2 font-medium w-[16%]">买入价</th>
+                                        <th class="text-right pb-2 font-medium w-[14%]">份数</th>
+                                        <th class="text-right pb-2 font-medium w-[16%]">现价</th>
+                                        <th class="text-right pb-2 font-medium w-[14%]">分红</th>
+                                        <th class="w-[8%]"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="position-rows"></tbody>
+                            </table>
+                        </div>
+                        <div class="mt-3 text-xs text-slate-400 flex items-center gap-1">
+                            <span>💡</span> 选择基金后自动填充最新价格；卖出价留空则按最新价计算未实现收益。
                         </div>
                     </div>
-                    <div class="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
-                        <h3 class="font-bold text-gray-900 text-lg mb-4">📊 计算结果</h3>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div class="p-4 bg-gray-50 rounded-xl">
-                                <div class="text-gray-500 text-sm mb-1">总收益率</div>
-                                <div class="gradient-number mono" id="total-return">--</div>
+                    <!-- 右侧: 结果 (5/12) -->
+                    <div class="lg:col-span-5 space-y-4">
+                        <div class="bg-white rounded-xl border border-slate-200 p-4 lg:p-5">
+                            <h2 class="font-semibold text-slate-900 text-sm mb-3 flex items-center gap-2">
+                                <span>📊</span> 收益概览
+                            </h2>
+                            <div class="grid grid-cols-2 gap-3 mb-3">
+                                <div class="bg-slate-50 rounded-lg p-3">
+                                    <div class="text-xs text-slate-500 mb-1">总收益率</div>
+                                    <div id="yield-total-return" class="text-2xl font-bold text-slate-900 mono">--</div>
+                                </div>
+                                <div class="bg-slate-50 rounded-lg p-3">
+                                    <div class="text-xs text-slate-500 mb-1">总盈亏</div>
+                                    <div id="yield-total-pnl" class="text-2xl font-bold text-slate-900 mono">--</div>
+                                </div>
                             </div>
-                            <div class="p-4 bg-gray-50 rounded-xl">
-                                <div class="text-gray-500 text-sm mb-1">年化收益率</div>
-                                <div class="gradient-number mono" id="annual-return">--</div>
+                            <div class="grid grid-cols-3 gap-2">
+                                <div class="bg-slate-50 rounded-lg p-2 text-center">
+                                    <div class="text-xs text-slate-500">分红收益</div>
+                                    <div id="yield-dividend-total" class="font-bold text-slate-900 mono text-sm mt-0.5">--</div>
+                                </div>
+                                <div class="bg-slate-50 rounded-lg p-2 text-center">
+                                    <div class="text-xs text-slate-500">超额收益</div>
+                                    <div id="yield-alpha" class="font-bold text-slate-900 mono text-sm mt-0.5">--</div>
+                                </div>
+                                <div class="bg-slate-50 rounded-lg p-2 text-center">
+                                    <div class="text-xs text-slate-500">vs 国债</div>
+                                    <div class="font-bold text-slate-500 mono text-sm mt-0.5">2.5%</div>
+                                </div>
                             </div>
-                            <div class="p-4 bg-gray-50 rounded-xl">
-                                <div class="text-gray-500 text-sm mb-1">资本利得</div>
-                                <div class="text-xl font-bold text-blue-600 mono" id="capital-gain">--</div>
+                        </div>
+                        <div class="bg-white rounded-xl border border-slate-200 p-4 lg:p-5">
+                            <h2 class="font-semibold text-slate-900 text-sm mb-2 flex items-center gap-2">
+                                <span>💧</span> 收益瀑布图
+                            </h2>
+                            <div id="yield-waterfall-chart" class="w-full" style="height:120px;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== Tab 2: 估值工具 ===== -->
+            <div id="tab-valuation" class="tab-content hidden">
+                <div id="valuation-empty" class="flex items-center justify-center py-20">
+                    <div class="text-center text-slate-400">
+                        <div class="text-4xl mb-3">📊</div>
+                        <div class="text-sm">请选择基金查看估值分析</div>
+                    </div>
+                </div>
+                <div id="valuation-result" class="hidden">
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                        <!-- 左侧: 参数输入 (5/12) -->
+                        <div class="lg:col-span-5 space-y-4">
+                            <div class="bg-white rounded-xl border border-slate-200 p-4 lg:p-5">
+                                <h2 class="font-semibold text-slate-900 text-sm mb-3 flex items-center gap-2">
+                                    <span>🔍</span> 估值参数
+                                </h2>
+                                <div class="space-y-3">
+                                    <div>
+                                        <label class="block text-xs text-slate-500 mb-1">选择基金</label>
+                                        <select id="valuation-fund" class="calc-input text-sm py-2">
+                                            <option value="">-- 选择基金 --</option>
+                                        </select>
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label class="block text-xs text-slate-500 mb-1">当前价格 (元)</label>
+                                            <input type="number" id="current-price" class="calc-input text-sm py-2" placeholder="自动填充" step="0.001">
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs text-slate-500 mb-1">单位净值 (元)</label>
+                                            <input type="number" id="nav-value" class="calc-input text-sm py-2" placeholder="自动填充" step="0.001">
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs text-slate-500 mb-1 flex items-center justify-between">
+                                            <span>FFO (元/份)</span>
+                                            <span id="ffo-auto-tag" class="text-[10px] text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">自动估算</span>
+                                        </label>
+                                        <input type="number" id="ffo" class="calc-input text-sm py-2" placeholder="基于派息率估算" step="0.0001">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs text-slate-500 mb-1">DCF 参数</label>
+                                        <div class="grid grid-cols-3 gap-2">
+                                            <input type="number" id="dcf-dividend" class="calc-input text-sm py-2" placeholder="D₁" step="0.0001">
+                                            <input type="number" id="dcf-rate" class="calc-input text-sm py-2" placeholder="r%" value="8" step="0.1">
+                                            <input type="number" id="dcf-growth" class="calc-input text-sm py-2" placeholder="g%" value="2" step="0.1">
+                                        </div>
+                                    </div>
+                                    <div class="bg-blue-50 rounded-lg p-3">
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-xs text-blue-700">戈登增长模型估值</span>
+                                            <span id="dcf-value" class="font-bold text-blue-700 mono text-sm">--</span>
+                                        </div>
+                                        <div id="dcf-vs-price" class="text-[11px] text-blue-500 mt-0.5 text-right">--</div>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="p-4 bg-gray-50 rounded-xl">
-                                <div class="text-gray-500 text-sm mb-1">分红收益</div>
-                                <div class="text-xl font-bold text-green-600 mono" id="dividend-gain">--</div>
+                            <div class="bg-white rounded-xl border border-slate-200 p-4 lg:p-5">
+                                <h2 class="font-semibold text-slate-900 text-sm mb-3 flex items-center gap-2">
+                                    <span>🏆</span> 综合评分
+                                </h2>
+                                <div class="flex items-center gap-3 mb-4">
+                                    <div class="relative w-16 h-16 flex-none">
+                                        <svg class="w-16 h-16 transform -rotate-90" viewBox="0 0 36 36">
+                                            <path class="text-slate-200" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="3"/>
+                                            <path id="v-score-ring" class="text-blue-600 transition-all duration-700" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="3"/>
+                                        </svg>
+                                        <div class="absolute inset-0 flex items-center justify-center">
+                                            <span id="val-score" class="text-lg font-bold text-slate-900">--</span>
+                                        </div>
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <span id="val-score-label" class="text-[11px] inline-block px-2 py-0.5 rounded bg-slate-100 text-slate-600">--</span>
+                                        <div class="w-full bg-slate-100 rounded-full h-1.5 mt-2">
+                                            <div id="val-score-bar" class="bg-blue-500 h-1.5 rounded-full transition-all duration-500" style="width:0%"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="space-y-2.5">
+                                    <div>
+                                        <div class="flex justify-between text-[11px] mb-0.5"><span class="text-slate-500">P/FFO 评分</span><span id="v-score-pffo" class="font-medium text-slate-700">--</span></div>
+                                        <div class="w-full bg-slate-100 rounded-full h-1.5"><div id="v-bar-pffo" class="bg-blue-500 h-1.5 rounded-full transition-all duration-500" style="width:0%"></div></div>
+                                    </div>
+                                    <div>
+                                        <div class="flex justify-between text-[11px] mb-0.5"><span class="text-slate-500">溢价评分</span><span id="v-score-prem" class="font-medium text-slate-700">--</span></div>
+                                        <div class="w-full bg-slate-100 rounded-full h-1.5"><div id="v-bar-prem" class="bg-indigo-500 h-1.5 rounded-full transition-all duration-500" style="width:0%"></div></div>
+                                    </div>
+                                    <div>
+                                        <div class="flex justify-between text-[11px] mb-0.5"><span class="text-slate-500">分红评分</span><span id="v-score-yield" class="font-medium text-slate-700">--</span></div>
+                                        <div class="w-full bg-slate-100 rounded-full h-1.5"><div id="v-bar-yield" class="bg-emerald-500 h-1.5 rounded-full transition-all duration-500" style="width:0%"></div></div>
+                                    </div>
+                                    <div>
+                                        <div class="flex justify-between text-[11px] mb-0.5"><span class="text-slate-500">历史百分位</span><span id="v-score-perc" class="font-medium text-slate-700">--</span></div>
+                                        <div class="w-full bg-slate-100 rounded-full h-1.5"><div id="v-bar-perc" class="bg-amber-500 h-1.5 rounded-full transition-all duration-500" style="width:0%"></div></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- 右侧: 结果与图表 (7/12) -->
+                        <div class="lg:col-span-7 space-y-4">
+                            <div class="bg-white rounded-xl border border-slate-200 p-4 lg:p-5">
+                                <h2 class="font-semibold text-slate-900 text-sm mb-3 flex items-center gap-2">
+                                    <span>📈</span> 估值指标
+                                </h2>
+                                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+                                    <div class="text-center bg-slate-50 rounded-lg p-3">
+                                        <div class="text-xs text-slate-500 mb-0.5">P/FFO</div>
+                                        <div id="p-ffo" class="text-xl font-bold text-slate-900 mono">--</div>
+                                        <div id="p-ffo-percentile-tag" class="text-[10px] text-slate-400 mt-0.5">--</div>
+                                    </div>
+                                    <div class="text-center bg-slate-50 rounded-lg p-3">
+                                        <div class="text-xs text-slate-500 mb-0.5">溢价率</div>
+                                        <div id="premium-rate" class="text-xl font-bold text-slate-900 mono">--</div>
+                                    </div>
+                                    <div class="text-center bg-slate-50 rounded-lg p-3">
+                                        <div class="text-xs text-slate-500 mb-0.5">股息率</div>
+                                        <div id="val-yield-rate" class="text-xl font-bold text-slate-900 mono">--</div>
+                                    </div>
+                                    <div class="text-center bg-slate-50 rounded-lg p-3">
+                                        <div class="text-xs text-slate-500 mb-0.5">当前分位</div>
+                                        <div id="val-curr-pct" class="text-xl font-bold text-slate-900 mono">--</div>
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-3 gap-2">
+                                    <div class="bg-slate-50 rounded-lg p-2 text-center">
+                                        <div class="text-xs text-slate-500">历史中位数</div>
+                                        <div id="val-med-pct" class="font-bold text-slate-900 mono text-sm mt-0.5">--</div>
+                                    </div>
+                                    <div class="bg-slate-50 rounded-lg p-2 text-center">
+                                        <div class="text-xs text-slate-500">历史最低</div>
+                                        <div id="val-min-pct" class="font-bold text-slate-900 mono text-sm mt-0.5">--</div>
+                                    </div>
+                                    <div class="bg-slate-50 rounded-lg p-2 text-center">
+                                        <div class="text-xs text-slate-500">历史最高</div>
+                                        <div id="val-max-pct" class="font-bold text-slate-900 mono text-sm mt-0.5">--</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="bg-white rounded-xl border border-slate-200 p-4 lg:p-5">
+                                <h2 class="font-semibold text-slate-900 text-sm mb-2">📈 历史估值趋势</h2>
+                                <div id="valuation-trend-chart" class="w-full" style="height:130px;"></div>
+                            </div>
+                            <div class="bg-white rounded-xl border border-slate-200 p-4 lg:p-5">
+                                <h2 class="font-semibold text-slate-900 text-sm mb-2">📊 板块对比</h2>
+                                <div id="valuation-sector-chart" class="w-full" style="height:200px;"></div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Tab 2 - 估值工具 -->
-            <div id="tab-valuation" class="tab-content hidden">
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                    <div class="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
-                        <h3 class="font-bold text-gray-900 text-lg mb-4">🔍 估值指标计算</h3>
-                        <div class="space-y-4">
-                            <div>
-                                <label class="block text-sm text-gray-600 mb-1.5">选择基金</label>
-                                <select id="valuation-fund" class="calc-input">
-                                    <option value="">-- 选择基金 --</option>
-                                </select>
+            <!-- ===== Tab 3: 折溢价分析 ===== -->
+            <div id="tab-premium" class="tab-content hidden">
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                    <!-- 左侧: 统计与建议 (5/12) -->
+                    <div class="lg:col-span-5 space-y-4">
+                        <div class="bg-white rounded-xl border border-slate-200 p-4 lg:p-5">
+                            <h2 class="font-semibold text-slate-900 text-sm mb-3 flex items-center gap-2">
+                                <span>📈</span> 折溢价分析
+                            </h2>
+                            <select id="premium-fund" class="calc-input text-sm py-2 mb-3">
+                                <option value="">-- 选择基金 --</option>
+                            </select>
+                            <div class="grid grid-cols-2 gap-3 mb-3">
+                                <div class="bg-slate-50 rounded-lg p-3 text-center">
+                                    <div class="text-xs text-slate-500 mb-0.5">当前溢价率</div>
+                                    <div id="current-premium" class="text-xl font-bold text-slate-900 mono">--</div>
+                                </div>
+                                <div class="bg-slate-50 rounded-lg p-3 text-center">
+                                    <div class="text-xs text-slate-500 mb-0.5">历史分位</div>
+                                    <div id="premium-percentile" class="text-xl font-bold text-slate-900 mono">--</div>
+                                </div>
                             </div>
-                            <div>
-                                <label class="block text-sm text-gray-600 mb-1.5">当前价格 (元)</label>
-                                <input type="number" id="current-price" class="calc-input" placeholder="自动填充" step="0.01">
+                            <div class="grid grid-cols-2 gap-2 text-xs">
+                                <div class="flex justify-between bg-slate-50 rounded-lg px-2.5 py-1.5">
+                                    <span class="text-slate-500">历史平均</span>
+                                    <span id="premium-avg" class="font-bold mono text-slate-900">--</span>
+                                </div>
+                                <div class="flex justify-between bg-slate-50 rounded-lg px-2.5 py-1.5">
+                                    <span class="text-slate-500">25%分位</span>
+                                    <span id="premium-q25" class="font-bold mono text-slate-900">--</span>
+                                </div>
+                                <div class="flex justify-between bg-slate-50 rounded-lg px-2.5 py-1.5">
+                                    <span class="text-slate-500">中位数</span>
+                                    <span id="premium-q50" class="font-bold mono text-slate-900">--</span>
+                                </div>
+                                <div class="flex justify-between bg-slate-50 rounded-lg px-2.5 py-1.5">
+                                    <span class="text-slate-500">75%分位</span>
+                                    <span id="premium-q75" class="font-bold mono text-slate-900">--</span>
+                                </div>
+                                <div class="flex justify-between bg-slate-50 rounded-lg px-2.5 py-1.5">
+                                    <span class="text-slate-500">最低</span>
+                                    <span id="premium-min" class="font-bold mono text-slate-900">--</span>
+                                </div>
+                                <div class="flex justify-between bg-slate-50 rounded-lg px-2.5 py-1.5">
+                                    <span class="text-slate-500">最高</span>
+                                    <span id="premium-max" class="font-bold mono text-slate-900">--</span>
+                                </div>
                             </div>
-                            <div>
-                                <label class="block text-sm text-gray-600 mb-1.5">单位净值 (元)</label>
-                                <input type="number" id="nav-value" class="calc-input" placeholder="自动填充" step="0.01">
+                        </div>
+                        <div class="bg-white rounded-xl border border-slate-200 p-4 lg:p-5">
+                            <h2 class="font-semibold text-slate-900 text-sm mb-2 flex items-center gap-2">
+                                <span>💡</span> 交易建议
+                            </h2>
+                            <div id="premium-suggestion" class="font-bold text-sm mb-1 text-slate-900">请选择基金查看分析建议</div>
+                            <div id="premium-suggestion-detail" class="text-xs text-slate-500 leading-relaxed">选择基金后，系统将基于历史折溢价数据给出交易建议。</div>
+                            <div class="mt-3 grid grid-cols-3 gap-2 text-center text-[11px]">
+                                <div class="p-1.5 rounded-md bg-green-50 text-green-700 border border-green-100">折价区<br>&lt; -5%</div>
+                                <div class="p-1.5 rounded-md bg-blue-50 text-blue-700 border border-blue-100">合理区<br>-5%~+5%</div>
+                                <div class="p-1.5 rounded-md bg-red-50 text-red-700 border border-red-100">溢价区<br>&gt; +5%</div>
                             </div>
-                            <div>
-                                <label class="block text-sm text-gray-600 mb-1.5 flex items-center gap-2">
-                                    FFO (元/份)
-                                    <span class="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded" id="ffo-auto-tag">自动估算</span>
-                                </label>
-                                <input type="number" id="ffo" class="calc-input" placeholder="基于派息率自动估算，或手动输入" step="0.01">
-                                <div class="mt-2 text-xs text-gray-500 bg-gray-50 p-2 rounded">
-                                    <span class="font-medium">💡 FFO估算说明：</span>
-                                    产权类：FFO ≈ 派息 × 1.2（考虑折旧）<br>
-                                    经营权类：FFO ≈ 派息 × 1.5（还本付息调整）
+                        </div>
+                    </div>
+                    <!-- 右侧: 图表 (7/12) -->
+                    <div class="lg:col-span-7 space-y-4">
+                        <div class="bg-white rounded-xl border border-slate-200 p-4 lg:p-5">
+                            <h2 class="font-semibold text-slate-900 text-sm mb-2">📈 历史折溢价走势</h2>
+                            <div id="premium-chart" class="w-full" style="height:240px;"></div>
+                        </div>
+                        <div class="bg-white rounded-xl border border-slate-200 p-4 lg:p-5">
+                            <h2 class="font-semibold text-slate-900 text-sm mb-2">📊 板块平均对比</h2>
+                            <div id="premium-sector-chart" class="w-full" style="height:200px;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== Tab 4: 业绩归因 ===== -->
+            <div id="tab-attribution" class="tab-content hidden">
+                <div id="attribution-empty" class="flex items-center justify-center py-20">
+                    <div class="text-center text-slate-400">
+                        <div class="text-4xl mb-3">📉</div>
+                        <div class="text-sm">请选择基金查看业绩归因</div>
+                    </div>
+                </div>
+                <div id="attribution-result" class="hidden">
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                        <!-- 左侧: 配置与风险 (5/12) -->
+                        <div class="lg:col-span-5 space-y-4">
+                            <div class="bg-white rounded-xl border border-slate-200 p-4 lg:p-5">
+                                <h2 class="font-semibold text-slate-900 text-sm mb-3 flex items-center gap-2">
+                                    <span>🎯</span> 分析配置
+                                </h2>
+                                <div class="space-y-3">
+                                    <div>
+                                        <label class="block text-xs text-slate-500 mb-1">基金</label>
+                                        <select id="attribution-fund" class="calc-input text-sm py-2">
+                                            <option value="">-- 选择基金 --</option>
+                                        </select>
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label class="block text-xs text-slate-500 mb-1">分析周期</label>
+                                            <select id="attribution-period" class="calc-input text-sm py-2">
+                                                <option value="1m">近1个月</option>
+                                                <option value="3m">近3个月</option>
+                                                <option value="6m">近6个月</option>
+                                                <option value="1y" selected>近1年</option>
+                                                <option value="2y">近2年</option>
+                                                <option value="ytd">今年以来</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs text-slate-500 mb-1">对比基准</label>
+                                            <select id="attribution-benchmark" class="calc-input text-sm py-2">
+                                                <option value="sector" selected>同板块均值</option>
+                                                <option value="market">全市场均值</option>
+                                                <option value="bond">10年期国债</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div id="attribution-type-hint" class="hidden text-xs text-blue-600 bg-blue-50 p-2 rounded-lg flex items-center gap-1.5">
+                                        <span>板块：</span><span id="attribution-sector-name" class="font-bold">--</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="bg-white rounded-xl border border-slate-200 p-4 lg:p-5">
+                                <h2 class="font-semibold text-slate-900 text-sm mb-3 flex items-center gap-2">
+                                    <span>⚠️</span> 风险指标
+                                </h2>
+                                <div class="grid grid-cols-2 gap-2 text-xs">
+                                    <div class="flex justify-between bg-slate-50 rounded-lg px-2.5 py-2">
+                                        <span class="text-slate-500">区间收益</span>
+                                        <span id="attr-return" class="font-bold mono">--</span>
+                                    </div>
+                                    <div class="flex justify-between bg-slate-50 rounded-lg px-2.5 py-2">
+                                        <span class="text-slate-500">基准收益</span>
+                                        <span id="attr-bench" class="font-bold mono">--</span>
+                                    </div>
+                                    <div class="flex justify-between bg-slate-50 rounded-lg px-2.5 py-2">
+                                        <span class="text-slate-500">超额收益α</span>
+                                        <span id="attr-alpha" class="font-bold mono">--</span>
+                                    </div>
+                                    <div class="flex justify-between bg-slate-50 rounded-lg px-2.5 py-2">
+                                        <span class="text-slate-500">年化波动率</span>
+                                        <span id="attr-vol" class="font-bold mono">--</span>
+                                    </div>
+                                    <div class="flex justify-between bg-slate-50 rounded-lg px-2.5 py-2">
+                                        <span class="text-slate-500">最大回撤</span>
+                                        <span id="attr-mdd" class="font-bold mono">--</span>
+                                    </div>
+                                    <div class="flex justify-between bg-slate-50 rounded-lg px-2.5 py-2">
+                                        <span class="text-slate-500">夏普比率</span>
+                                        <span id="attr-sharpe" class="font-bold mono">--</span>
+                                    </div>
+                                    <div class="flex justify-between bg-slate-50 rounded-lg px-2.5 py-2">
+                                        <span class="text-slate-500">信息比率</span>
+                                        <span id="attr-info" class="font-bold mono">--</span>
+                                    </div>
+                                    <div class="flex justify-between bg-slate-50 rounded-lg px-2.5 py-2">
+                                        <span class="text-slate-500">索提诺比率</span>
+                                        <span id="attr-sortino" class="font-bold mono">--</span>
+                                    </div>
+                                </div>
+                                <div id="attr-risk-level" class="mt-3 text-[11px] text-slate-500 bg-slate-50 rounded-lg px-3 py-2">--</div>
+                            </div>
+                        </div>
+                        <!-- 右侧: 图表与总结 (7/12) -->
+                        <div class="lg:col-span-7 space-y-4">
+                            <div class="bg-white rounded-xl border border-slate-200 p-4 lg:p-5">
+                                <h2 class="font-semibold text-slate-900 text-sm mb-2">📈 收益走势对比</h2>
+                                <div id="attribution-trend-chart" class="w-full" style="height:150px;"></div>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="bg-white rounded-xl border border-slate-200 p-4 lg:p-5">
+                                    <h2 class="font-semibold text-slate-900 text-sm mb-2">🎯 归因分解</h2>
+                                    <div id="attribution-chart" class="w-full" style="height:160px;"></div>
+                                </div>
+                                <div class="bg-white rounded-xl border border-slate-200 p-4 lg:p-5">
+                                    <h2 class="font-semibold text-slate-900 text-sm mb-2">📝 业绩总结</h2>
+                                    <div id="attribution-summary" class="text-xs text-slate-600 leading-relaxed">请选择基金和分析周期查看业绩归因报告。</div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    <div class="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
-                        <h3 class="font-bold text-gray-900 text-lg mb-4">📊 估值结果</h3>
-                        <div id="valuation-empty" class="hidden flex flex-col items-center justify-center py-10 text-center">
-                            <div class="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mb-3">
-                                <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-                                </svg>
-                            </div>
-                            <p class="text-gray-500 text-sm">请从左侧选择基金开始分析</p>
-                        </div>
-                        <div id="valuation-result" class="space-y-4">
-                            <div class="p-4 bg-gray-50 rounded-xl">
-                                <div class="text-gray-500 text-sm mb-1">P/FFO</div>
-                                <div class="gradient-number mono" id="p-ffo">--</div>
-                                <div class="text-xs text-gray-400 mt-1">合理区间：15-25</div>
-                            </div>
-                            <div class="p-4 bg-gray-50 rounded-xl">
-                                <div class="text-gray-500 text-sm mb-1">溢价率</div>
-                                <div class="text-xl font-bold text-gray-900 mono" id="premium-rate">--</div>
-                            </div>
-                            <div class="p-4 bg-gray-50 rounded-xl">
-                                <div class="text-gray-500 text-sm mb-1">估值评级</div>
-                                <div class="text-xl font-bold text-gray-900" id="valuation-rating">--</div>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </div>
 
-            <!-- Tab 3 - 折溢价分析 -->
-            <div id="tab-premium" class="tab-content hidden">
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                    <div class="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
-                        <h3 class="font-bold text-gray-900 text-lg mb-4">📈 折溢价历史走势</h3>
-                        <div class="space-y-4">
-                            <div>
-                                <label class="block text-sm text-gray-600 mb-1.5">选择基金</label>
-                                <select id="premium-fund" class="calc-input">
-                                    <option value="">-- 选择基金 --</option>
-                                </select>
-                            </div>
-                            <div id="premium-chart" style="height: 250px;"></div>
-                        </div>
-                    </div>
-                    <div class="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
-                        <h3 class="font-bold text-gray-900 text-lg mb-4">📊 分析结论</h3>
-                        <div id="premium-empty" class="hidden flex flex-col items-center justify-center py-10 text-center">
-                            <div class="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mb-3">
-                                <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/>
-                                </svg>
-                            </div>
-                            <p class="text-gray-500 text-sm">请从左侧选择基金查看折溢价分析</p>
-                        </div>
-                        <div id="premium-result" class="space-y-4">
-                            <div class="p-4 bg-gray-50 rounded-xl">
-                                <div class="text-gray-500 text-sm mb-1">当前溢价率</div>
-                                <div class="text-2xl font-bold text-gray-900 mono" id="current-premium">--</div>
-                            </div>
-                            <div class="p-4 bg-gray-50 rounded-xl">
-                                <div class="text-gray-500 text-sm mb-1">历史平均溢价率</div>
-                                <div class="text-2xl font-bold text-gray-900 mono" id="avg-premium">--</div>
-                            </div>
-                            <div class="p-4 bg-gray-50 rounded-xl">
-                                <div class="text-gray-500 text-sm mb-1">投资建议</div>
-                                <div class="text-xl font-bold" id="premium-suggestion">--</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Tab 4 - 业绩归因 -->
-            <div id="tab-attribution" class="tab-content hidden">
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                    <div class="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
-                        <h3 class="font-bold text-gray-900 text-lg mb-4">🎯 分析配置</h3>
-                        <div class="space-y-4">
-                            <div>
-                                <label class="block text-sm text-gray-600 mb-1.5">选择基金</label>
-                                <select id="attribution-fund" class="calc-input">
-                                    <option value="">-- 选择基金 --</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-sm text-gray-600 mb-1.5">分析周期</label>
-                                <select id="attribution-period" class="calc-input">
-                                    <option value="1">近1年</option>
-                                    <option value="2">近2年</option>
-                                    <option value="3">近3年</option>
-                                </select>
-                            </div>
-                            <div id="attribution-type-hint" class="hidden">
-                                <label class="block text-sm text-gray-600 mb-1.5">资产类型</label>
-                                <div class="text-sm text-blue-600 bg-blue-50 px-3 py-2 rounded-lg" id="attribution-sector-name">--</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
-                        <h3 class="font-bold text-gray-900 text-lg mb-4">📊 归因结果</h3>
-                        <div id="attribution-empty" class="hidden flex flex-col items-center justify-center py-10 text-center">
-                            <div class="w-16 h-16 bg-purple-50 rounded-full flex items-center justify-center mb-3">
-                                <svg class="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"/>
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"/>
-                                </svg>
-                            </div>
-                            <p class="text-gray-500 text-sm">请从左侧选择基金查看业绩归因</p>
-                        </div>
-                        <div id="attribution-result">
-                            <div id="attribution-chart" style="height: 280px;"></div>
-                            <div class="mt-4 text-sm text-gray-600 leading-relaxed" id="attribution-summary"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
         </div>
     </main>
 
-    <!-- 底部对比悬浮栏 -->
-    <div id="compare-bar" class="compare-bar fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur border-t border-gray-200 shadow-lg z-50 px-4 md:px-6 py-3 md:py-4">
+    <!-- Compare Bar -->
+    <div id="compare-bar" class="compare-bar fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur border-t border-slate-200 shadow-lg z-50 px-4 md:px-6 py-2.5 md:py-3">
         <div class="max-w-7xl mx-auto flex items-center justify-between">
-            <div class="flex items-center gap-3 md:gap-4 overflow-hidden">
-                <span class="text-sm font-medium text-gray-700 flex-none">🛒 对比栏:</span>
-                <div id="compare-items" class="flex gap-2 overflow-x-auto">
-                    <!-- 动态添加 -->
-                </div>
+            <div class="flex items-center gap-3 overflow-hidden">
+                <span class="text-sm font-medium text-slate-700 flex-none">对比栏:</span>
+                <div id="compare-items" class="flex gap-2 overflow-x-auto"></div>
             </div>
-            <div class="flex items-center gap-2 md:gap-3 flex-none ml-3">
-                <span id="compare-count" class="text-xs text-gray-500">已选 0/4</span>
-                <button onclick="clearCompare(); updateCompareBar();" class="text-xs text-gray-400 hover:text-red-500">清空</button>
-                <button onclick="goToCompare()" id="btn-compare" class="px-4 md:px-6 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg opacity-50 cursor-not-allowed" disabled>
-                    开始对比 →
-                </button>
+            <div class="flex items-center gap-2 flex-none ml-3">
+                <span id="compare-count" class="text-xs text-slate-500">已选 0/4</span>
+                <button onclick="clearCompare(); updateCompareBar();" class="text-xs text-slate-400 hover:text-red-500">清空</button>
+                <button onclick="goToCompare()" id="btn-compare" class="px-4 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-lg opacity-50 cursor-not-allowed" disabled>开始对比 →</button>
             </div>
         </div>
     </div>
 
-    <script src="./js/common.js"></script>
+<script src="./js/common.js"></script>
     <script src="./js/api.js"></script>
     <script>
-        // 初始化基金选择下拉框，默认选中第一个
-        // 全局基金数据
         let toolsFundsData = ALL_FUNDS || [];
-        
-        // 异步加载基金数据
+        let realtimeQuotes = {};
+        let priceHistoryCache = {};
+        let yieldWaterfallChart = null;
+        let valuationTrendChart = null;
+        let valuationSectorChart = null;
+        let premiumChart = null;
+        let premiumSectorChart = null;
+        let attributionChart = null;
+        let attributionTrendChart = null;
+        let positionCounter = 0;
+
         async function loadToolsFunds() {
             try {
-                console.log('🔄 正在从API加载基金数据...');
-                const response = await REITS_API.getFunds();
-                if (response.data && response.data.length > 0) {
-                    toolsFundsData = response.data;
-                    console.log('✅ API数据加载成功:', toolsFundsData.length, '只基金');
-                    showDataSource('API');
+                const base = (typeof REITS_API !== 'undefined' && REITS_API.API_BASE_URL) ? REITS_API.API_BASE_URL : 'http://localhost:5074/api';
+                const res = await fetch(`${base}/quotes/realtime`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.data && data.data.length > 0) {
+                        realtimeQuotes = {};
+                        data.data.forEach(q => { realtimeQuotes[q.fund_code || q.code] = q; });
+                        toolsFundsData = toolsFundsData.map(f => {
+                            const q = realtimeQuotes[f.code];
+                            return q ? { ...f, price: q.price || f.price, nav: q.nav || f.nav, premium: q.premium !== undefined ? q.premium : f.premium, yield: q.yield !== undefined ? q.yield : f.yield, change: q.change_pct !== undefined ? q.change_pct : f.change } : f;
+                        });
+                    }
                 }
-            } catch (error) {
-                console.warn('⚠️ API加载失败，使用Mock数据:', error.message);
-                toolsFundsData = ALL_FUNDS || [];
-                showDataSource('Mock');
-            }
-            
-            // 加载完成后初始化选择器
+            } catch (e) { console.warn('实时行情加载失败:', e.message); }
             initFundSelectors();
-        }
-        
-        // 显示数据来源
-        function showDataSource(source) {
-            const indicator = document.createElement('div');
-            indicator.className = 'fixed bottom-20 right-4 text-xs px-3 py-1.5 rounded-full z-50 transition-all ' + 
-                (source === 'API' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700');
-            indicator.innerHTML = source === 'API' 
-                ? '🟢 实时数据（API）' 
-                : '🟡 模拟数据（Mock）';
-            document.body.appendChild(indicator);
-            setTimeout(() => { indicator.style.opacity = '0.5'; }, 3000);
-        }
-        
-        function initFundSelectors() {
-            const options = toolsFundsData.map(f => `<option value="${f.code}">${f.code} - ${f.name}</option>`).join('');
-            
-            // 估值工具 - 默认选中第一个
-            const valuationSelect = document.getElementById('valuation-fund');
-            if (valuationSelect) {
-                valuationSelect.innerHTML = '<option value="">-- 选择基金 --</option>' + options;
-                if (toolsFundsData.length > 0) {
-                    valuationSelect.value = toolsFundsData[0].code;
-                    calculateValuation();
-                }
-            }
-            
-            // 折溢价分析 - 默认选中第一个
-            const premiumSelect = document.getElementById('premium-fund');
-            if (premiumSelect) {
-                premiumSelect.innerHTML = '<option value="">-- 选择基金 --</option>' + options;
-                if (toolsFundsData.length > 0) {
-                    premiumSelect.value = toolsFundsData[0].code;
-                    analyzePremium();
-                }
-            }
-            
-            // 业绩归因 - 默认选中第一个
-            const attributionSelect = document.getElementById('attribution-fund');
-            if (attributionSelect) {
-                attributionSelect.innerHTML = '<option value="">-- 选择基金 --</option>' + options;
-                if (toolsFundsData.length > 0) {
-                    attributionSelect.value = toolsFundsData[0].code;
-                    analyzeAttribution();
-                }
-            }
+            initYieldTab();
         }
 
-        // 标签页切换
+        async function fetchPriceHistory(code) {
+            if (priceHistoryCache[code]) return priceHistoryCache[code];
+            try {
+                const base = (typeof REITS_API !== 'undefined' && REITS_API.API_BASE_URL) ? REITS_API.API_BASE_URL : 'http://localhost:5074/api';
+                const res = await fetch(`${base}/funds/price-history?code=${code}&time_range=daily`);
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                if (data.success && data.data) { priceHistoryCache[code] = data.data; return data.data; }
+            } catch (e) { console.warn('价格历史获取失败', code, e.message); }
+            return null;
+        }
+
+        function generateMockPriceHistory(code, days) {
+            const fund = toolsFundsData.find(f => f.code === code);
+            const basePrice = fund && fund.price > 0 ? fund.price : 5.0;
+            const baseNav = fund && fund.nav > 0 ? fund.nav : basePrice * 0.95;
+            const arr = [];
+            let price = basePrice, nav = baseNav;
+            const today = new Date();
+            for (let i = days; i >= 0; i--) {
+                const d = new Date(today); d.setDate(d.getDate() - i);
+                if (d.getDay() === 0 || d.getDay() === 6) continue;
+                const change = (Math.random() - 0.48) * 0.02;
+                price *= (1 + change);
+                nav *= (1 + (Math.random() - 0.48) * 0.005);
+                arr.push({ date: d.toISOString().split('T')[0], price: parseFloat(price.toFixed(3)), nav: parseFloat(nav.toFixed(3)), change: parseFloat((change*100).toFixed(2)) });
+            }
+            return arr;
+        }
+
+        function initFundSelectors() {
+            const options = toolsFundsData.map(f => `<option value="${f.code}">${f.code} ${f.name}</option>`).join('');
+            ['valuation-fund', 'premium-fund', 'attribution-fund'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) { const val = el.value; el.innerHTML = '<option value="">-- 选择基金 --</option>' + options; if (val && toolsFundsData.find(f=>f.code===val)) el.value = val; }
+            });
+        }
+
         function switchTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.remove('bg-blue-600', 'text-white');
-                btn.classList.add('bg-gray-100', 'text-gray-600');
-            });
-            const activeBtn = document.querySelector(`.tab-btn[data-tab="${tabId}"]`);
-            activeBtn.classList.add('bg-blue-600', 'text-white');
-            activeBtn.classList.remove('bg-gray-100', 'text-gray-600');
-
-            // 切到图表tab时resize
-            if (tabId === 'premium' && premiumChart) premiumChart.resize();
-            if (tabId === 'attribution' && attributionChart) attributionChart.resize();
+            document.getElementById('tab-' + tabId).classList.remove('hidden');
+            document.querySelectorAll('.tab-btn').forEach(btn => { btn.classList.remove('bg-blue-600','text-white'); btn.classList.add('bg-gray-100','text-gray-600'); });
+            const active = document.querySelector('.tab-btn[data-tab="' + tabId + '"]');
+            if (active) { active.classList.add('bg-blue-600','text-white'); active.classList.remove('bg-gray-100','text-gray-600'); }
+            setTimeout(() => {
+                if (tabId==='yield' && yieldWaterfallChart) yieldWaterfallChart.resize();
+                if (tabId==='valuation') { if (valuationTrendChart) valuationTrendChart.resize(); if (valuationSectorChart) valuationSectorChart.resize(); }
+                if (tabId==='premium') { if (premiumChart) premiumChart.resize(); if (premiumSectorChart) premiumSectorChart.resize(); }
+                if (tabId==='attribution') { if (attributionChart) attributionChart.resize(); if (attributionTrendChart) attributionTrendChart.resize(); }
+            }, 50);
         }
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
 
-        // 收益率计算
+        function initYieldTab() {
+            const tbody = document.getElementById('position-rows');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            addPositionRow();
+            addPositionRow();
+        }
+        function addPositionRow() {
+            positionCounter++;
+            const tbody = document.getElementById('position-rows');
+            const options = toolsFundsData.map(f => `<option value="${f.code}">${f.code} ${f.name}</option>`).join('');
+            const tr = document.createElement('tr');
+            tr.id = 'pos-row-' + positionCounter;
+            tr.className = 'border-b border-gray-50 last:border-0';
+            tr.innerHTML = '<td class="py-2 pr-2"><select class="pos-fund calc-input text-xs py-2 px-2" onchange="onPositionFundChange(' + positionCounter + ')"><option value="">选择基金</option>' + options + '</select></td>' +
+                '<td class="py-2 px-1"><input type="number" class="pos-buy calc-input text-xs py-2 px-2 text-right" placeholder="买入价" step="0.001" oninput="calculateYield()"></td>' +
+                '<td class="py-2 px-1"><input type="number" class="pos-shares calc-input text-xs py-2 px-2 text-right" placeholder="份数" step="1" value="1000" oninput="calculateYield()"></td>' +
+                '<td class="py-2 px-1"><input type="number" class="pos-sell calc-input text-xs py-2 px-2 text-right" placeholder="现价自动" step="0.001" oninput="calculateYield()"></td>' +
+                '<td class="py-2 px-1"><input type="number" class="pos-dividend calc-input text-xs py-2 px-2 text-right" placeholder="分红" step="0.001" value="0" oninput="calculateYield()"></td>' +
+                '<td class="py-2 pl-1 text-center"><button onclick="removePositionRow(' + positionCounter + ')" class="text-gray-400 hover:text-red-500 transition-colors">✕</button></td>';
+            tbody.appendChild(tr);
+        }
+        function removePositionRow(id) { const row = document.getElementById('pos-row-' + id); if (row) row.remove(); calculateYield(); }
+        function onPositionFundChange(id) {
+            const row = document.getElementById('pos-row-' + id); if (!row) return;
+            const code = row.querySelector('.pos-fund').value; if (!code) return;
+            const fund = toolsFundsData.find(f => f.code === code);
+            const q = realtimeQuotes[code];
+            const price = q && q.price > 0 ? q.price : (fund && fund.price > 0 ? fund.price : 0);
+            const buyInput = row.querySelector('.pos-buy');
+            const sellInput = row.querySelector('.pos-sell');
+            if (price > 0) { if (!buyInput.value) buyInput.value = price.toFixed(3); if (!sellInput.value) sellInput.value = price.toFixed(3); }
+            calculateYield();
+        }
         function calculateYield() {
-            const buyPrice = parseFloat(document.getElementById('buy-price').value) || 0;
-            const sellPrice = parseFloat(document.getElementById('sell-price').value) || 0;
-            const dividend = parseFloat(document.getElementById('dividend-received').value) || 0;
-            const years = parseFloat(document.getElementById('hold-years').value) || 1;
-
-            const capitalGain = sellPrice - buyPrice;
-            const totalGain = capitalGain + dividend;
-            const totalReturn = buyPrice > 0 ? (totalGain / buyPrice) * 100 : 0;
-            const annualReturn = buyPrice > 0 && years > 0 ? (Math.pow(1 + totalReturn / 100, 1 / years) - 1) * 100 : 0;
-
-            document.getElementById('total-return').textContent = totalReturn.toFixed(2) + '%';
-            document.getElementById('annual-return').textContent = annualReturn.toFixed(2) + '%';
-            document.getElementById('capital-gain').textContent = (capitalGain >= 0 ? '+' : '') + capitalGain.toFixed(2) + '元';
-            document.getElementById('dividend-gain').textContent = '+' + dividend.toFixed(2) + '元';
+            const rows = document.querySelectorAll('#position-rows tr');
+            let totalCost = 0, totalValue = 0, totalDividend = 0, totalPnL = 0;
+            const positions = [];
+            rows.forEach(row => {
+                const code = row.querySelector('.pos-fund')?.value;
+                const buy = parseFloat(row.querySelector('.pos-buy')?.value) || 0;
+                const shares = parseFloat(row.querySelector('.pos-shares')?.value) || 0;
+                let sell = parseFloat(row.querySelector('.pos-sell')?.value) || 0;
+                const dividend = parseFloat(row.querySelector('.pos-dividend')?.value) || 0;
+                if (!code || buy <= 0 || shares <= 0) return;
+                const fund = toolsFundsData.find(f => f.code === code);
+                const q = realtimeQuotes[code];
+                if (sell <= 0) sell = q && q.price > 0 ? q.price : (fund && fund.price > 0 ? fund.price : buy);
+                const cost = buy * shares, value = sell * shares, divTotal = dividend * shares, pnl = value - cost + divTotal;
+                totalCost += cost; totalValue += value; totalDividend += divTotal; totalPnL += pnl;
+                positions.push({ name: fund ? fund.name : code, cost, value, dividend: divTotal, pnl });
+            });
+            const totalReturn = totalCost > 0 ? (totalPnL / totalCost) * 100 : 0;
+            const elTotal = document.getElementById('yield-total-return');
+            const elPnl = document.getElementById('yield-total-pnl');
+            const elDiv = document.getElementById('yield-dividend-total');
+            const elAlpha = document.getElementById('yield-alpha');
+            if (elTotal) { elTotal.textContent = totalReturn.toFixed(2) + '%'; elTotal.style.color = totalReturn >= 0 ? '#2563eb' : '#dc2626'; }
+            if (elPnl) { elPnl.textContent = (totalPnL >= 0 ? '+' : '') + totalPnL.toFixed(2); elPnl.className = 'text-xl font-bold mono ' + (totalPnL >= 0 ? 'text-blue-600' : 'text-red-600'); }
+            if (elDiv) elDiv.textContent = '+' + totalDividend.toFixed(2);
+            if (elAlpha) { const alpha = totalReturn - 2.5; elAlpha.textContent = (alpha >= 0 ? '+' : '') + alpha.toFixed(2) + '%'; elAlpha.className = 'font-bold mono ' + (alpha >= 0 ? 'text-green-600' : 'text-red-600'); }
+            renderYieldWaterfall(positions, totalCost, totalValue, totalDividend);
+        }
+        function renderYieldWaterfall(positions, totalCost, totalValue, totalDividend) {
+            const dom = document.getElementById('yield-waterfall-chart');
+            if (!dom) return;
+            if (!positions.length) { dom.innerHTML = '<div class="text-center text-gray-400 py-10">请添加持仓记录</div>'; return; }
+            const categories = positions.map(p => p.name.replace(/REIT/g, '').slice(0, 6));
+            categories.push('分红', '总收益');
+            const data = positions.map(p => ({ value: parseFloat((p.value - p.cost).toFixed(2)), itemStyle: { color: p.pnl >= 0 ? '#3b82f6' : '#ef4444' } }));
+            data.push({ value: parseFloat(totalDividend.toFixed(2)), itemStyle: { color: '#10b981' } });
+            const totalPnL = parseFloat((totalValue - totalCost + totalDividend).toFixed(2));
+            data.push({ value: totalPnL, itemStyle: { color: totalPnL >= 0 ? '#7c3aed' : '#dc2626' } });
+            if (yieldWaterfallChart) yieldWaterfallChart.dispose();
+            yieldWaterfallChart = echarts.init(dom);
+            yieldWaterfallChart.setOption({
+                tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: function(p) { return p[0].name + '<br/>' + (p[0].value >= 0 ? '+' : '') + p[0].value + '元'; } },
+                grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+                xAxis: { type: 'category', data: categories, axisLabel: { fontSize: 11, color: '#64748b', rotate: 15 }, axisLine: { lineStyle: { color: '#e2e8f0' } } },
+                yAxis: { type: 'value', name: '金额(元)', axisLabel: { fontSize: 11, color: '#64748b' }, splitLine: { lineStyle: { color: '#f1f5f9' } } },
+                series: [{ type: 'bar', data: data, barWidth: '50%', label: { show: true, position: 'top', formatter: function(p) { return (p.value >= 0 ? '+' : '') + p.value; }, fontSize: 11, color: '#475569' } }]
+            });
         }
 
-        // 估值计算
-        function calculateValuation() {
+        async function calculateValuation() {
             const code = document.getElementById('valuation-fund').value;
             const emptyState = document.getElementById('valuation-empty');
             const resultState = document.getElementById('valuation-result');
-            
-            if (!code) {
-                if (emptyState) emptyState.classList.remove('hidden');
-                if (resultState) resultState.classList.add('hidden');
-                return;
-            }
-            
+            if (!code) { if (emptyState) emptyState.classList.remove('hidden'); if (resultState) resultState.classList.add('hidden'); return; }
             if (emptyState) emptyState.classList.add('hidden');
             if (resultState) resultState.classList.remove('hidden');
-            
-            const fund = ALL_FUNDS.find(f => f.code === code);
-            if (fund) {
-                document.getElementById('current-price').value = fund.price.toFixed(2);
-                document.getElementById('nav-value').value = fund.nav.toFixed(2);
-                
-                // 自动估算FFO
-                const isTransport = fund.sector === 'transport';
-                const ffoEstimate = fund.yield * (isTransport ? 0.015 : 0.012); // 经营权1.5倍，产权1.2倍
-                document.getElementById('ffo').value = ffoEstimate.toFixed(4);
-                document.getElementById('ffo-auto-tag').textContent = isTransport ? '经营权估算' : '产权类估算';
+            const fund = toolsFundsData.find(f => f.code === code);
+            const q = realtimeQuotes[code];
+            const price = q && q.price > 0 ? q.price : (fund && fund.price > 0 ? fund.price : 0);
+            const nav = q && q.nav > 0 ? q.nav : (fund && fund.nav > 0 ? fund.nav : price * 0.95);
+            const yieldRate = q && q.yield !== undefined ? q.yield : (fund && fund.yield > 0 ? fund.yield : 4.5);
+            document.getElementById('current-price').value = price > 0 ? price.toFixed(3) : '';
+            document.getElementById('nav-value').value = nav > 0 ? nav.toFixed(3) : '';
+            const isTransport = fund && (fund.sector === 'transport' || fund.propertyType === '收费公路');
+            const ffoEstimate = yieldRate > 0 ? price * yieldRate / 100 * (isTransport ? 1.5 : 1.2) : 0;
+            document.getElementById('ffo').value = ffoEstimate > 0 ? ffoEstimate.toFixed(4) : '';
+            document.getElementById('ffo-auto-tag').textContent = isTransport ? '经营权估算' : '产权类估算';
+            const d1 = price * yieldRate / 100;
+            document.getElementById('dcf-dividend').value = d1 > 0 ? d1.toFixed(4) : '';
+            calculateDCF();
+            const ffo = parseFloat(document.getElementById('ffo').value) || ffoEstimate;
+            const premium = nav > 0 ? ((price - nav) / nav * 100) : 0;
+            const pFfo = ffo > 0 ? (price / ffo) : 0;
+            document.getElementById('premium-rate').textContent = (premium >= 0 ? '+' : '') + premium.toFixed(2) + '%';
+            document.getElementById('premium-rate').className = 'text-xl font-bold mono ' + (premium >= 0 ? 'text-red-600' : 'text-green-600');
+            document.getElementById('p-ffo').textContent = pFfo > 0 ? pFfo.toFixed(2) : '--';
+            document.getElementById('val-yield-rate').textContent = yieldRate.toFixed(2) + '%';
+            let score = 50;
+            if (pFfo > 0) score -= Math.min(30, Math.max(-20, (pFfo - 20) * 2));
+            score -= Math.min(20, Math.max(-15, premium * 0.8));
+            score += Math.min(20, (yieldRate - 4) * 3);
+            score = Math.max(0, Math.min(100, Math.round(score)));
+            const scoreEl = document.getElementById('val-score');
+            const scoreLabel = document.getElementById('val-score-label');
+            const scoreBar = document.getElementById('val-score-bar');
+            const scoreRing = document.getElementById('v-score-ring');
+            if (scoreEl) scoreEl.textContent = score;
+            if (scoreLabel) {
+                let label = '', cls = '';
+                if (score >= 70) { label = '低估'; cls = 'bg-green-100 text-green-700'; }
+                else if (score >= 45) { label = '合理'; cls = 'bg-blue-100 text-blue-700'; }
+                else if (score >= 25) { label = '偏高'; cls = 'bg-orange-100 text-orange-700'; }
+                else { label = '高估'; cls = 'bg-red-100 text-red-700'; }
+                scoreLabel.textContent = label; scoreLabel.className = 'text-[11px] inline-block px-2 py-0.5 rounded ' + cls;
             }
-
-            const price = parseFloat(document.getElementById('current-price').value) || 0;
-            const nav = parseFloat(document.getElementById('nav-value').value) || 0;
-            const ffo = parseFloat(document.getElementById('ffo').value) || 0;
-
-            const premium = nav > 0 ? ((price - nav) / nav * 100).toFixed(2) : '0.00';
-            const pFfo = ffo > 0 ? (price / ffo).toFixed(2) : '--';
-
-            document.getElementById('premium-rate').textContent = (parseFloat(premium) >= 0 ? '+' : '') + premium + '%';
-            document.getElementById('p-ffo').textContent = pFfo;
-
-            let rating = '';
-            if (pFfo !== '--') {
-                const pffoVal = parseFloat(pFfo);
-                if (pffoVal < 15) rating = '📈 低估 ⭐⭐⭐';
-                else if (pffoVal < 20) rating = '📊 合理 ⭐⭐';
-                else if (pffoVal < 25) rating = '📉 偏高 ⭐';
-                else rating = '⚠️ 高估';
-            } else {
-                rating = '请输入FFO数据';
-            }
-            document.getElementById('valuation-rating').textContent = rating;
+            if (scoreBar) scoreBar.style.width = score + '%';
+            if (scoreRing) scoreRing.setAttribute('stroke-dasharray', score + ', 100');
+            let history = await fetchPriceHistory(code);
+            if (!history || history.length < 10) history = generateMockPriceHistory(code, 200);
+            const valuations = history.map(h => {
+                const p = h.price || h.close_price || 0;
+                const n = h.nav || nav || p * 0.95;
+                const pr = n > 0 ? ((p - n) / n * 100) : 0;
+                return { date: h.date, premium: parseFloat(pr.toFixed(2)), price: p, pFfo: pFfo > 0 ? pFfo * (p / price) : 0 };
+            });
+            const premiums = valuations.map(v => v.premium);
+            const currPct = percentile(premiums, premium);
+            document.getElementById('val-curr-pct').textContent = currPct.toFixed(1) + '%';
+            document.getElementById('val-med-pct').textContent = median(premiums).toFixed(2) + '%';
+            document.getElementById('val-min-pct').textContent = Math.min(...premiums).toFixed(2) + '%';
+            document.getElementById('val-max-pct').textContent = Math.max(...premiums).toFixed(2) + '%';
+            document.getElementById('p-ffo-percentile-tag').textContent = '历史' + currPct.toFixed(0) + '%分位';
+            // 子评分（currPct 计算完成后更新）
+            const scorePffo = Math.max(0, Math.min(100, Math.round(100 - Math.abs(pFfo - 20) * 4)));
+            const scorePrem = Math.max(0, Math.min(100, Math.round(100 - Math.abs(premium) * 6)));
+            const scoreYield = Math.max(0, Math.min(100, Math.round(yieldRate / 7 * 100)));
+            const scoreHist = Math.max(0, Math.min(100, Math.round(100 - currPct)));
+            const subScores = [
+                { id: 'v-score-pffo', bar: 'v-bar-pffo', val: scorePffo },
+                { id: 'v-score-prem', bar: 'v-bar-prem', val: scorePrem },
+                { id: 'v-score-yield', bar: 'v-bar-yield', val: scoreYield },
+                { id: 'v-score-perc', bar: 'v-bar-perc', val: scoreHist }
+            ];
+            subScores.forEach(s => {
+                const el = document.getElementById(s.id);
+                const bar = document.getElementById(s.bar);
+                if (el) el.textContent = s.val;
+                if (bar) bar.style.width = s.val + '%';
+            });
+            renderValuationTrend(valuations);
+            renderValuationSector(code, pFfo);
         }
-
-        // 折溢价分析
-        let premiumChart = null;
-        function analyzePremium() {
-            const code = document.getElementById('premium-fund').value;
-            const emptyState = document.getElementById('premium-empty');
-            const resultState = document.getElementById('premium-result');
-            
-            if (!code) {
-                if (emptyState) emptyState.classList.remove('hidden');
-                if (resultState) resultState.classList.add('hidden');
-                return;
+        function calculateDCF() {
+            const d1 = parseFloat(document.getElementById('dcf-dividend').value) || 0;
+            const r = (parseFloat(document.getElementById('dcf-rate').value) || 8) / 100;
+            const g = (parseFloat(document.getElementById('dcf-growth').value) || 2) / 100;
+            const price = parseFloat(document.getElementById('current-price').value) || 0;
+            const elVal = document.getElementById('dcf-value');
+            const elVs = document.getElementById('dcf-vs-price');
+            if (r <= g || d1 <= 0) { if (elVal) elVal.textContent = '--'; if (elVs) elVs.textContent = '--'; return; }
+            const value = d1 / (r - g);
+            if (elVal) elVal.textContent = value.toFixed(3) + '元';
+            if (elVs && price > 0) {
+                const diff = ((price - value) / value * 100);
+                elVs.textContent = diff > 0 ? '当前溢价 ' + diff.toFixed(1) + '%' : '当前折价 ' + Math.abs(diff).toFixed(1) + '%';
+                elVs.className = 'text-xs mt-1 ' + (diff > 0 ? 'text-red-500' : 'text-green-600');
             }
-            
-            if (emptyState) emptyState.classList.add('hidden');
-            if (resultState) resultState.classList.remove('hidden');
-
-            const fund = ALL_FUNDS.find(f => f.code === code);
-            if (!fund) return;
-
-            const currentPremium = fund.premium;
-            const avgPremium = (Math.random() * 8 - 3);
-
-            document.getElementById('current-premium').textContent = (currentPremium >= 0 ? '+' : '') + currentPremium.toFixed(2) + '%';
-            document.getElementById('current-premium').className = 'text-2xl font-bold mono ' + (currentPremium >= 0 ? 'text-red-600' : 'text-green-600');
-            document.getElementById('avg-premium').textContent = (avgPremium >= 0 ? '+' : '') + avgPremium.toFixed(2) + '%';
-
-            let suggestion = '';
-            let sugClass = '';
-            if (currentPremium > 10) {
-                suggestion = '⚠️ 溢价过高，建议谨慎';
-                sugClass = 'text-red-600';
-            } else if (currentPremium > 5) {
-                suggestion = '📊 小幅溢价，可观望';
-                sugClass = 'text-orange-500';
-            } else if (currentPremium > -5) {
-                suggestion = '✅ 折溢价合理，可关注';
-                sugClass = 'text-blue-600';
-            } else {
-                suggestion = '📈 折价明显，可考虑布局';
-                sugClass = 'text-green-600';
-            }
-            const sugEl = document.getElementById('premium-suggestion');
-            sugEl.textContent = suggestion;
-            sugEl.className = 'text-xl font-bold ' + sugClass;
-
-            // 模拟30天历史折溢价数据
-            const dates = [];
-            const premiums = [];
-            for (let i = 0; i < 30; i++) {
-                const date = new Date();
-                date.setDate(date.getDate() - (29 - i));
-                dates.push(date.toISOString().slice(5, 10));
-                premiums.push(parseFloat((avgPremium + (Math.random() - 0.5) * 6).toFixed(2)));
-            }
-
-            if (premiumChart) premiumChart.dispose();
-            premiumChart = echarts.init(document.getElementById('premium-chart'));
-            premiumChart.setOption({
-                tooltip: { trigger: 'axis', formatter: '{b}<br/>溢价率: {c}%' },
+        }
+        function renderValuationTrend(valuations) {
+            const dom = document.getElementById('valuation-trend-chart');
+            if (!dom) return;
+            if (valuationTrendChart) valuationTrendChart.dispose();
+            valuationTrendChart = echarts.init(dom);
+            const slice = valuations.slice(-120);
+            const dates = slice.map(v => v.date.slice(5));
+            const data = slice.map(v => v.premium);
+            const yMin = Math.floor(Math.min(...data) * 0.95);
+            const yMax = Math.ceil(Math.max(...data) * 1.05);
+            valuationTrendChart.setOption({
+                tooltip: { trigger: 'axis', formatter: function(p) { return p[0].name + '<br/>溢价率: ' + p[0].value + '%'; } },
                 grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
-                xAxis: { type: 'category', boundaryGap: false, data: dates, axisLabel: { fontSize: 11, color: '#64748b' }, axisLine: { lineStyle: { color: '#e2e8f0' } } },
-                yAxis: { type: 'value', name: '溢价率(%)', axisLabel: { fontSize: 11, color: '#64748b', formatter: '{value}%' }, splitLine: { lineStyle: { color: '#f1f5f9' } } },
-                series: [{
-                    type: 'line',
-                    data: premiums,
-                    smooth: true,
-                    symbol: 'none',
-                    lineStyle: { color: '#3b82f6', width: 2 },
-                    areaStyle: {
-                        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                            { offset: 0, color: 'rgba(59,130,246,0.25)' },
-                            { offset: 1, color: 'rgba(59,130,246,0.02)' }
-                        ])
-                    }
-                }]
+                xAxis: { type: 'category', data: dates, axisLabel: { fontSize: 10, color: '#64748b' }, axisLine: { lineStyle: { color: '#e2e8f0' } } },
+                yAxis: { type: 'value', name: '溢价率%', min: yMin, max: yMax, axisLabel: { fontSize: 10, color: '#64748b', formatter: '{value}%' }, splitLine: { lineStyle: { color: '#f1f5f9' } } },
+                series: [{ type: 'line', data: data, smooth: true, symbol: 'none', lineStyle: { color: '#3b82f6', width: 2 }, areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: 'rgba(59,130,246,0.2)' }, { offset: 1, color: 'rgba(59,130,246,0.02)' }]) } }]
+            });
+        }
+        function renderValuationSector(currentCode, currentPFfo) {
+            const dom = document.getElementById('valuation-sector-chart');
+            if (!dom) return;
+            const fund = toolsFundsData.find(f => f.code === currentCode);
+            if (!fund) return;
+            const sectorFunds = toolsFundsData.filter(f => f.sector === fund.sector);
+            const data = sectorFunds.map(f => {
+                const q = realtimeQuotes[f.code];
+                const price = q && q.price > 0 ? q.price : (f.price > 0 ? f.price : 0);
+                const nav = q && q.nav > 0 ? q.nav : (f.nav > 0 ? f.nav : price * 0.95);
+                const yieldRate = q && q.yield !== undefined ? q.yield : (f.yield > 0 ? f.yield : 4.5);
+                const isT = f.sector === 'transport' || f.propertyType === '收费公路';
+                const ffo = price * yieldRate / 100 * (isT ? 1.5 : 1.2);
+                const pFfo = ffo > 0 ? price / ffo : 0;
+                return { name: f.name.replace(/REITs?/g, '').replace(/基础设施/g, '').slice(0, 4), value: parseFloat(pFfo.toFixed(2)), highlight: f.code === currentCode };
+            }).filter(d => d.value > 0).sort((a, b) => b.value - a.value).slice(0, 8);
+            if (valuationSectorChart) valuationSectorChart.dispose();
+            valuationSectorChart = echarts.init(dom);
+            valuationSectorChart.setOption({
+                tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: function(p) { return p[0].name + '<br/>P/FFO: ' + p[0].value; } },
+                grid: { left: '12%', right: '8%', bottom: '3%', containLabel: true },
+                xAxis: { type: 'value', axisLabel: { fontSize: 10, color: '#64748b' }, splitLine: { lineStyle: { color: '#f1f5f9' } } },
+                yAxis: { type: 'category', data: data.map(d => d.name), axisLabel: { fontSize: 9, color: '#64748b' }, axisLine: { lineStyle: { color: '#e2e8f0' } }, inverse: true },
+                series: [{ type: 'bar', data: data.map(d => ({ value: d.value, itemStyle: { color: d.highlight ? '#3b82f6' : '#94a3b8' } })), barWidth: '55%', label: { show: true, position: 'right', fontSize: 10, color: '#475569' } }]
             });
         }
 
-        // 业绩归因
-        let attributionChart = null;
-        function analyzeAttribution() {
+        async function analyzePremium() {
+            const code = document.getElementById('premium-fund').value;
+            if (!code) return;
+            const fund = toolsFundsData.find(f => f.code === code);
+            const q = realtimeQuotes[code];
+            const currentPrice = q && q.price > 0 ? q.price : (fund && fund.price > 0 ? fund.price : 0);
+            const nav = q && q.nav > 0 ? q.nav : (fund && fund.nav > 0 ? fund.nav : currentPrice * 0.95);
+            const currentPremium = nav > 0 ? ((currentPrice - nav) / nav * 100) : 0;
+            let history = await fetchPriceHistory(code);
+            if (!history || history.length < 10) history = generateMockPriceHistory(code, 200);
+            const premiums = history.map(h => {
+                const p = h.price || h.close_price || 0;
+                const n = h.nav || nav || p * 0.95;
+                return n > 0 ? parseFloat(((p - n) / n * 100).toFixed(2)) : 0;
+            });
+            const avg = premiums.reduce((a, b) => a + b, 0) / premiums.length;
+            const sorted = [...premiums].sort((a, b) => a - b);
+            const minP = sorted[0], maxP = sorted[sorted.length - 1];
+            const q25 = sorted[Math.floor(sorted.length * 0.25)];
+            const q50 = sorted[Math.floor(sorted.length * 0.5)];
+            const q75 = sorted[Math.floor(sorted.length * 0.75)];
+            const pct = percentile(premiums, currentPremium);
+            document.getElementById('current-premium').textContent = (currentPremium >= 0 ? '+' : '') + currentPremium.toFixed(2) + '%';
+            document.getElementById('current-premium').className = 'text-base font-bold mono ' + (currentPremium >= 0 ? 'text-red-600' : 'text-green-600');
+            document.getElementById('premium-percentile').textContent = pct.toFixed(1) + '%';
+            document.getElementById('premium-avg').textContent = (avg >= 0 ? '+' : '') + avg.toFixed(2) + '%';
+            document.getElementById('premium-q25').textContent = q25.toFixed(2) + '%';
+            document.getElementById('premium-q50').textContent = q50.toFixed(2) + '%';
+            document.getElementById('premium-q75').textContent = q75.toFixed(2) + '%';
+            document.getElementById('premium-min').textContent = minP.toFixed(2) + '%';
+            document.getElementById('premium-max').textContent = maxP.toFixed(2) + '%';
+            const sugEl = document.getElementById('premium-suggestion');
+            const sugDet = document.getElementById('premium-suggestion-detail');
+            let suggestion = '', detail = '', color = '';
+            if (pct > 80) { suggestion = '⚠️ 溢价过高'; detail = '当前溢价率处于历史' + pct.toFixed(0) + '%分位，显著高于平均水平，建议谨慎观望或考虑减持。'; color = 'text-red-600'; }
+            else if (pct > 60) { suggestion = '📊 小幅溢价'; detail = '当前处于中等偏高的溢价水平，可继续持有但不宜追高。'; color = 'text-orange-500'; }
+            else if (pct > 40) { suggestion = '✅ 估值合理'; detail = '当前折溢价处于历史中枢附近，可关注。'; color = 'text-blue-600'; }
+            else if (pct > 20) { suggestion = '📈 轻微折价'; detail = '当前存在一定折价，可考虑布局。'; color = 'text-teal-600'; }
+            else { suggestion = '🚀 深度折价'; detail = '当前溢价率处于历史' + pct.toFixed(0) + '%分位，折价明显，具备较高安全边际。'; color = 'text-green-600'; }
+            if (sugEl) { sugEl.textContent = suggestion; sugEl.className = 'text-base font-bold ' + color; }
+            if (sugDet) sugDet.textContent = detail;
+            renderPremiumChart(history, nav, currentPremium);
+            renderPremiumSectorChart(code, currentPremium);
+        }
+        function renderPremiumChart(history, nav, currentPremium) {
+            const dom = document.getElementById('premium-chart');
+            if (!dom) return;
+            const data = history.map(h => {
+                const p = h.price || h.close_price || 0;
+                const n = h.nav || nav || p * 0.95;
+                return n > 0 ? parseFloat(((p - n) / n * 100).toFixed(2)) : 0;
+            });
+            const dates = history.map(h => h.date.slice(5));
+            const yMin = Math.floor(Math.min(...data) * 0.98);
+            const yMax = Math.ceil(Math.max(...data) * 1.02);
+            if (premiumChart) premiumChart.dispose();
+            premiumChart = echarts.init(dom);
+            premiumChart.setOption({
+                tooltip: { trigger: 'axis', formatter: function(p) { return p[0].name + '<br/>溢价率: ' + p[0].value + '%'; } },
+                grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+                xAxis: { type: 'category', data: dates, axisLabel: { fontSize: 10, color: '#64748b' }, axisLine: { lineStyle: { color: '#e2e8f0' } } },
+                yAxis: { type: 'value', name: '溢价率%', min: yMin, max: yMax, axisLabel: { fontSize: 10, color: '#64748b', formatter: '{value}%' }, splitLine: { lineStyle: { color: '#f1f5f9' } } },
+                visualMap: { show: false, dimension: 1, pieces: [{ lte: 0, color: '#10b981' }, { gt: 0, lte: 5, color: '#3b82f6' }, { gt: 5, color: '#ef4444' }] },
+                series: [{ type: 'line', data: data, smooth: true, symbol: 'none', lineStyle: { width: 2 }, areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: 'rgba(59,130,246,0.15)' }, { offset: 1, color: 'rgba(59,130,246,0.02)' }]) }, markLine: { silent: true, data: [{ yAxis: 0, lineStyle: { color: '#94a3b8', type: 'dashed' } }] } }]
+            });
+        }
+        function renderPremiumSectorChart(currentCode, currentPremium) {
+            const dom = document.getElementById('premium-sector-chart');
+            if (!dom) return;
+            const fund = toolsFundsData.find(f => f.code === currentCode);
+            if (!fund) return;
+            const sectorFunds = toolsFundsData.filter(f => f.sector === fund.sector);
+            const data = sectorFunds.map(f => {
+                const q = realtimeQuotes[f.code];
+                const price = q && q.price > 0 ? q.price : (f.price > 0 ? f.price : 0);
+                const nav = q && q.nav > 0 ? q.nav : (f.nav > 0 ? f.nav : price * 0.95);
+                const pr = nav > 0 ? ((price - nav) / nav * 100) : 0;
+                return { name: f.name.replace(/REITs?/g, '').replace(/基础设施/g, '').slice(0, 4), value: parseFloat(pr.toFixed(2)), highlight: f.code === currentCode };
+            }).filter(d => !isNaN(d.value)).slice(0, 8);
+            if (premiumSectorChart) premiumSectorChart.dispose();
+            premiumSectorChart = echarts.init(dom);
+            premiumSectorChart.setOption({
+                tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: function(p) { return p[0].name + '<br/>溢价率: ' + (p[0].value >= 0 ? '+' : '') + p[0].value + '%'; } },
+                grid: { left: '12%', right: '8%', bottom: '3%', containLabel: true },
+                xAxis: { type: 'value', axisLabel: { fontSize: 10, color: '#64748b', formatter: '{value}%' }, splitLine: { lineStyle: { color: '#f1f5f9' } } },
+                yAxis: { type: 'category', data: data.map(d => d.name), axisLabel: { fontSize: 9, color: '#64748b' }, axisLine: { lineStyle: { color: '#e2e8f0' } }, inverse: true },
+                series: [{ type: 'bar', data: data.map(d => ({ value: d.value, itemStyle: { color: d.highlight ? '#3b82f6' : (d.value >= 0 ? '#f87171' : '#34d399') } })), barWidth: '60%', label: { show: true, position: 'right', fontSize: 10, color: '#475569', formatter: function(p) { return (p.value >= 0 ? '+' : '') + p.value + '%'; } } }]
+            });
+        }
+
+        async function analyzeAttribution() {
             const code = document.getElementById('attribution-fund').value;
+            const period = document.getElementById('attribution-period').value;
+            const benchmark = document.getElementById('attribution-benchmark').value;
             const emptyState = document.getElementById('attribution-empty');
             const resultState = document.getElementById('attribution-result');
             const typeHint = document.getElementById('attribution-type-hint');
             const sectorName = document.getElementById('attribution-sector-name');
-            
-            if (!code) {
-                if (emptyState) emptyState.classList.remove('hidden');
-                if (resultState) resultState.classList.add('hidden');
-                if (typeHint) typeHint.classList.add('hidden');
-                return;
-            }
-            
+            if (!code) { if (emptyState) emptyState.classList.remove('hidden'); if (resultState) resultState.classList.add('hidden'); if (typeHint) typeHint.classList.add('hidden'); return; }
             if (emptyState) emptyState.classList.add('hidden');
             if (resultState) resultState.classList.remove('hidden');
             if (typeHint) typeHint.classList.remove('hidden');
-
-            const period = document.getElementById('attribution-period').value;
-            const fund = ALL_FUNDS.find(f => f.code === code);
-            if (!fund) return;
-            
-            // 显示资产类型
-            if (sectorName) sectorName.textContent = fund.sectorName;
-
-            // 根据资产类型区分归因项
-            const isTransport = fund.sector === 'transport';
-            const isEnergy = fund.sector === 'energy';
-            const isEco = fund.sector === 'eco';
-            const isProperty = !isTransport && !isEnergy && !isEco;
-            
-            let data, summary;
-            
-            if (isTransport) {
-                // 经营权类（交通）归因
-                const trafficGrowth = 25 + Math.random() * 15;
-                const tollRate = 15 + Math.random() * 10;
-                const costControl = 10 + Math.random() * 8;
-                const leverage = 8 + Math.random() * 7;
-                const other = 100 - trafficGrowth - tollRate - costControl - leverage;
-                
-                data = [
-                    { name: '车流量增长', value: parseFloat(trafficGrowth.toFixed(2)), itemStyle: { color: '#3b82f6' } },
-                    { name: '费率调整', value: parseFloat(tollRate.toFixed(2)), itemStyle: { color: '#10b981' } },
-                    { name: '成本控制', value: parseFloat(costControl.toFixed(2)), itemStyle: { color: '#f59e0b' } },
-                    { name: '杠杆效应', value: parseFloat(leverage.toFixed(2)), itemStyle: { color: '#8b5cf6' } },
-                    { name: '其他因素', value: parseFloat(other.toFixed(2)), itemStyle: { color: '#ec4899' } }
-                ];
-                summary = `<span class="font-medium text-gray-900">${fund.name}</span> 近<span class="font-medium text-gray-900">${period}</span>年收益主要来源于` +
-                    `车流量增长（<span class="font-medium text-blue-600">${trafficGrowth.toFixed(2)}%</span>）和费率调整（<span class="font-medium text-green-600">${tollRate.toFixed(2)}%</span>），` +
-                    `成本控制贡献<span class="font-medium text-amber-500">${costControl.toFixed(2)}%</span>，杠杆效应贡献<span class="font-medium text-purple-600">${leverage.toFixed(2)}%</span>。`;
-            } else if (isEnergy || isEco) {
-                // 能源/环保类归因
-                const outputGrowth = 22 + Math.random() * 15;
-                const priceChange = 18 + Math.random() * 12;
-                const efficiency = 12 + Math.random() * 8;
-                const subsidy = 10 + Math.random() * 6;
-                const other = 100 - outputGrowth - priceChange - efficiency - subsidy;
-                
-                data = [
-                    { name: '发电量/处理量', value: parseFloat(outputGrowth.toFixed(2)), itemStyle: { color: '#3b82f6' } },
-                    { name: '电价/处理费', value: parseFloat(priceChange.toFixed(2)), itemStyle: { color: '#10b981' } },
-                    { name: '能效提升', value: parseFloat(efficiency.toFixed(2)), itemStyle: { color: '#f59e0b' } },
-                    { name: '补贴收益', value: parseFloat(subsidy.toFixed(2)), itemStyle: { color: '#8b5cf6' } },
-                    { name: '其他因素', value: parseFloat(other.toFixed(2)), itemStyle: { color: '#ec4899' } }
-                ];
-                summary = `<span class="font-medium text-gray-900">${fund.name}</span> 近<span class="font-medium text-gray-900">${period}</span>年收益主要来源于` +
-                    `发电量/处理量增长（<span class="font-medium text-blue-600">${outputGrowth.toFixed(2)}%</span>）和电价/处理费调整（<span class="font-medium text-green-600">${priceChange.toFixed(2)}%</span>），` +
-                    `能效提升贡献<span class="font-medium text-amber-500">${efficiency.toFixed(2)}%</span>，补贴收益贡献<span class="font-medium text-purple-600">${subsidy.toFixed(2)}%</span>。`;
-            } else {
-                // 产权类（物流/产业园/商业等）归因
-                const rentGrowth = 20 + Math.random() * 15;
-                const occupancyRate = 15 + Math.random() * 10;
-                const capRateChange = -10 + Math.random() * 15;
-                const leverageEffect = 5 + Math.random() * 10;
-                const other = 100 - rentGrowth - occupancyRate - capRateChange - leverageEffect;
-                
-                data = [
-                    { name: '租金增长', value: parseFloat(rentGrowth.toFixed(2)), itemStyle: { color: '#3b82f6' } },
-                    { name: '出租率变化', value: parseFloat(occupancyRate.toFixed(2)), itemStyle: { color: '#10b981' } },
-                    { name: '资本化率变动', value: parseFloat(capRateChange.toFixed(2)), itemStyle: { color: '#f59e0b' } },
-                    { name: '杠杆效应', value: parseFloat(leverageEffect.toFixed(2)), itemStyle: { color: '#8b5cf6' } },
-                    { name: '其他因素', value: parseFloat(other.toFixed(2)), itemStyle: { color: '#ec4899' } }
-                ];
-                summary = `<span class="font-medium text-gray-900">${fund.name}</span> 近<span class="font-medium text-gray-900">${period}</span>年收益主要来源于` +
-                    `租金增长（<span class="font-medium text-blue-600">${rentGrowth.toFixed(2)}%</span>）和出租率提升（<span class="font-medium text-green-600">${occupancyRate.toFixed(2)}%</span>），` +
-                    `资本化率变动贡献<span class="font-medium text-amber-500">${capRateChange.toFixed(2)}%</span>，杠杆效应贡献<span class="font-medium text-purple-600">${leverageEffect.toFixed(2)}%</span>。`;
+            const fund = toolsFundsData.find(f => f.code === code);
+            if (sectorName) sectorName.textContent = fund ? (SECTOR_CONFIG[fund.sector]?.name || fund.sectorName || fund.sector) : '--';
+            let history = await fetchPriceHistory(code);
+            if (!history || history.length < 30) history = generateMockPriceHistory(code, 250);
+            const today = new Date();
+            let startDate = new Date(today);
+            if (period === '1m') startDate.setMonth(startDate.getMonth() - 1);
+            else if (period === '3m') startDate.setMonth(startDate.getMonth() - 3);
+            else if (period === '6m') startDate.setMonth(startDate.getMonth() - 6);
+            else if (period === '1y') startDate.setFullYear(startDate.getFullYear() - 1);
+            else if (period === '2y') startDate.setFullYear(startDate.getFullYear() - 2);
+            else if (period === 'ytd') startDate = new Date(today.getFullYear(), 0, 1);
+            let rangeHistory = history.filter(h => new Date(h.date) >= startDate);
+            if (rangeHistory.length < 5) rangeHistory = history.slice(-30);
+            const startPrice = rangeHistory[0]?.price || rangeHistory[0]?.close_price || 0;
+            const endPrice = rangeHistory[rangeHistory.length - 1]?.price || rangeHistory[rangeHistory.length - 1]?.close_price || 0;
+            const fundReturn = startPrice > 0 ? ((endPrice - startPrice) / startPrice * 100) : 0;
+            const prices = rangeHistory.map(h => h.price || h.close_price || 0).filter(p => p > 0);
+            const returns = []; for (let i = 1; i < prices.length; i++) returns.push((prices[i] - prices[i-1]) / prices[i-1]);
+            const vol = returns.length > 1 ? (stdDev(returns) * Math.sqrt(252) * 100) : 15;
+            let mdd = 0, peak = prices[0] || 1;
+            for (const p of prices) { if (p > peak) peak = p; const dd = (peak - p) / peak * 100; if (dd > mdd) mdd = dd; }
+            const sharpe = vol > 0 ? ((fundReturn / (rangeHistory.length / 252)) - 2.5) / vol : 0;
+            let benchReturn = 0;
+            if (benchmark === 'bond') benchReturn = 2.5 * (rangeHistory.length / 252);
+            else if (benchmark === 'market') { benchReturn = fundReturn * 0.85 + (Math.random() - 0.5) * 5; }
+            else {
+                const sectorFunds = toolsFundsData.filter(f => f.sector === fund.sector && f.code !== code);
+                if (sectorFunds.length > 0) benchReturn = sectorFunds.reduce((sum, f) => sum + (f.change || 0), 0) / sectorFunds.length;
+                else benchReturn = fundReturn * 0.8;
             }
-
+            const alpha = fundReturn - benchReturn;
+            document.getElementById('attr-return').textContent = fundReturn.toFixed(2) + '%';
+            document.getElementById('attr-return').className = 'font-bold mono ' + (fundReturn >= 0 ? 'text-red-600' : 'text-green-600');
+            document.getElementById('attr-bench').textContent = benchReturn.toFixed(2) + '%';
+            document.getElementById('attr-alpha').textContent = (alpha >= 0 ? '+' : '') + alpha.toFixed(2) + '%';
+            document.getElementById('attr-alpha').className = 'font-bold mono ' + (alpha >= 0 ? 'text-green-600' : 'text-red-600');
+            document.getElementById('attr-vol').textContent = vol.toFixed(2) + '%';
+            document.getElementById('attr-mdd').textContent = '-' + mdd.toFixed(2) + '%';
+            document.getElementById('attr-sharpe').textContent = sharpe.toFixed(2);
+            document.getElementById('attr-sharpe').className = 'font-medium mono ' + (sharpe >= 0 ? 'text-green-600' : 'text-red-600');
+            const infoRatio = vol > 0 ? (alpha / (vol * 0.5)) : 0;
+            const sortino = vol > 0 ? ((fundReturn - 2.5) / (vol * 0.6)) : 0;
+            document.getElementById('attr-info').textContent = infoRatio.toFixed(2);
+            document.getElementById('attr-info').className = 'font-medium mono ' + (infoRatio >= 0 ? 'text-green-600' : 'text-red-600');
+            document.getElementById('attr-sortino').textContent = sortino.toFixed(2);
+            document.getElementById('attr-sortino').className = 'font-medium mono ' + (sortino >= 0 ? 'text-green-600' : 'text-red-600');
+            let riskLevel = '中等风险', riskColor = 'text-amber-600';
+            if (vol < 10 && mdd < 10) { riskLevel = '低风险'; riskColor = 'text-green-600'; }
+            else if (vol < 15 && mdd < 15) { riskLevel = '中低风险'; riskColor = 'text-teal-600'; }
+            else if (vol < 25 && mdd < 25) { riskLevel = '中等风险'; riskColor = 'text-amber-600'; }
+            else { riskLevel = '高风险'; riskColor = 'text-red-600'; }
+            const riskEl = document.getElementById('attr-risk-level');
+            if (riskEl) riskEl.innerHTML = '风险等级评估：<span class="font-bold ' + riskColor + '">' + riskLevel + '</span> · 年化波动 ' + vol.toFixed(1) + '% · 最大回撤 ' + mdd.toFixed(1) + '%';
+            const marketEffect = benchReturn * 0.6;
+            const sectorEffect = (benchReturn - marketEffect) * 0.8;
+            const selectionEffect = alpha;
+            const interaction = alpha - sectorEffect;
+            const attrData = [
+                { name: '市场收益 β', value: parseFloat(marketEffect.toFixed(2)), itemStyle: { color: '#3b82f6' } },
+                { name: '板块配置', value: parseFloat(sectorEffect.toFixed(2)), itemStyle: { color: '#10b981' } },
+                { name: '个股选择 α', value: parseFloat(selectionEffect.toFixed(2)), itemStyle: { color: '#f59e0b' } },
+                { name: '交互效应', value: parseFloat(interaction.toFixed(2)), itemStyle: { color: '#8b5cf6' } }
+            ].filter(d => Math.abs(d.value) > 0.01);
+            renderAttributionPie(attrData);
+            renderAttributionTrend(rangeHistory, fund, benchmark);
+            const summary = document.getElementById('attribution-summary');
+            if (summary) {
+                const periodText = { '1m': '1个月', '3m': '3个月', '6m': '6个月', '1y': '1年', '2y': '2年', 'ytd': '今年以来' }[period];
+                const benchName = { 'sector': '同板块均值', 'market': '全市场均值', 'bond': '10年期国债' }[benchmark];
+                let text = '<p class="mb-2"><span class="font-semibold">' + fund.name + '</span> 在<span class="font-medium">' + periodText + '</span>内实现收益 <span class="font-bold ' + (fundReturn >= 0 ? 'text-red-600' : 'text-green-600') + '">' + fundReturn.toFixed(2) + '%</span>，';
+                text += '相对' + benchName + '的' + (alpha >= 0 ? '超额收益' : '落后') + '为 <span class="font-bold ' + (alpha >= 0 ? 'text-green-600' : 'text-red-600') + '">' + Math.abs(alpha).toFixed(2) + '%</span>。</p>';
+                text += '<p class="mb-2">从风险指标看，年化波动率为 ' + vol.toFixed(2) + '%，最大回撤 ' + mdd.toFixed(2) + '%，夏普比率 ' + sharpe.toFixed(2) + '。';
+                text += sharpe > 0.5 ? '风险调整后收益表现良好。' : (sharpe > 0 ? '风险调整后收益一般。' : '风险调整后收益较弱，需注意风险控制。');
+                text += '</p>';
+                if (Math.abs(selectionEffect) > Math.abs(sectorEffect)) {
+                    text += '<p>个股选择效应（α）是收益差异的主要来源，说明基金经理的主动管理能力' + (selectionEffect > 0 ? '较强' : '有待提升') + '。</p>';
+                } else {
+                    text += '<p>板块配置效应是收益差异的主要来源，说明' + (fund.sectorName || '该板块') + '的系统性走势对收益影响较大。</p>';
+                }
+                summary.innerHTML = text;
+            }
+        }
+        function renderAttributionPie(data) {
+            const dom = document.getElementById('attribution-chart');
+            if (!dom) return;
             if (attributionChart) attributionChart.dispose();
-            attributionChart = echarts.init(document.getElementById('attribution-chart'));
+            attributionChart = echarts.init(dom);
             attributionChart.setOption({
                 tooltip: { trigger: 'item', formatter: '{b}: {c}% ({d}%)' },
-                legend: { bottom: 0, icon: 'circle', itemGap: 16, textStyle: { color: '#475569' } },
-                series: [{
-                    type: 'pie',
-                    radius: ['40%', '65%'],
-                    center: ['50%', '45%'],
-                    itemStyle: { borderRadius: 6, borderColor: '#fff', borderWidth: 2 },
-                    label: { show: true, formatter: '{b}\n{d}%', color: '#475569' },
-                    data: data
-                }]
+                legend: { bottom: 0, icon: 'circle', itemGap: 12, textStyle: { fontSize: 10, color: '#475569' } },
+                series: [{ type: 'pie', radius: ['35%', '60%'], center: ['50%', '42%'], itemStyle: { borderRadius: 5, borderColor: '#fff', borderWidth: 2 }, label: { show: true, formatter: '{b}\\n{d}%', fontSize: 10, color: '#475569' }, data: data }]
             });
-
-            document.getElementById('attribution-summary').innerHTML = summary;
+        }
+        function renderAttributionTrend(history, fund, benchmark) {
+            const dom = document.getElementById('attribution-trend-chart');
+            if (!dom) return;
+            const dates = history.map(h => h.date.slice(5));
+            const prices = history.map(h => h.price || h.close_price || 0);
+            const base = prices[0] || 1;
+            const fundLine = prices.map(p => parseFloat(((p - base) / base * 100).toFixed(2)));
+            const benchLine = prices.map((p, i) => {
+                let drift = 0;
+                if (benchmark === 'bond') drift = 2.5 / 252 * i;
+                else if (benchmark === 'market') drift = fundLine[i] * 0.85 + (Math.sin(i * 0.1) * 1.5);
+                else drift = fundLine[i] * 0.9 + (Math.cos(i * 0.08) * 1.2);
+                return parseFloat(drift.toFixed(2));
+            });
+            if (attributionTrendChart) attributionTrendChart.dispose();
+            attributionTrendChart = echarts.init(dom);
+            attributionTrendChart.setOption({
+                tooltip: { trigger: 'axis', formatter: function(p) { let s = p[0].name; p.forEach(v => s += '<br/>' + v.marker + v.seriesName + ': ' + v.value + '%'); return s; } },
+                legend: { data: ['基金收益', '基准收益'], top: 0, textStyle: { fontSize: 11, color: '#64748b' } },
+                grid: { left: '3%', right: '4%', bottom: '3%', top: '30px', containLabel: true },
+                xAxis: { type: 'category', data: dates, axisLabel: { fontSize: 10, color: '#64748b' }, axisLine: { lineStyle: { color: '#e2e8f0' } } },
+                yAxis: { type: 'value', name: '收益率%', axisLabel: { fontSize: 10, color: '#64748b', formatter: '{value}%' }, splitLine: { lineStyle: { color: '#f1f5f9' } } },
+                series: [
+                    { name: '基金收益', type: 'line', data: fundLine, smooth: true, symbol: 'none', lineStyle: { color: '#3b82f6', width: 2 } },
+                    { name: '基准收益', type: 'line', data: benchLine, smooth: true, symbol: 'none', lineStyle: { color: '#94a3b8', width: 2, type: 'dashed' } }
+                ]
+            });
         }
 
-        // 事件绑定
-        document.querySelectorAll('.tab-btn').forEach(btn => {
-            btn.addEventListener('click', () => switchTab(btn.dataset.tab));
-        });
+        function exportReport() {
+            const wb = XLSX.utils.book_new();
+            wb.Props = { Title: 'REITs分析工具报告', Subject: 'REITs分析', Author: 'REITs数据平台', CreatedDate: new Date() };
+            const yieldRows = [['持仓分析']];
+            yieldRows.push(['基金名称', '买入成本', '当前市值', '分红收益', '总盈亏']);
+            document.querySelectorAll('#position-rows tr').forEach(row => {
+                const code = row.querySelector('.pos-fund')?.value;
+                const fund = toolsFundsData.find(f => f.code === code);
+                const name = fund ? fund.name : (code || '');
+                const buy = parseFloat(row.querySelector('.pos-buy')?.value) || 0;
+                const shares = parseFloat(row.querySelector('.pos-shares')?.value) || 0;
+                const sell = parseFloat(row.querySelector('.pos-sell')?.value) || 0;
+                const div = parseFloat(row.querySelector('.pos-dividend')?.value) || 0;
+                yieldRows.push([name, buy * shares, sell * shares, div * shares, (sell - buy + div) * shares]);
+            });
+            yieldRows.push([]); yieldRows.push(['指标', '数值']);
+            yieldRows.push(['总收益率', document.getElementById('yield-total-return')?.textContent || '--']);
+            yieldRows.push(['总盈亏', document.getElementById('yield-total-pnl')?.textContent || '--']);
+            yieldRows.push(['分红收益', document.getElementById('yield-dividend-total')?.textContent || '--']);
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(yieldRows), '收益率分析');
+            const valRows = [['基金', '当前价格', '单位净值', 'P/FFO', '溢价率', '股息率', '综合评分']];
+            valRows.push([
+                document.getElementById('valuation-fund')?.selectedOptions[0]?.text || '--',
+                document.getElementById('current-price')?.value || '--',
+                document.getElementById('nav-value')?.value || '--',
+                document.getElementById('p-ffo')?.textContent || '--',
+                document.getElementById('premium-rate')?.textContent || '--',
+                document.getElementById('val-yield-rate')?.textContent || '--',
+                document.getElementById('val-score')?.textContent || '--'
+            ]);
+            valRows.push([]); valRows.push(['DCF模型']);
+            valRows.push(['预期分红D₁', '折现率r', '永续增长率g', '理论内在价值', '当前vs理论']);
+            valRows.push([
+                document.getElementById('dcf-dividend')?.value || '--',
+                (document.getElementById('dcf-rate')?.value || '--') + '%',
+                (document.getElementById('dcf-growth')?.value || '--') + '%',
+                document.getElementById('dcf-value')?.textContent || '--',
+                document.getElementById('dcf-vs-price')?.textContent || '--'
+            ]);
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(valRows), '估值分析');
+            const premRows = [['基金', '当前溢价率', '历史分位', '历史平均', '25%分位', '中位数', '75%分位', '历史最低', '历史最高']];
+            premRows.push([
+                document.getElementById('premium-fund')?.selectedOptions[0]?.text || '--',
+                document.getElementById('current-premium')?.textContent || '--',
+                document.getElementById('premium-percentile')?.textContent || '--',
+                document.getElementById('premium-avg')?.textContent || '--',
+                document.getElementById('premium-q25')?.textContent || '--',
+                document.getElementById('premium-q50')?.textContent || '--',
+                document.getElementById('premium-q75')?.textContent || '--',
+                document.getElementById('premium-min')?.textContent || '--',
+                document.getElementById('premium-max')?.textContent || '--'
+            ]);
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(premRows), '折溢价分析');
+            const attrRows = [['基金', '区间收益', '基准收益', '超额收益α', '年化波动率', '最大回撤', '夏普比率']];
+            attrRows.push([
+                document.getElementById('attribution-fund')?.selectedOptions[0]?.text || '--',
+                document.getElementById('attr-return')?.textContent || '--',
+                document.getElementById('attr-bench')?.textContent || '--',
+                document.getElementById('attr-alpha')?.textContent || '--',
+                document.getElementById('attr-vol')?.textContent || '--',
+                document.getElementById('attr-mdd')?.textContent || '--',
+                document.getElementById('attr-sharpe')?.textContent || '--'
+            ]);
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(attrRows), '业绩归因');
+            XLSX.writeFile(wb, 'REITs分析报告_' + new Date().toISOString().slice(0,10) + '.xlsx');
+            if (typeof REITS !== 'undefined' && REITS.showToast) REITS.showToast('分析报告已导出', 'success');
+            else alert('分析报告已导出');
+        }
 
-        document.getElementById('buy-price')?.addEventListener('input', calculateYield);
-        document.getElementById('sell-price')?.addEventListener('input', calculateYield);
-        document.getElementById('dividend-received')?.addEventListener('input', calculateYield);
-        document.getElementById('hold-years')?.addEventListener('input', calculateYield);
+        function percentile(arr, value) {
+            if (!arr.length) return 50;
+            const sorted = [...arr].sort((a, b) => a - b);
+            let count = 0;
+            for (const v of sorted) { if (v < value) count++; }
+            return (count / sorted.length) * 100;
+        }
+        function median(arr) {
+            if (!arr.length) return 0;
+            const sorted = [...arr].sort((a, b) => a - b);
+            const mid = Math.floor(sorted.length / 2);
+            return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+        }
+        function stdDev(arr) {
+            if (arr.length < 2) return 0;
+            const mean = arr.reduce((a, b) => a + b, 0) / arr.length;
+            return Math.sqrt(arr.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) / (arr.length - 1));
+        }
 
         document.getElementById('valuation-fund')?.addEventListener('change', calculateValuation);
-        document.getElementById('current-price')?.addEventListener('input', calculateValuation);
+        document.getElementById('current-price')?.addEventListener('input', function() { calculateDCF(); calculateValuation(); });
         document.getElementById('nav-value')?.addEventListener('input', calculateValuation);
         document.getElementById('ffo')?.addEventListener('input', calculateValuation);
-
+        document.getElementById('dcf-dividend')?.addEventListener('input', calculateDCF);
+        document.getElementById('dcf-rate')?.addEventListener('input', calculateDCF);
+        document.getElementById('dcf-growth')?.addEventListener('input', calculateDCF);
         document.getElementById('premium-fund')?.addEventListener('change', analyzePremium);
         document.getElementById('attribution-fund')?.addEventListener('change', analyzeAttribution);
         document.getElementById('attribution-period')?.addEventListener('change', analyzeAttribution);
-
-        window.addEventListener('resize', () => {
+        document.getElementById('attribution-benchmark')?.addEventListener('change', analyzeAttribution);
+        window.addEventListener('resize', function() {
+            if (yieldWaterfallChart) yieldWaterfallChart.resize();
+            if (valuationTrendChart) valuationTrendChart.resize();
+            if (valuationSectorChart) valuationSectorChart.resize();
             if (premiumChart) premiumChart.resize();
+            if (premiumSectorChart) premiumSectorChart.resize();
             if (attributionChart) attributionChart.resize();
+            if (attributionTrendChart) attributionTrendChart.resize();
         });
-
-        // 初始化（异步加载数据）
         loadToolsFunds().then(() => {
             calculateYield();
+            // Auto-select first fund and calculate all tools
+            const firstFund = toolsFundsData[0];
+            if (firstFund) {
+                const v = document.getElementById('valuation-fund');
+                const p = document.getElementById('premium-fund');
+                const a = document.getElementById('attribution-fund');
+                if (v) { v.value = firstFund.code; calculateValuation(); }
+                if (p) { p.value = firstFund.code; analyzePremium(); }
+                if (a) { a.value = firstFund.code; analyzeAttribution(); }
+            }
         });
     </script>
-<!-- 关于平台弹窗 -->
-<div id="about-modal" class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center opacity-0 invisible transition-all" onclick="if(event.target===this)closeAbout()">
-    <div class="bg-white rounded-2xl shadow-2xl w-[90%] max-w-md transform scale-95 transition-transform p-6" id="about-content">
-        <div class="flex justify-between items-center mb-4">
-            <h3 class="text-xl font-bold text-gray-900">关于 REITs 数据平台</h3>
-            <button onclick="closeAbout()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-all">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-            </button>
-        </div>
-        <div class="space-y-4 text-gray-600">
-            <p>REITs 数据平台是一个<strong>开放式金融数据平台</strong>，无需登录即可使用全部功能。</p>
-            <div class="bg-blue-50 rounded-xl p-4">
-                <h4 class="font-semibold text-blue-900 mb-2">🚀 平台特色</h4>
-                <ul class="text-sm space-y-1 text-blue-800">
-                    <li>• 实时行情数据 - 跟踪所有 REITs 基金</li>
-                    <li>• 板块热力图 - 直观展示涨跌分布</li>
-                    <li>• 智能对比 - 多维度基金对比分析</li>
-                    <li>• 公告追踪 - 重要信息及时掌握</li>
-                </ul>
+
+
+
+    <!-- 关于平台弹窗 -->
+    <div id="about-modal" class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center opacity-0 invisible transition-all" onclick="if(event.target===this)closeAbout()">
+        <div class="bg-white rounded-2xl shadow-2xl w-[90%] max-w-md transform scale-95 transition-transform p-6" id="about-content">
+            <div class="flex justify-between items-center mb-2">
+                <h3 class="text-xl font-bold text-gray-900">关于 REITs 数据平台</h3>
+                <button onclick="closeAbout()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-all">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
             </div>
-            <p class="text-xs text-gray-400">数据来源：新浪财经、东方财富、AKShare</p>
+            <div class="space-y-3 text-gray-600">
+                <p>REITs 数据平台是一个<strong>开放式金融数据平台</strong>，无需登录即可使用全部功能。</p>
+                <div class="bg-blue-50 rounded-xl p-4">
+                    <h4 class="font-semibold text-blue-900 mb-2">平台特色</h4>
+                    <ul class="text-sm space-y-1 text-blue-800">
+                        <li>• 实时行情数据 - 跟踪所有 REITs 基金</li>
+                        <li>• 板块热力图 - 直观展示涨跌分布</li>
+                        <li>• 智能对比 - 多维度基金对比分析</li>
+                        <li>• 公告追踪 - 重要信息及时掌握</li>
+                    </ul>
+                </div>
+                <p class="text-xs text-gray-400">数据来源：新浪财经、东方财富、AKShare</p>
+            </div>
         </div>
     </div>
-</div>
-<style>
-    #about-modal.show { opacity: 1; visibility: visible; }
-    #about-modal.show #about-content { transform: scale(1); }
-</style>
-<script>
-    function showAbout() {
-        document.getElementById('about-modal').classList.add('show');
-    }
-    function closeAbout() {
-        document.getElementById('about-modal').classList.remove('show');
-    }
-</script>
+    <style>
+        #about-modal.show { opacity: 1; visibility: visible; }
+        #about-modal.show #about-content { transform: scale(1); }
+    </style>
+    <script>
+        function showAbout() { document.getElementById('about-modal').classList.add('show'); }
+        function closeAbout() { document.getElementById('about-modal').classList.remove('show'); }
+    </script>
 </body>
 </html>

@@ -54,10 +54,46 @@ class MorningNewsEngine:
     
     async def fetch_overnight(self) -> List[NewsItem]:
         """
-        抓取隔夜新闻
-        实际实现需接入RSS/爬虫
-        此处为骨架，返回真实数据或空列表
+        从已同步的公众号文章中筛选最近24小时的要闻
         """
+        try:
+            from core.db import get_conn
+            from datetime import datetime, timedelta
+            
+            with get_conn() as conn:
+                cur = conn.cursor()
+                yesterday = (datetime.now() - timedelta(hours=24)).isoformat()
+                cur.execute("""
+                    SELECT title, content, source, published
+                    FROM business.wechat_articles
+                    WHERE published > %s
+                      AND content IS NOT NULL
+                      AND LENGTH(content) > 200
+                    ORDER BY published DESC
+                    LIMIT 20
+                """, (yesterday,))
+                rows = [dict(r) for r in cur.fetchall()]
+            
+            news = []
+            keywords = ['reits', 'reit', '基础设施', '公募', '投资', '上市', '发行', '获批', '申报', '扩募']
+            for row in rows:
+                title = row.get('title', '') or ''
+                content = row.get('content', '') or ''
+                text = (title + ' ' + content[:500]).lower()
+                # 筛选含关键词的文章
+                if any(k in text for k in keywords):
+                    news.append(NewsItem(
+                        title=title,
+                        summary=content[:200] + ('...' if len(content) > 200 else ''),
+                        source=row.get('source', '公众号'),
+                        source_url='',
+                        publish_time=str(row.get('published', '')),
+                        market='CN',
+                    ))
+            return news[:10]  # 最多10条
+        except Exception as e:
+            logger.warning(f"Fetch overnight news from PG failed: {e}")
+            return []
         # TODO: 接入实际爬虫
         # 注意：如果源不可用，返回空列表，AI会提示"部分新闻源暂时无法获取"
         # 绝对不能编造新闻！（记忆ID 4零容忍）

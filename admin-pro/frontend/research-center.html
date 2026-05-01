@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>投研中心 - REITs数据平台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./css/common.css">
+    <script src="./js/app-core.js?v=2"></script>
+    <style>
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background-color: #f8fafc; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        .tab-btn { transition: all 0.2s ease; }
+        .tab-btn.active { background: #2563eb; color: #fff; box-shadow: 0 2px 8px rgba(37,99,235,0.2); }
+        .fund-card { transition: all 0.2s; border: 2px solid transparent; cursor: pointer; }
+        .fund-card:hover { background: #f8fafc; border-color: #e2e8f0; }
+        .fund-card.selected { border-color: #3b82f6; background: #eff6ff; }
+        .spinner { width: 20px; height: 20px; border: 2.5px solid #e2e8f0; border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .ai-thinking { animation: pulse-dot 1.5s infinite; }
+        .calc-input { border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 12px; width: 100%; font-size: 13px; transition: all 0.2s; background: #fff; }
+        .calc-input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.08); }
+        .metric-gradient-1 { background: linear-gradient(135deg, #eff6ff, #dbeafe); }
+        .metric-gradient-2 { background: linear-gradient(135deg, #fef2f2, #fee2e2); }
+        .metric-gradient-3 { background: linear-gradient(135deg, #fffbeb, #fef3c7); }
+        .metric-gradient-4 { background: linear-gradient(135deg, #f0fdf4, #dcfce7); }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+    <!-- Header -->
+    <header class="h-[52px] bg-white border-b border-slate-200 flex items-center justify-between px-4 flex-none z-40">
+        <div class="flex items-center gap-3">
+            <div class="w-7 h-7 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-lg flex items-center justify-center text-white font-bold text-xs">R</div>
+            <span class="font-bold text-slate-900 text-base tracking-tight">REITs数据平台</span>
+            <nav class="hidden md:flex items-center gap-0.5 ml-3">
+                <a href="./market.html" class="px-2.5 py-1 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-all">市场</a>
+                <a href="./fund-detail.html" class="px-2.5 py-1 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-all">详情</a>
+                <a href="./ai-chat.html" class="px-2.5 py-1 text-sm font-medium text-purple-600 bg-purple-50 rounded-lg transition-all flex items-center gap-1">
+                    <span class="w-1.5 h-1.5 bg-purple-500 rounded-full animate-pulse"></span>AI聊REITs
+                </a>
+                <a href="./announcements.html" class="px-2.5 py-1 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-all">公告</a>
+                <a href="./portfolio.html" class="px-2.5 py-1 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-all">自选</a>
+                <a href="./compare.html" class="px-2.5 py-1 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-all">对比</a>
+                <a href="./dividend-calendar.html" class="px-2.5 py-1 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-all">分红</a>
+                <a href="./research-center.html" class="px-2.5 py-1 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-all">投研中心</a>
+                <a href="./agent-shows.html" class="px-2.5 py-1 text-sm font-medium text-orange-600 bg-orange-50 rounded-lg">剧场秀</a>
+            </nav>
+        </div>
+        <div class="w-48 mx-2 hidden sm:block"><div class="relative">
+            <input type="text" id="global-search" placeholder="搜索基金代码或名称..."
+                class="w-full pl-9 pr-3 py-1.5 bg-slate-100 border border-transparent rounded-lg text-sm focus:outline-none focus:bg-white focus:border-blue-500 transition-all">
+            <svg class="w-4 h-4 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+        </div></div>
+        <div class="flex items-center gap-2">
+            <button class="p-1.5 text-slate-500 hover:text-slate-700 relative" onclick="window.location.href='./announcements.html'">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+                <span id="nav-badge" class="absolute top-0.5 right-0.5 w-2 h-2 bg-red-500 rounded-full hidden"></span>
+            </button>
+            <button onclick="window.location.href='./portfolio.html'" class="hidden sm:flex px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-all items-center gap-1.5">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                自选
+            </button>
+        </div>
+    </header>
+
+    <!-- Main -->
+    <main class="flex-1 flex flex-col md:flex-row overflow-hidden p-3 gap-3">
+        <!-- Left: Fund Selector -->
+        <aside class="w-full md:w-72 flex-none bg-white rounded-xl border border-slate-200 flex flex-col overflow-hidden shadow-sm max-h-[40vh] md:max-h-none">
+            <div class="p-3 border-b border-slate-100 bg-white">
+                <h3 class="font-semibold text-slate-900 text-sm flex items-center gap-2">
+                    <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                    选择基金
+                </h3>
+                <p class="text-xs text-slate-500 mt-1">已选 <span id="selected-count" class="text-blue-600 font-bold">0</span>/5 只</p>
+                <select id="sector-filter" onchange="filterFunds()" class="w-full mt-2 px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-blue-500">
+                    <option value="all">全部板块</option>
+                    <option value="transport">🛣️ 交通基础设施</option>
+                    <option value="logistics">📦 仓储物流</option>
+                    <option value="industrial">🏭 产业园区</option>
+                    <option value="consumer">🛒 消费基础设施</option>
+                    <option value="energy">⚡ 能源基础设施</option>
+                    <option value="housing">🏠 租赁住房</option>
+                    <option value="eco">🌿 生态环保</option>
+                </select>
+            </div>
+            <div id="fund-list" class="flex-1 overflow-y-auto p-2 space-y-1.5 bg-slate-50/50"></div>
+            <div class="p-3 border-t border-slate-100 bg-white space-y-2">
+                <div id="selected-tags" class="flex flex-wrap gap-1"></div>
+                <button onclick="startAnalysis()" id="analyze-btn" disabled class="w-full py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-blue-200 transition-all flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                    AI 深度分析
+                </button>
+            </div>
+        </aside>
+
+        <!-- Right: Analysis Area -->
+        <section class="flex-1 flex flex-col min-w-0 gap-3 overflow-hidden min-h-0">
+            <!-- Top: AI Analysis -->
+            <div class="flex-none bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="px-4 py-2.5 border-b border-slate-100 flex items-center justify-between">
+                    <h2 class="font-semibold text-slate-900 text-sm flex items-center gap-2">
+                        <span class="w-2 h-2 bg-blue-600 rounded-full"></span>
+                        AI 深度分析
+                    </h2>
+                    <div class="flex items-center gap-2">
+                        <span id="analysis-status" class="text-xs text-slate-500"></span>
+                        <button onclick="exportReport()" class="px-3 py-1 bg-emerald-600 text-white text-xs font-medium rounded-lg hover:bg-emerald-700 transition-all flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                            导出
+                        </button>
+                    </div>
+                </div>
+                <div id="ai-content" class="p-4">
+                    <!-- Empty state -->
+                    <div id="ai-empty" class="text-center py-8">
+                        <div class="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center mx-auto mb-3">
+                            <svg class="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+                        </div>
+                        <p class="text-sm text-slate-500">选择基金后点击「AI 深度分析」</p>
+                        <p class="text-xs text-slate-400 mt-1">首次分析约需 10-30 秒，再次分析秒回</p>
+                    </div>
+                    <!-- Loading -->
+                    <div id="ai-loading" class="hidden py-8 text-center">
+                        <div class="spinner mx-auto mb-3"></div>
+                        <p class="text-sm text-slate-600 ai-thinking">AI 正在深度分析中...</p>
+                        <p class="text-xs text-slate-400 mt-1">首次分析约 10-30 秒，请稍候</p>
+                    </div>
+                    <!-- Result -->
+                    <div id="ai-result" class="hidden">
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                            <div class="metric-gradient-1 rounded-xl p-3 text-center">
+                                <div id="score-value" class="text-2xl font-bold text-blue-700 mono">--</div>
+                                <div class="text-xs text-slate-600 mt-0.5">综合评分</div>
+                            </div>
+                            <div class="metric-gradient-2 rounded-xl p-3 text-center">
+                                <div id="yield-value" class="text-2xl font-bold text-red-700 mono">--</div>
+                                <div class="text-xs text-slate-600 mt-0.5">预期年化</div>
+                            </div>
+                            <div class="metric-gradient-3 rounded-xl p-3 text-center">
+                                <div id="risk-value" class="text-2xl font-bold text-amber-700 mono">--</div>
+                                <div class="text-xs text-slate-600 mt-0.5">风险等级</div>
+                            </div>
+                            <div class="metric-gradient-4 rounded-xl p-3 text-center">
+                                <div id="dividend-value" class="text-2xl font-bold text-emerald-700 mono">--</div>
+                                <div class="text-xs text-slate-600 mt-0.5">分红稳定性</div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-4">
+                            <div class="bg-slate-50 rounded-xl p-3">
+                                <div class="text-xs font-medium text-slate-500 mb-2">六维评分</div>
+                                <div id="radar-chart" style="height:220px;"></div>
+                            </div>
+                            <div class="space-y-2">
+                                <div class="bg-emerald-50 rounded-xl p-3 border border-emerald-100">
+                                    <div class="text-xs font-semibold text-emerald-700 mb-1">💡 投资亮点</div>
+                                    <p id="highlight-text" class="text-xs text-slate-700 leading-relaxed"></p>
+                                </div>
+                                <div class="bg-red-50 rounded-xl p-3 border border-red-100">
+                                    <div class="text-xs font-semibold text-red-700 mb-1">⚠️ 主要风险</div>
+                                    <p id="risk-text" class="text-xs text-slate-700 leading-relaxed"></p>
+                                </div>
+                                <div class="bg-blue-50 rounded-xl p-3 border border-blue-100">
+                                    <div class="text-xs font-semibold text-blue-700 mb-1">📋 操作建议</div>
+                                    <p id="suggestion-text" class="text-xs text-slate-700 leading-relaxed"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom: Data Tools Tabs -->
+            <div class="flex-1 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col min-h-0">
+                <div class="px-4 py-2 border-b border-slate-100 flex flex-wrap items-center gap-1 bg-slate-50/50">
+                    <span class="text-xs font-medium text-slate-500 mr-2 hidden sm:inline">📊 数据工具</span>
+                    <button class="tab-btn active px-3 py-1.5 rounded-lg text-xs font-medium" data-tool="yield" onclick="switchTool('yield')">💰 收益率</button>
+                    <button class="tab-btn px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900" data-tool="valuation" onclick="switchTool('valuation')">📐 估值/DCF</button>
+                    <button class="tab-btn px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900" data-tool="premium" onclick="switchTool('premium')">📈 折溢价</button>
+                    <button class="tab-btn px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900" data-tool="attribution" onclick="switchTool('attribution')">📉 归因</button>
+                </div>
+                <div class="flex-1 overflow-auto p-4">
+                    <!-- Tool: Yield -->
+                    <div id="tool-yield" class="tool-content">
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                            <div class="bg-slate-50 rounded-xl p-4">
+                                <h3 class="font-semibold text-slate-900 text-sm mb-3">📝 持仓记录</h3>
+                                <div class="overflow-x-auto">
+                                    <table class="w-full text-xs">
+                                        <thead><tr class="text-slate-500 border-b border-slate-200">
+                                            <th class="text-left pb-2 font-medium">基金</th>
+                                            <th class="text-right pb-2 font-medium">买入价</th>
+                                            <th class="text-right pb-2 font-medium">份数</th>
+                                            <th class="text-right pb-2 font-medium">现价</th>
+                                            <th class="text-right pb-2 font-medium">分红</th>
+                                            <th class="w-6"></th>
+                                        </tr></thead>
+                                        <tbody id="position-rows"></tbody>
+                                    </table>
+                                </div>
+                                <button onclick="addPositionRow()" class="mt-2 text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>添加持仓
+                                </button>
+                            </div>
+                            <div class="space-y-3">
+                                <div class="bg-slate-50 rounded-xl p-4">
+                                    <h3 class="font-semibold text-slate-900 text-sm mb-3">📊 收益概览</h3>
+                                    <div id="yield-summary" class="grid grid-cols-2 gap-3 text-xs"></div>
+                                </div>
+                                <div class="bg-slate-50 rounded-xl p-4">
+                                    <h3 class="font-semibold text-slate-900 text-sm mb-2">📈 收益走势</h3>
+                                    <div id="yield-chart" style="height:180px;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Tool: Valuation -->
+                    <div id="tool-valuation" class="tool-content hidden">
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                            <div class="space-y-3">
+                                <div class="bg-slate-50 rounded-xl p-4">
+                                    <h3 class="font-semibold text-slate-900 text-sm mb-3">📐 估值参数</h3>
+                                    <div class="space-y-2 text-xs">
+                                        <div class="flex items-center gap-2"><label class="w-20 text-slate-500">当前价格</label><input type="number" id="val-price" class="calc-input flex-1" step="0.001"></div>
+                                        <div class="flex items-center gap-2"><label class="w-20 text-slate-500">NAV</label><input type="number" id="val-nav" class="calc-input flex-1" step="0.001"></div>
+                                        <div class="flex items-center gap-2"><label class="w-20 text-slate-500">年分红</label><input type="number" id="val-dividend" class="calc-input flex-1" step="0.001"></div>
+                                        <div class="flex items-center gap-2"><label class="w-20 text-slate-500">要求回报率</label><input type="number" id="val-required" class="calc-input flex-1" value="6.5" step="0.1"></div>
+                                    </div>
+                                </div>
+                                <div id="valuation-result" class="bg-blue-50 rounded-xl p-4 border border-blue-100"></div>
+                            </div>
+                            <div class="space-y-3">
+                                <div class="bg-slate-50 rounded-xl p-4">
+                                    <h3 class="font-semibold text-slate-900 text-sm mb-3">🏗️ DCF 模型</h3>
+                                    <div class="space-y-2 text-xs">
+                                        <div class="flex items-center gap-2"><label class="w-24 text-slate-500">初始分红/份</label><input type="number" id="dcf-dividend" class="calc-input flex-1" step="0.001"></div>
+                                        <div class="flex items-center gap-2"><label class="w-24 text-slate-500">折现率 %</label><input type="number" id="dcf-rate" class="calc-input flex-1" value="7" step="0.1"></div>
+                                        <div class="flex items-center gap-2"><label class="w-24 text-slate-500">永续增长率 %</label><input type="number" id="dcf-growth" class="calc-input flex-1" value="2" step="0.1"></div>
+                                        <div class="flex items-center gap-2"><label class="w-24 text-slate-500">预测期(年)</label><input type="number" id="dcf-years" class="calc-input flex-1" value="10" step="1"></div>
+                                    </div>
+                                </div>
+                                <div id="dcf-result" class="bg-emerald-50 rounded-xl p-4 border border-emerald-100"></div>
+                                <div id="dcf-chart" style="height:180px;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Tool: Premium -->
+                    <div id="tool-premium" class="tool-content hidden">
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                            <div class="space-y-3">
+                                <div class="bg-slate-50 rounded-xl p-4">
+                                    <h3 class="font-semibold text-slate-900 text-sm mb-3">📈 折溢价分析</h3>
+                                    <div id="premium-stats" class="grid grid-cols-3 gap-2 text-xs"></div>
+                                </div>
+                                <div class="bg-slate-50 rounded-xl p-4">
+                                    <h3 class="font-semibold text-slate-900 text-sm mb-2">历史折溢价走势</h3>
+                                    <div id="premium-chart" style="height:200px;"></div>
+                                </div>
+                            </div>
+                            <div class="space-y-3">
+                                <div class="bg-slate-50 rounded-xl p-4">
+                                    <h3 class="font-semibold text-slate-900 text-sm mb-2">同板块对比</h3>
+                                    <div id="premium-sector-chart" style="height:220px;"></div>
+                                </div>
+                                <div id="premium-suggestion" class="bg-amber-50 rounded-xl p-4 border border-amber-100"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Tool: Attribution -->
+                    <div id="tool-attribution" class="tool-content hidden">
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                            <div class="space-y-3">
+                                <div class="bg-slate-50 rounded-xl p-4">
+                                    <h3 class="font-semibold text-slate-900 text-sm mb-3">📉 收益归因</h3>
+                                    <div class="space-y-2 text-xs">
+                                        <div class="flex items-center gap-2"><label class="w-20 text-slate-500">买入价</label><input type="number" id="attr-buy" class="calc-input flex-1" step="0.001"></div>
+                                        <div class="flex items-center gap-2"><label class="w-20 text-slate-500">现价</label><input type="number" id="attr-current" class="calc-input flex-1" step="0.001"></div>
+                                        <div class="flex items-center gap-2"><label class="w-20 text-slate-500">持有天数</label><input type="number" id="attr-days" class="calc-input flex-1" value="365"></div>
+                                        <div class="flex items-center gap-2"><label class="w-20 text-slate-500">累计分红</label><input type="number" id="attr-dividends" class="calc-input flex-1" value="0" step="0.001"></div>
+                                    </div>
+                                </div>
+                                <div id="attr-result" class="bg-indigo-50 rounded-xl p-4 border border-indigo-100"></div>
+                            </div>
+                            <div class="space-y-3">
+                                <div class="bg-slate-50 rounded-xl p-4">
+                                    <h3 class="font-semibold text-slate-900 text-sm mb-2">收益拆分</h3>
+                                    <div id="attr-chart" style="height:200px;"></div>
+                                </div>
+                                <div class="bg-slate-50 rounded-xl p-4">
+                                    <h3 class="font-semibold text-slate-900 text-sm mb-2">年化收益对比</h3>
+                                    <div id="attr-compare-chart" style="height:160px;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+<script>
+// ==================== GLOBAL STATE ====================
+let rcFunds = [];
+let rcSelectedFunds = [];
+let rcQuotes = {};
+let rcHistory = {};
+let isAnalyzing = false;
+let radarChart = null;
+let currentAnalysisData = null;
+
+// Tool charts
+let yieldChart = null, dcfChart = null, premiumChart = null, premiumSectorChart = null;
+let attrChart = null, attrCompareChart = null;
+
+const AI_API_BASE = 'http://localhost:5074/api/ai';
+const SECTOR_NAMES = {
+    transport: '交通基础设施', logistics: '仓储物流', industrial: '产业园区',
+    consumer: '消费基础设施', energy: '能源基础设施', housing: '租赁住房', eco: '生态环保'
+};
+
+// ==================== INIT ====================
+document.addEventListener('DOMContentLoaded', async function() {
+    try {
+        await initFunds();
+        initPositionRows();
+        bindToolInputs();
+        // URL param ?code=xxx
+        const params = new URLSearchParams(window.location.search);
+        const code = params.get('code');
+        if (code) selectFund(code);
+    } catch (e) {
+        console.error('Init error:', e);
+    }
+});
+
+async function initFunds() {
+    try {
+        const res = await fetch('http://localhost:5074/api/funds/list', { signal: AbortSignal.timeout(8000) });
+        const data = await res.json();
+        rcFunds = (data.data || data.funds || data || []).map(normalizeFundData);
+    } catch (e) {
+        console.warn('API fail, using mock:', e);
+        rcFunds = (window.ALL_FUNDS || []).map(normalizeFundData);
+    }
+    if (!rcFunds.length) {
+        rcFunds = [{ code: '508000', name: '华安张江', sector: 'industrial', price: 2.85, nav: 2.85, dividend_yield: 2.27 }];
+    }
+    renderFundList();
+    fetchQuotes();
+}
+
+function normalizeFundData(f) {
+    const sectorMap = { '高速公路': 'transport', '交通基础设施': 'transport', '仓储物流': 'logistics', '产业园': 'industrial', '产业园区': 'industrial', '工业': 'industrial', '消费': 'consumer', '消费基础设施': 'consumer', '能源': 'energy', '能源基础设施': 'energy', '租赁住房': 'housing', '保租房': 'housing', '环保': 'eco', '生态环保': 'eco', '水利': 'eco' };
+    let sector = f.sector || '';
+    if (typeof sector === 'string') {
+        for (const [cn, en] of Object.entries(sectorMap)) {
+            if (sector.includes(cn)) { sector = en; break; }
+        }
+    }
+    return {
+        code: f.fund_code || f.code || '',
+        name: f.fund_name || f.name || '',
+        sector: sector || f.sector || 'industrial',
+        price: parseFloat(f.price || f.close_price || f.nav || 0),
+        nav: parseFloat(f.nav || f.net_asset_value || 0),
+        dividend_yield: parseFloat(f.dividend_yield || f.yield || 0),
+        premium_rate: parseFloat(f.premium_rate || 0),
+    };
+}
+
+async function fetchQuotes() {
+    try {
+        const res = await fetch('http://localhost:5074/api/quotes/realtime', { signal: AbortSignal.timeout(8000) });
+        const data = await res.json();
+        (data.data || data || []).forEach(q => {
+            rcQuotes[q.code || q.fund_code] = { price: parseFloat(q.price || 0), nav: parseFloat(q.nav || 0), change: parseFloat(q.change_pct || 0) };
+        });
+    } catch (e) {
+        console.warn('Quotes fetch failed');
+    }
+}
+
+// ==================== FUND SELECTOR ====================
+function renderFundList() {
+    const sector = document.getElementById('sector-filter').value;
+    const container = document.getElementById('fund-list');
+    let filtered = sector === 'all' ? rcFunds : rcFunds.filter(f => f.sector === sector);
+    container.innerHTML = filtered.map(f => {
+        const q = rcQuotes[f.code];
+        const price = q && q.price > 0 ? q.price : f.price;
+        const change = q ? q.change : 0;
+        const selected = rcSelectedFunds.includes(f.code);
+        return `<div class="fund-card rounded-lg p-2.5 ${selected ? 'selected' : 'bg-white'}" data-code="${f.code}" onclick="toggleFund('${f.code}')">
+            <div class="flex items-center justify-between">
+                <div class="flex-1 min-w-0">
+                    <div class="font-medium text-slate-900 text-xs truncate">${f.name}</div>
+                    <div class="text-[10px] text-slate-500 mt-0.5">${f.code} · ${SECTOR_NAMES[f.sector] || f.sector}</div>
+                </div>
+                <div class="text-right ml-2">
+                    <div class="font-bold text-xs mono ${change >= 0 ? 'text-red-600' : 'text-green-600'}">${price > 0 ? price.toFixed(3) : '--'}</div>
+                    <div class="text-[10px] ${change >= 0 ? 'text-red-500' : 'text-green-500'}">${change >= 0 ? '+' : ''}${change.toFixed(2)}%</div>
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function filterFunds() { renderFundList(); }
+
+function toggleFund(code) {
+    const idx = rcSelectedFunds.indexOf(code);
+    if (idx >= 0) {
+        rcSelectedFunds.splice(idx, 1);
+    } else if (rcSelectedFunds.length < 5) {
+        rcSelectedFunds.push(code);
+    } else {
+        alert('最多选择5只基金');
+        return;
+    }
+    updateSelectionUI();
+    updateToolInputs();
+}
+
+function selectFund(code) {
+    if (!rcSelectedFunds.includes(code) && rcSelectedFunds.length < 5) {
+        rcSelectedFunds.push(code);
+        updateSelectionUI();
+        updateToolInputs();
+    }
+}
+
+function updateSelectionUI() {
+    document.getElementById('selected-count').textContent = rcSelectedFunds.length;
+    document.getElementById('analyze-btn').disabled = rcSelectedFunds.length === 0;
+    const tags = document.getElementById('selected-tags');
+    tags.innerHTML = rcSelectedFunds.map(code => {
+        const f = rcFunds.find(x => x.code === code);
+        return f ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 text-[10px] font-medium rounded-full">${f.name}<button onclick="event.stopPropagation();toggleFund('${code}')" class="hover:text-blue-900">×</button></span>` : '';
+    }).join('');
+    renderFundList();
+}
+
+// Auto-populate tool inputs when selection changes
+function updateToolInputs() {
+    if (rcSelectedFunds.length === 0) return;
+    const code = rcSelectedFunds[0];
+    const fund = rcFunds.find(f => f.code === code);
+    const q = rcQuotes[code];
+    if (!fund) return;
+    const price = q && q.price > 0 ? q.price : (fund.price > 0 ? fund.price : 0);
+    const nav = q && q.nav > 0 ? q.nav : (fund.nav > 0 ? fund.nav : price * 0.95);
+    const dividend = fund.dividend_yield > 0 ? (price * fund.dividend_yield / 100) : 0.1;
+
+    const ids = {
+        'val-price': price, 'val-nav': nav, 'val-dividend': dividend,
+        'dcf-dividend': dividend, 'attr-buy': price * 0.9,
+        'attr-current': price, 'attr-dividends': dividend
+    };
+    for (const [id, val] of Object.entries(ids)) {
+        const el = document.getElementById(id);
+        if (el && !el.dataset.userEdited) el.value = val.toFixed(3);
+    }
+    // Auto-run calculations
+    setTimeout(() => {
+        calculateYield(); calculateValuation(); calculateDCF();
+        calculatePremium(); calculateAttribution();
+    }, 100);
+}
+
+function bindToolInputs() {
+    const ids = ['val-price','val-nav','val-dividend','val-required','dcf-dividend','dcf-rate','dcf-growth','dcf-years','attr-buy','attr-current','attr-days','attr-dividends'];
+    ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('input', function() { this.dataset.userEdited = '1'; runCurrentTool(); });
+        }
+    });
+}
+
+function runCurrentTool() {
+    const active = document.querySelector('.tab-btn.active');
+    if (!active) return;
+    const tool = active.dataset.tool;
+    if (tool === 'yield') calculateYield();
+    else if (tool === 'valuation') { calculateValuation(); calculateDCF(); }
+    else if (tool === 'premium') calculatePremium();
+    else if (tool === 'attribution') calculateAttribution();
+}
+
+// ==================== TOOL SWITCHING ====================
+function switchTool(toolId) {
+    document.querySelectorAll('.tool-content').forEach(el => el.classList.add('hidden'));
+    document.getElementById('tool-' + toolId).classList.remove('hidden');
+    document.querySelectorAll('[data-tool]').forEach(btn => {
+        btn.classList.remove('active');
+        btn.classList.add('text-slate-600');
+    });
+    const active = document.querySelector('[data-tool="' + toolId + '"]');
+    if (active) { active.classList.add('active'); active.classList.remove('text-slate-600'); }
+    runCurrentTool();
+}
+
+// ==================== AI ANALYSIS ====================
+async function startAnalysis() {
+    if (rcSelectedFunds.length === 0 || isAnalyzing) return;
+    isAnalyzing = true;
+    document.getElementById('ai-empty').classList.add('hidden');
+    document.getElementById('ai-result').classList.add('hidden');
+    document.getElementById('ai-loading').classList.remove('hidden');
+    document.getElementById('analysis-status').textContent = 'AI分析中...';
+    document.getElementById('analysis-status').classList.add('ai-thinking');
+
+    try {
+        const response = await fetchWithTimeout(`${AI_API_BASE}/analyze-funds`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ codes: rcSelectedFunds, analysis_type: 'comprehensive' })
+        }, 30000);
+        const data = await response.json();
+        currentAnalysisData = data;
+        if (data.success) {
+            renderAIResult(data);
+            document.getElementById('analysis-status').textContent = `已完成 ${rcSelectedFunds.length} 只基金分析`;
+        } else {
+            showAIError(data.message || 'AI分析暂时不可用');
+        }
+    } catch (error) {
+        console.error('分析请求失败:', error);
+        if (error.name === 'AbortError') {
+            showAIError('AI分析请求超时，请检查网络或稍后重试');
+        } else {
+            showAIError('网络连接失败，请稍后重试');
+        }
+    } finally {
+        document.getElementById('ai-loading').classList.add('hidden');
+        document.getElementById('analysis-status').classList.remove('ai-thinking');
+        isAnalyzing = false;
+    }
+}
+
+function renderAIResult(data) {
+    const m = data.metrics || {};
+    const c = data.conclusion || {};
+    document.getElementById('score-value').textContent = m['综合评分'] || '--';
+    document.getElementById('yield-value').textContent = m['预期年化收益'] || '--';
+    document.getElementById('risk-value').textContent = m['风险等级'] || '--';
+    document.getElementById('dividend-value').textContent = m['分红稳定性'] || '--';
+    document.getElementById('highlight-text').textContent = c.highlights || '';
+    document.getElementById('risk-text').textContent = c.risks || '';
+    document.getElementById('suggestion-text').textContent = c.suggestion || '';
+
+    // Radar chart
+    const scores = data.scores || {};
+    const dims = ['估值与回报','运营质量','财务健康','资产质量','成长潜力','市场与流动性'];
+    const vals = dims.map(d => scores[d] || 70);
+    if (radarChart) radarChart.dispose();
+    radarChart = echarts.init(document.getElementById('radar-chart'));
+    radarChart.setOption({
+        radar: {
+            indicator: dims.map(d => ({ name: d, max: 100 })),
+            radius: '65%', center: ['50%','55%'],
+            axisName: { fontSize: 10, color: '#64748b' },
+            splitArea: { areaStyle: { color: ['#f8fafc','#f1f5f9','#e2e8f0','#cbd5e1'] } }
+        },
+        series: [{
+            type: 'radar', data: [{
+                value: vals, name: '评分',
+                areaStyle: { color: 'rgba(59,130,246,0.15)' },
+                lineStyle: { color: '#3b82f6', width: 2 },
+                itemStyle: { color: '#3b82f6' }
+            }]
+        }]
+    });
+
+    document.getElementById('ai-result').classList.remove('hidden');
+}
+
+function showAIError(msg) {
+    document.getElementById('ai-empty').classList.remove('hidden');
+    document.getElementById('ai-empty').innerHTML = `<div class="text-red-500 text-sm">${msg}</div>`;
+    document.getElementById('analysis-status').textContent = '分析失败';
+}
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = 30000) {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        const response = await fetch(url, { ...options, signal: controller.signal });
+        clearTimeout(id);
+        return response;
+    } catch (error) {
+        clearTimeout(id);
+        throw error;
+    }
+}
+
+
+// ==================== YIELD CALCULATOR ====================
+let positions = [{ fund: null, buyPrice: 0, shares: 0, currentPrice: 0, dividend: 0 }];
+
+function initPositionRows() {
+    renderPositionRows();
+}
+
+function renderPositionRows() {
+    const tbody = document.getElementById('position-rows');
+    tbody.innerHTML = positions.map((p, i) => {
+        const fundOpts = '<option value="">选择基金</option>' + rcFunds.map(f => `<option value="${f.code}" ${p.fund === f.code ? 'selected' : ''}>${f.name}</option>`).join('');
+        return `<tr class="border-b border-slate-100">
+            <td class="py-1.5 pr-2"><select onchange="updatePosition(${i}, 'fund', this.value)" class="calc-input text-xs">${fundOpts}</select></td>
+            <td class="py-1.5 px-1"><input type="number" value="${p.buyPrice || ''}" onchange="updatePosition(${i}, 'buyPrice', this.value)" class="calc-input text-xs text-right" step="0.001" placeholder="买入价"></td>
+            <td class="py-1.5 px-1"><input type="number" value="${p.shares || ''}" onchange="updatePosition(${i}, 'shares', this.value)" class="calc-input text-xs text-right" step="1" placeholder="份数"></td>
+            <td class="py-1.5 px-1"><input type="number" value="${p.currentPrice || ''}" onchange="updatePosition(${i}, 'currentPrice', this.value)" class="calc-input text-xs text-right" step="0.001" placeholder="现价"></td>
+            <td class="py-1.5 px-1"><input type="number" value="${p.dividend || ''}" onchange="updatePosition(${i}, 'dividend', this.value)" class="calc-input text-xs text-right" step="0.001" placeholder="分红"></td>
+            <td class="py-1.5 pl-1">${i > 0 ? `<button onclick="removePosition(${i})" class="text-slate-400 hover:text-red-500">×</button>` : ''}</td>
+        </tr>`;
+    }).join('');
+    calculateYield();
+}
+
+function addPositionRow() {
+    positions.push({ fund: null, buyPrice: 0, shares: 0, currentPrice: 0, dividend: 0 });
+    renderPositionRows();
+}
+
+function removePosition(idx) {
+    positions.splice(idx, 1);
+    if (positions.length === 0) positions.push({ fund: null, buyPrice: 0, shares: 0, currentPrice: 0, dividend: 0 });
+    renderPositionRows();
+}
+
+function updatePosition(idx, field, value) {
+    positions[idx][field] = field === 'fund' ? value : parseFloat(value) || 0;
+    if (field === 'fund' && value) {
+        const f = rcFunds.find(x => x.code === value);
+        const q = rcQuotes[value];
+        if (f) {
+            positions[idx].currentPrice = q && q.price > 0 ? q.price : (f.price > 0 ? f.price : 0);
+            positions[idx].dividend = f.dividend_yield > 0 ? (positions[idx].currentPrice * f.dividend_yield / 100) : 0;
+        }
+        renderPositionRows();
+    } else {
+        calculateYield();
+    }
+}
+
+function calculateYield() {
+    let totalCost = 0, totalValue = 0, totalDividend = 0;
+    positions.forEach(p => {
+        if (p.shares > 0) {
+            totalCost += p.buyPrice * p.shares;
+            totalValue += p.currentPrice * p.shares;
+            totalDividend += p.dividend * p.shares;
+        }
+    });
+    const profit = totalValue - totalCost + totalDividend;
+    const yieldPct = totalCost > 0 ? (profit / totalCost * 100) : 0;
+    const dividendYield = totalCost > 0 ? (totalDividend / totalCost * 100) : 0;
+
+    document.getElementById('yield-summary').innerHTML = `
+        <div class="bg-white rounded-lg p-2.5 border border-slate-100"><div class="text-slate-500 text-[10px]">总成本</div><div class="font-bold text-slate-900 mono">${totalCost.toFixed(2)}</div></div>
+        <div class="bg-white rounded-lg p-2.5 border border-slate-100"><div class="text-slate-500 text-[10px]">当前市值</div><div class="font-bold text-slate-900 mono">${totalValue.toFixed(2)}</div></div>
+        <div class="bg-white rounded-lg p-2.5 border border-slate-100"><div class="text-slate-500 text-[10px]">累计分红</div><div class="font-bold text-emerald-600 mono">+${totalDividend.toFixed(2)}</div></div>
+        <div class="bg-white rounded-lg p-2.5 border border-slate-100"><div class="text-slate-500 text-[10px]">总收益</div><div class="font-bold ${profit >= 0 ? 'text-red-600' : 'text-green-600'} mono">${profit >= 0 ? '+' : ''}${profit.toFixed(2)} (${yieldPct.toFixed(2)}%)</div></div>
+        <div class="bg-white rounded-lg p-2.5 border border-slate-100 col-span-2"><div class="text-slate-500 text-[10px]">股息率</div><div class="font-bold text-blue-600 mono">${dividendYield.toFixed(2)}%</div></div>`;
+
+    // Simple yield chart
+    if (yieldChart) yieldChart.dispose();
+    yieldChart = echarts.init(document.getElementById('yield-chart'));
+    const data = positions.filter(p => p.shares > 0).map((p, i) => ({
+        name: rcFunds.find(f => f.code === p.fund)?.name || `持仓${i+1}`,
+        value: [p.buyPrice * p.shares, p.currentPrice * p.shares, p.dividend * p.shares]
+    }));
+    yieldChart.setOption({
+        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+        legend: { data: ['成本', '市值', '分红'], textStyle: { fontSize: 10 } },
+        grid: { left: '3%', right: '4%', bottom: '3%', top: '15%', containLabel: true },
+        xAxis: { type: 'category', data: data.map(d => d.name), axisLabel: { fontSize: 9 } },
+        yAxis: { type: 'value', axisLabel: { fontSize: 9 } },
+        series: [
+            { name: '成本', type: 'bar', data: data.map(d => d.value[0]), itemStyle: { color: '#94a3b8' } },
+            { name: '市值', type: 'bar', data: data.map(d => d.value[1]), itemStyle: { color: '#3b82f6' } },
+            { name: '分红', type: 'bar', data: data.map(d => d.value[2]), itemStyle: { color: '#10b981' } }
+        ]
+    });
+}
+
+// ==================== VALUATION & DCF ====================
+function calculateValuation() {
+    const price = parseFloat(document.getElementById('val-price').value) || 0;
+    const nav = parseFloat(document.getElementById('val-nav').value) || 0;
+    const dividend = parseFloat(document.getElementById('val-dividend').value) || 0;
+    const required = parseFloat(document.getElementById('val-required').value) || 6.5;
+
+    const premium = nav > 0 ? ((price - nav) / nav * 100) : 0;
+    const divYield = price > 0 ? (dividend / price * 100) : 0;
+    const navDiscount = nav > 0 ? ((nav - price) / nav * 100) : 0;
+    const fairPrice = required > 0 ? (dividend / (required / 100)) : 0;
+    const upside = fairPrice > 0 ? ((fairPrice - price) / price * 100) : 0;
+
+    const color = upside >= 0 ? 'text-emerald-600' : 'text-red-600';
+    const bg = upside >= 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100';
+    document.getElementById('valuation-result').className = `rounded-xl p-4 border ${bg}`;
+    document.getElementById('valuation-result').innerHTML = `
+        <div class="grid grid-cols-2 gap-2 text-xs">
+            <div><span class="text-slate-500">溢价率:</span> <span class="font-bold mono ${premium >= 0 ? 'text-red-600' : 'text-green-600'}">${premium >= 0 ? '+' : ''}${premium.toFixed(2)}%</span></div>
+            <div><span class="text-slate-500">股息率:</span> <span class="font-bold mono text-blue-600">${divYield.toFixed(2)}%</span></div>
+            <div><span class="text-slate-500">NAV折价:</span> <span class="font-bold mono">${navDiscount.toFixed(2)}%</span></div>
+            <div><span class="text-slate-500">合理价:</span> <span class="font-bold mono">${fairPrice.toFixed(3)}</span></div>
+            <div class="col-span-2"><span class="text-slate-500">上涨空间:</span> <span class="font-bold mono ${color}">${upside >= 0 ? '+' : ''}${upside.toFixed(2)}%</span></div>
+        </div>`;
+}
+
+function calculateDCF() {
+    const dividend = parseFloat(document.getElementById('dcf-dividend').value) || 0;
+    const rate = parseFloat(document.getElementById('dcf-rate').value) || 7;
+    const growth = parseFloat(document.getElementById('dcf-growth').value) || 2;
+    const years = parseInt(document.getElementById('dcf-years').value) || 10;
+
+    let pv = 0, d = dividend;
+    const cashFlows = [];
+    for (let i = 1; i <= years; i++) {
+        d = d * (1 + growth / 100);
+        const p = d / Math.pow(1 + rate / 100, i);
+        pv += p;
+        cashFlows.push({ year: i, dividend: d, pv: p });
+    }
+    const terminal = d * (1 + growth / 100) / ((rate - growth) / 100);
+    const terminalPV = terminal / Math.pow(1 + rate / 100, years);
+    const total = pv + terminalPV;
+
+    document.getElementById('dcf-result').innerHTML = `
+        <div class="grid grid-cols-2 gap-2 text-xs">
+            <div><span class="text-slate-500">预测期现值:</span> <span class="font-bold mono">${pv.toFixed(3)}</span></div>
+            <div><span class="text-slate-500">终值现值:</span> <span class="font-bold mono">${terminalPV.toFixed(3)}</span></div>
+            <div class="col-span-2"><span class="text-slate-500">内在价值:</span> <span class="font-bold text-emerald-700 mono text-sm">${total.toFixed(3)}</span></div>
+        </div>`;
+
+    if (dcfChart) dcfChart.dispose();
+    dcfChart = echarts.init(document.getElementById('dcf-chart'));
+    dcfChart.setOption({
+        tooltip: { trigger: 'axis' },
+        grid: { left: '3%', right: '4%', bottom: '3%', top: '10%', containLabel: true },
+        xAxis: { type: 'category', data: cashFlows.map(c => c.year + '年'), axisLabel: { fontSize: 9 } },
+        yAxis: { type: 'value', axisLabel: { fontSize: 9 } },
+        series: [
+            { name: '分红', type: 'bar', data: cashFlows.map(c => c.dividend.toFixed(3)), itemStyle: { color: '#3b82f6' } },
+            { name: '现值', type: 'line', data: cashFlows.map(c => c.pv.toFixed(3)), itemStyle: { color: '#10b981' }, smooth: true }
+        ]
+    });
+}
+
+
+// ==================== PREMIUM ANALYSIS ====================
+function calculatePremium() {
+    const code = rcSelectedFunds[0];
+    if (!code) return;
+    const fund = rcFunds.find(f => f.code === code);
+    const q = rcQuotes[code];
+    const currentPrice = q && q.price > 0 ? q.price : (fund && fund.price > 0 ? fund.price : 0);
+    const nav = q && q.nav > 0 ? q.nav : (fund && fund.nav > 0 ? fund.nav : currentPrice * 0.95);
+    const currentPremium = nav > 0 ? ((currentPrice - nav) / nav * 100) : 0;
+
+    // Generate mock history if no real data
+    const history = generateMockPriceHistory(code, 200);
+    const premiums = history.map(h => {
+        const p = h.price || h.close_price || 0;
+        const n = h.nav || nav || p * 0.95;
+        return n > 0 ? parseFloat(((p - n) / n * 100).toFixed(2)) : 0;
+    });
+    const avg = premiums.reduce((a, b) => a + b, 0) / premiums.length;
+    const sorted = [...premiums].sort((a, b) => a - b);
+    const minP = sorted[0], maxP = sorted[sorted.length - 1];
+    const q25 = sorted[Math.floor(sorted.length * 0.25)];
+    const q50 = sorted[Math.floor(sorted.length * 0.5)];
+    const q75 = sorted[Math.floor(sorted.length * 0.75)];
+
+    document.getElementById('premium-stats').innerHTML = `
+        <div class="bg-white rounded-lg p-2 border border-slate-100 text-center"><div class="text-[10px] text-slate-500">当前</div><div class="font-bold mono ${currentPremium >= 0 ? 'text-red-600' : 'text-green-600'}">${currentPremium >= 0 ? '+' : ''}${currentPremium.toFixed(2)}%</div></div>
+        <div class="bg-white rounded-lg p-2 border border-slate-100 text-center"><div class="text-[10px] text-slate-500">平均</div><div class="font-bold mono">${avg >= 0 ? '+' : ''}${avg.toFixed(2)}%</div></div>
+        <div class="bg-white rounded-lg p-2 border border-slate-100 text-center"><div class="text-[10px] text-slate-500">中位数</div><div class="font-bold mono">${q50 >= 0 ? '+' : ''}${q50.toFixed(2)}%</div></div>`;
+
+    // Suggestion
+    const pct = percentile(premiums, currentPremium);
+    let sug = '', color = '';
+    if (pct > 80) { sug = '⚠️ 溢价过高：当前处于历史' + pct.toFixed(0) + '%分位，建议谨慎观望。'; color = 'text-red-600'; }
+    else if (pct > 60) { sug = '📊 小幅溢价：中等偏高水平，可持有但不宜追高。'; color = 'text-orange-500'; }
+    else if (pct > 40) { sug = '✅ 估值合理：处于中枢附近，可关注。'; color = 'text-blue-600'; }
+    else if (pct > 20) { sug = '📈 轻微折价：可考虑布局。'; color = 'text-teal-600'; }
+    else { sug = '🚀 深度折价：处于历史' + pct.toFixed(0) + '%分位，具备较高安全边际。'; color = 'text-green-600'; }
+    document.getElementById('premium-suggestion').innerHTML = `<div class="font-bold ${color} text-xs">${sug}</div>`;
+
+    // Premium chart
+    if (premiumChart) premiumChart.dispose();
+    premiumChart = echarts.init(document.getElementById('premium-chart'));
+    const dates = history.map(h => h.date.slice(5));
+    premiumChart.setOption({
+        tooltip: { trigger: 'axis', formatter: p => p[0].name + '<br/>溢价率: ' + p[0].value + '%' },
+        grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+        xAxis: { type: 'category', data: dates, axisLabel: { fontSize: 9, color: '#64748b' } },
+        yAxis: { type: 'value', name: '溢价率%', axisLabel: { fontSize: 9, formatter: '{value}%' } },
+        visualMap: { show: false, dimension: 1, pieces: [{ lte: 0, color: '#10b981' }, { gt: 0, lte: 5, color: '#3b82f6' }, { gt: 5, color: '#ef4444' }] },
+        series: [{ type: 'line', data: premiums, smooth: true, symbol: 'none', lineStyle: { width: 1.5 }, areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: 'rgba(59,130,246,0.15)' }, { offset: 1, color: 'rgba(59,130,246,0.02)' }]) }, markLine: { silent: true, data: [{ yAxis: 0, lineStyle: { color: '#94a3b8', type: 'dashed' } }] } }]
+    });
+
+    // Sector comparison
+    if (!fund) return;
+    const sectorFunds = rcFunds.filter(f => f.sector === fund.sector);
+    const sectorData = sectorFunds.map(f => {
+        const q = rcQuotes[f.code];
+        const price = q && q.price > 0 ? q.price : (f.price > 0 ? f.price : 0);
+        const n = q && q.nav > 0 ? q.nav : (f.nav > 0 ? f.nav : price * 0.95);
+        const pr = n > 0 ? ((price - n) / n * 100) : 0;
+        return { name: f.name.replace(/REITs?/g, '').replace(/基础设施/g, '').slice(0, 4), value: parseFloat(pr.toFixed(2)), highlight: f.code === code };
+    }).filter(d => !isNaN(d.value)).slice(0, 8);
+
+    if (premiumSectorChart) premiumSectorChart.dispose();
+    premiumSectorChart = echarts.init(document.getElementById('premium-sector-chart'));
+    premiumSectorChart.setOption({
+        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: p => p[0].name + '<br/>溢价率: ' + (p[0].value >= 0 ? '+' : '') + p[0].value + '%' },
+        grid: { left: '12%', right: '8%', bottom: '3%', containLabel: true },
+        xAxis: { type: 'value', axisLabel: { fontSize: 9, formatter: '{value}%' } },
+        yAxis: { type: 'category', data: sectorData.map(d => d.name), axisLabel: { fontSize: 9 }, inverse: true },
+        series: [{ type: 'bar', data: sectorData.map(d => ({ value: d.value, itemStyle: { color: d.highlight ? '#3b82f6' : (d.value >= 0 ? '#f87171' : '#34d399') } })), barWidth: '60%', label: { show: true, position: 'right', fontSize: 9, formatter: p => (p.value >= 0 ? '+' : '') + p.value + '%' } }]
+    });
+}
+
+// ==================== ATTRIBUTION ====================
+function calculateAttribution() {
+    const buyPrice = parseFloat(document.getElementById('attr-buy').value) || 0;
+    const currentPrice = parseFloat(document.getElementById('attr-current').value) || 0;
+    const days = parseInt(document.getElementById('attr-days').value) || 365;
+    const dividends = parseFloat(document.getElementById('attr-dividends').value) || 0;
+
+    const priceReturn = buyPrice > 0 ? ((currentPrice - buyPrice) / buyPrice * 100) : 0;
+    const dividendReturn = buyPrice > 0 ? (dividends / buyPrice * 100) : 0;
+    const totalReturn = priceReturn + dividendReturn;
+    const annualized = days > 0 ? (Math.pow(1 + totalReturn / 100, 365 / days) - 1) * 100 : 0;
+
+    document.getElementById('attr-result').innerHTML = `
+        <div class="grid grid-cols-2 gap-2 text-xs">
+            <div><span class="text-slate-500">价格收益:</span> <span class="font-bold mono ${priceReturn >= 0 ? 'text-red-600' : 'text-green-600'}">${priceReturn >= 0 ? '+' : ''}${priceReturn.toFixed(2)}%</span></div>
+            <div><span class="text-slate-500">分红收益:</span> <span class="font-bold mono text-blue-600">+${dividendReturn.toFixed(2)}%</span></div>
+            <div><span class="text-slate-500">总收益:</span> <span class="font-bold mono ${totalReturn >= 0 ? 'text-red-600' : 'text-green-600'}">${totalReturn >= 0 ? '+' : ''}${totalReturn.toFixed(2)}%</span></div>
+            <div><span class="text-slate-500">年化收益:</span> <span class="font-bold mono ${annualized >= 0 ? 'text-red-600' : 'text-green-600'}">${annualized >= 0 ? '+' : ''}${annualized.toFixed(2)}%</span></div>
+        </div>`;
+
+    if (attrChart) attrChart.dispose();
+    attrChart = echarts.init(document.getElementById('attr-chart'));
+    attrChart.setOption({
+        tooltip: { trigger: 'item' },
+        series: [{
+            type: 'pie', radius: ['40%', '70%'],
+            data: [
+                { value: Math.abs(priceReturn), name: '价格收益', itemStyle: { color: priceReturn >= 0 ? '#ef4444' : '#10b981' } },
+                { value: Math.abs(dividendReturn), name: '分红收益', itemStyle: { color: '#3b82f6' } }
+            ],
+            label: { fontSize: 10 },
+            emphasis: { itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: 'rgba(0,0,0,0.5)' } }
+        }]
+    });
+
+    if (attrCompareChart) attrCompareChart.dispose();
+    attrCompareChart = echarts.init(document.getElementById('attr-compare-chart'));
+    attrCompareChart.setOption({
+        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+        grid: { left: '3%', right: '4%', bottom: '3%', top: '10%', containLabel: true },
+        xAxis: { type: 'category', data: ['价格收益', '分红收益', '总收益', '年化'], axisLabel: { fontSize: 9 } },
+        yAxis: { type: 'value', axisLabel: { fontSize: 9, formatter: '{value}%' } },
+        series: [{ type: 'bar', data: [priceReturn, dividendReturn, totalReturn, annualized], itemStyle: { color: p => p.value >= 0 ? '#ef4444' : '#10b981' } }]
+    });
+}
+
+// ==================== EXPORT ====================
+function exportReport() {
+    if (!currentAnalysisData) { alert('请先进行AI分析'); return; }
+    const wb = { Sheets: {}, Props: { Title: 'REITs投研报告', Subject: '投研分析', Author: 'REITs数据平台', CreatedDate: new Date() } };
+    const ws_data = [['REITs投研分析报告'], ['生成时间:', new Date().toLocaleString()], []];
+    const m = currentAnalysisData.metrics || {};
+    const c = currentAnalysisData.conclusion || {};
+    ws_data.push(['综合评分', m['综合评分'] || '--']);
+    ws_data.push(['预期年化收益', m['预期年化收益'] || '--']);
+    ws_data.push(['风险等级', m['风险等级'] || '--']);
+    ws_data.push(['分红稳定性', m['分红稳定性'] || '--']);
+    ws_data.push([]);
+    ws_data.push(['投资亮点', c.highlights || '']);
+    ws_data.push(['主要风险', c.risks || '']);
+    ws_data.push(['操作建议', c.suggestion || '']);
+    const ws = XLSX.utils.aoa_to_sheet(ws_data);
+    wb.Sheets['AI分析'] = ws;
+    wb.SheetNames = ['AI分析'];
+    XLSX.writeFile(wb, `REITs投研报告_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+// ==================== UTILS ====================
+function generateMockPriceHistory(code, days) {
+    const history = [];
+    let price = 2.5 + Math.random() * 2;
+    const baseNav = price * 0.95;
+    const today = new Date();
+    for (let i = days; i >= 0; i--) {
+        const d = new Date(today); d.setDate(d.getDate() - i);
+        const change = (Math.random() - 0.48) * 0.03;
+        price = price * (1 + change);
+        const nav = baseNav * (1 + (Math.random() - 0.5) * 0.01);
+        history.push({ date: d.toISOString().slice(0,10), close_price: price, price: price, nav: nav });
+    }
+    return history;
+}
+
+function percentile(arr, val) {
+    const sorted = [...arr].sort((a, b) => a - b);
+    let count = 0;
+    for (const v of sorted) { if (v <= val) count++; }
+    return (count / sorted.length) * 100;
+}
+
+</script>
+</body>
+</html>

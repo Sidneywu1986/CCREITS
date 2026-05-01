@@ -29,6 +29,11 @@ from agents.user_quota import get_quota_manager
 from agents.butterfly_effect import get_butterfly_trigger
 from agents.lunch_whisper import get_lunch_whisper
 from agents.morning_news import get_morning_engine
+from agents.supervisor import SupervisorStateMachine
+from agents.agent_adapter import (
+    AgentWrapper, AgentMessage, broadcast_adapter,
+    set_room_manager, set_stream_target, get_room_session
+)
 
 router = APIRouter(tags=["WebSocket聊天"])
 logger = logging.getLogger(__name__)
@@ -202,6 +207,45 @@ room_manager = RoomManager()
 show_schedule = get_schedule()
 quota_manager = get_quota_manager()
 butterfly_trigger = get_butterfly_trigger()
+
+# ============================================
+# Supervisor 全局单例
+# ============================================
+_supervisor: Optional[SupervisorStateMachine] = None
+_supervisor_task: Optional[asyncio.Task] = None
+
+
+class _SafeRAG:
+    """RAG 适配器：AgentWrapper 内部已做 RAG，此处仅做兜底"""
+    def search(self, topic, top_k=5):
+        return []
+
+
+async def get_or_create_supervisor() -> SupervisorStateMachine:
+    """懒加载 Supervisor，确保只初始化一次"""
+    global _supervisor, _supervisor_task
+    if _supervisor is None:
+        agents = {
+            "lao_k": AgentWrapper("lao_k"),
+            "su_su": AgentWrapper("su_su"),
+            "lao_li": AgentWrapper("lao_li"),
+            "xiao_chen": AgentWrapper("xiao_chen"),
+            "wang_bo": AgentWrapper("wang_bo"),
+            "police": AgentWrapper("police"),
+            "chaoyang": AgentWrapper("chaoyang"),
+        }
+        _supervisor = SupervisorStateMachine(
+            agents=agents,
+            websocket_broadcast=broadcast_adapter,
+            rag_retriever=_SafeRAG(),
+        )
+        _supervisor_task = asyncio.create_task(_supervisor.start())
+        logger.info("SupervisorStateMachine 启动成功")
+    return _supervisor
+
+
+# 设置 room_manager 引用（供 broadcast_adapter 使用）
+set_room_manager(room_manager)
 
 
 # ============================================
@@ -1169,11 +1213,10 @@ async def websocket_chat(websocket: WebSocket):
                     await room_manager.send_to(session_id, {"type": "error", "message": "消息不能为空"})
                     continue
 
-                # 0. 检查当前时段与配额
+                # 0. 检查当前时段与配额（由 Supervisor 内部最终消费）
                 current_slot = show_schedule.current_slot()
                 butterfly_trigger.update_online_count(len(room_manager.rooms.get(DEFAULT_ROOM, {})))
                 
-                # showtime 时段检查配额
                 if current_slot and current_slot.user_quota > 0:
                     if not quota_manager.can_ask(session_id, current_slot.slot_id, current_slot.user_quota):
                         await room_manager.send_to(session_id, {
@@ -1183,32 +1226,24 @@ async def websocket_chat(websocket: WebSocket):
                             "current_slot": current_slot.slot_id,
                         })
                         continue
-                    quota_manager.consume_quota(session_id, current_slot.slot_id)
                 
-                # 1. 情感计算
-                try:
-                    market_emotion = session.sentiment_engine.get_market_emotion()
-                    emotion_tag = market_emotion.get("overall", "neutral")
-                except Exception:
-                    emotion_tag = "neutral"
-
-                # 2. 人设路由
+                # 1. 人设路由（前端兼容，仍通知提问者）
                 requested_persona = data.get("persona")
                 logger.info(f"[WS] requested_persona={requested_persona}, query={query[:40]}")
-                persona_cfg = session.persona_router.route(query, mentioned=requested_persona)
-                persona_id = persona_cfg.name
-                logger.info(f"[WS] routed to persona_id={persona_id}, name_cn={persona_cfg.name_cn}")
+                if requested_persona:
+                    try:
+                        persona_cfg = session.persona_router.route(query, mentioned=requested_persona)
+                        if persona_cfg.name != session.current_persona:
+                            session.current_persona = persona_cfg.name
+                            await room_manager.send_to(session_id, {
+                                "type": "persona_switch",
+                                "persona": persona_cfg.name_cn,
+                                "persona_id": persona_cfg.name,
+                            })
+                    except Exception:
+                        pass
 
-                # 如果切换了人设，通知提问者
-                if persona_id != session.current_persona:
-                    session.current_persona = persona_id
-                    await room_manager.send_to(session_id, {
-                        "type": "persona_switch",
-                        "persona": persona_cfg.name_cn,
-                        "persona_id": persona_id,
-                    })
-
-                # 3. 广播用户消息给全员（统一内容核心！）
+                # 2. 广播用户消息给全员
                 user_msg = {
                     "type": "user_message",
                     "sender": nickname,
@@ -1218,185 +1253,22 @@ async def websocket_chat(websocket: WebSocket):
                 await room_manager.broadcast(DEFAULT_ROOM, user_msg)
                 room_manager.add_history(DEFAULT_ROOM, user_msg)
                 session.add_message("user", query)
+                get_room_session().add_message("user", query)
 
-                # ===== 新增：判断是否进入稀疏辩论 =====
-                if DebateManager.should_debate(query) and not requested_persona:
-                    # 广播辩论触发提示
-                    await room_manager.broadcast(DEFAULT_ROOM, {
-                        "type": "system",
-                        "content": "🎙️ 已触发投研辩论会，5位分析师正在独立撰写投资备忘录...",
-                        "timestamp": datetime.now().isoformat(),
-                    })
-                    # 后台运行辩论并广播结果
-                    asyncio.create_task(_run_debate_broadcast(session, query))
-                    continue
-
-                # 3.5 飞行嘉宾调度：扫描用户消息，判断是否需要嘉宾出场
-                guest_triggers = session.guest_dispatcher.get_pending_triggers(
-                    user_msg=query,
-                    mentioned=requested_persona
-                )
-
-                # 4. 导演设计场景（节拍序列）
-                stances = {k: v["stance"] for k, v in state.get("stances", {}).items()}
-                beats = session.director.design_scene(
-                    topic=query,
-                    sentiment={"emotion": emotion_tag, "score": market_emotion.get("score", 0), "intensity": 0},
-                    perspectives=stances,
-                    round_num=session.round_count,
-                )
-                if not beats:
-                    beats = [DialogueBeat(speaker=persona_id, beat_type="opening")]
-
-                # 5. 主AI流式回复（提问者独享流式体验）
-                beat_type = beats[0].beat_type if beats else ""
-                content = ""
-                persona_name = persona_cfg.name_cn
-                sources = []
-                confidence = "low"
-                stream_error = None
-
-                # 先发送 message_start，让前端初始化 streamBuffer
-                await room_manager.send_to(session_id, {
-                    "type": "message_start",
-                    "persona": persona_name,
-                    "persona_id": persona_id,
+                # 3. ===== Supervisor 接管 =====
+                # 设置流式目标（AgentWrapper.generate 内部会流式输出给提问者）
+                set_stream_target(session_id)
+                supervisor = await get_or_create_supervisor()
+                await supervisor.inject_user_message({
+                    "mentioned_agent": requested_persona,
+                    "content": query,
+                    "user_id": session_id,
                 })
+                # 注意：不立即清除 stream_target，让 Supervisor 后台处理期间流式目标仍然有效
+                # broadcast_adapter 在广播第一条 AI 消息后会自动清除
 
-                async for item in generate_response_stream(session, query, persona_id, emotion_tag, beat_type):
-                    if item["type"] == "chunk":
-                        content += item["chunk"]
-                        await room_manager.send_to(session_id, {
-                            "type": "message_chunk",
-                            "chunk": item["chunk"],
-                        })
-                    elif item["type"] == "done":
-                        content = item["content"]
-                        persona_name = item["persona"]
-                        sources = item["sources"]
-                        confidence = item["confidence"]
-                    elif item["type"] == "error":
-                        stream_error = item["content"]
-                        persona_name = item.get("persona", persona_cfg.name_cn)
-
-                if stream_error:
-                    content = stream_error
-
-                await room_manager.send_to(session_id, {
-                    "type": "message_end",
-                    "content": content,
-                    "persona": persona_name,
-                    "persona_id": persona_id,
-                    "sources": sources,
-                    "confidence": confidence,
-                })
-
-                # 保存 AI 消息到会话上下文
-                session.add_message("assistant", content, persona_name)
-                session.round_count += 1
-
-                # 6. 广播完整AI回复给全员（统一内容核心！）
-                # 提问者已经通过流式看到了内容，其他人需要收到完整消息
-                ai_msg = {
-                    "type": "ai_message",
-                    "persona": persona_name,
-                    "persona_id": persona_id,
-                    "content": content,
-                    "sources": sources,
-                    "confidence": confidence,
-                    "timestamp": datetime.now().isoformat(),
-                }
-                await room_manager.broadcast(DEFAULT_ROOM, ai_msg, exclude_session=session_id)
-                room_manager.add_history(DEFAULT_ROOM, ai_msg)
-
-                # 6.5 飞行嘉宾调度：扫描AI输出，判断是否需要片警纠察
-                police_triggers = session.guest_dispatcher.scan_ai_output(content, persona_id)
-                guest_triggers.extend(police_triggers)
-
-                # 去重并排序
-                seen = set()
-                unique_triggers = []
-                for t in sorted(guest_triggers, key=lambda x: x.urgency, reverse=True):
-                    if t.guest_id not in seen:
-                        seen.add(t.guest_id)
-                        unique_triggers.append(t)
-
-                # 执行嘉宾闪现（最高优先级的1-2个嘉宾）
-                chunk_size = 80
-                for trigger in unique_triggers[:2]:
-                    await asyncio.sleep(0.5)  # 短暂停顿，营造"闪现"感
-                    await _send_guest_flash(session, session_id, query, trigger, emotion_tag, chunk_size)
-
-                # ===== Duet 对戏检测（片警 ↔ 朝阳群众） =====
-                duet_beat = _check_duet(session, persona_id, content)
-                if duet_beat:
-                    await asyncio.sleep(1.2)
-                    await _send_follow_up(session, session_id, query, duet_beat, emotion_tag, chunk_size)
-
-                # 7. 导演续场（原始设计_scene的后续节拍）
-                for beat in beats[1:]:
-                    await _send_follow_up(session, session_id, query, beat, emotion_tag, chunk_size)
-
-                # 8. 多AI接力：每次提问后，根据主AI选择1个互补AI做补充
-                # 60%概率触发，保持节奏感，避免每次都有太多回复
-                follow_up = _pick_follow_up(persona_id, emotion_tag)
-                if follow_up and random.random() < 0.75:
-                    await asyncio.sleep(0.3)
-                    await _send_follow_up(
-                        session, session_id, query,
-                        DialogueBeat(speaker=follow_up, beat_type="support"),
-                        emotion_tag, chunk_size
-                    )
-
-                # 8.5 蝴蝶效应：用户提问后，概率触发AI自发讨论
-                if butterfly_trigger.should_trigger(query):
-                    await asyncio.sleep(1.0)
-                    # 随机选1个未发言的AI，针对用户话题自发接话
-                    spoken = {persona_id}
-                    if follow_up:
-                        spoken.add(follow_up)
-                    for t in unique_triggers:
-                        spoken.add(t.guest_id)
-                    if duet_beat:
-                        spoken.add(duet_beat.speaker)
-                    available = [aid for aid in ["lao_k", "su_su", "lao_li", "xiao_chen", "wang_bo"] if aid not in spoken]
-                    if available:
-                        spark_id = random.choice(available)
-                        await room_manager.broadcast(DEFAULT_ROOM, {
-                            "type": "system",
-                            "content": f"💡 {session.persona_router.registry[spark_id].name_cn} 自发回应了刚才的话题",
-                            "timestamp": datetime.now().isoformat(),
-                        })
-                        await _send_follow_up(
-                            session, session_id, query,
-                            DialogueBeat(speaker=spark_id, beat_type="challenge"),
-                            emotion_tag, chunk_size
-                        )
-
-                # 9. 更新直播间轮次状态并广播给全员
-                state = room_manager.get_room_state(DEFAULT_ROOM)
-                new_round = state["current_round"] + 1
-                if new_round > state["max_rounds"]:
-                    new_round = 1
-                    # 切换话题：把当前话题移到队列末尾，下一个话题激活
-                    queue = state["topic_queue"]
-                    if queue:
-                        current = queue.pop(0)
-                        current["active"] = False
-                        queue.append(current)
-                        if queue:
-                            queue[0]["active"] = True
-                            state["current_topic"] = queue[0]["title"]
-                room_manager.update_room_state(DEFAULT_ROOM, "current_round", new_round)
-                room_manager.update_room_state(DEFAULT_ROOM, "topic_desc", f"{persona_name} 刚刚分析完，正在接力...")
-                await room_manager.broadcast(DEFAULT_ROOM, {
-                    "type": "topic_update",
-                    "current_round": new_round,
-                    "max_rounds": state["max_rounds"],
-                    "current_topic": state["current_topic"],
-                    "topic_desc": state["topic_desc"],
-                    "topic_queue": state["topic_queue"],
-                })
+                # Supervisor 内部自动处理：
+                # 配额消费 → 选角 → 生成 → 流式给提问者 → 广播给全员 → 续场 → 嘉宾 → 对戏 → 蝴蝶效应
 
             elif action == "quiz_vote":
                 val = data.get("vote")
