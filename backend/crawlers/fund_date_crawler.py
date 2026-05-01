@@ -9,6 +9,8 @@ import time
 import os
 from datetime import datetime
 from core.db import get_conn
+import logging
+logger = logging.getLogger(__name__)
 
 def fetch_fund_info(code):
     """获取基金详细信息"""
@@ -38,7 +40,7 @@ def fetch_fund_info(code):
         
         return result
     except Exception as e:
-        print(f'  [Error] {code}: {e}')
+        logger.error(f'  [Error] {code}: {e}')
         return {}
 
 def calculate_remaining_years(listing_date, total_years):
@@ -91,7 +93,7 @@ def update_fund(code, data):
         
         return rowcount > 0
     except Exception as e:
-        print(f'  [DB Error] {code}: {e}')
+        logger.error(f'  [DB Error] {code}: {e}')
         return False
 
 def crawl_all():
@@ -102,27 +104,27 @@ def crawl_all():
         cursor.execute('SELECT code, name FROM business.funds WHERE listing_date IS NULL ORDER BY code')
         funds = cursor.fetchall()
     
-    print(f'开始爬取 {len(funds)} 只REIT的成立日期...\n')
+    logger.info(f'开始爬取 {len(funds)} 只REIT的成立日期...\n')
     
     success = 0
     for i, (code, name) in enumerate(funds):
-        print(f'[{i+1}/{len(funds)}] {code} {name}')
+        logger.info(f'[{i+1}/{len(funds)}] {code} {name}')
         
         data = fetch_fund_info(code)
         if data:
-            print(f"  成立: {data.get('listing_date', '--')} | 期限: {data.get('total_years', '--')}年 | 规模: {data.get('scale', '--')}亿")
+            logger.info(f"  成立: {data.get('listing_date', '--')} | 期限: {data.get('total_years', '--')}年 | 规模: {data.get('scale', '--')}亿")
             
             if update_fund(code, data):
-                print(f'  [OK] 已更新')
+                logger.info(f'  [OK] 已更新')
                 success += 1
             else:
-                print(f'  [SKIP] 无更新')
+                logger.info(f'  [SKIP] 无更新')
         else:
-            print(f'  [FAIL] 未获取数据')
+            logger.info(f'  [FAIL] 未获取数据')
         
         time.sleep(0.3)  # 避免请求过快
     
-    print(f'\n完成: 成功 {success}/{len(funds)}')
+    logger.info(f'\n完成: 成功 {success}/{len(funds)}')
 
 if __name__ == '__main__':
     crawl_all()

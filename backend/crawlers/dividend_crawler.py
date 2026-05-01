@@ -14,6 +14,8 @@ import re
 import os
 import sys
 from core.db import get_conn
+import logging
+logger = logging.getLogger(__name__)
 
 # 添加父目录到路径
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -137,7 +139,7 @@ class SHREITsDividendCrawler(BaseREITsExchangeCrawler):
                 time.sleep(0.5)
                 
         except Exception as e:
-            print(f"[ERROR] 上交所 {fund_code} 抓取失败: {e}")
+            logger.error(f"[ERROR] 上交所 {fund_code} 抓取失败: {e}")
             
         return pd.DataFrame(all_items)
 
@@ -213,7 +215,7 @@ class SZREITsDividendCrawler(BaseREITsExchangeCrawler):
                 time.sleep(0.8)
                 
         except Exception as e:
-            print(f"[ERROR] 深交所 {fund_code} 抓取失败: {e}")
+            logger.error(f"[ERROR] 深交所 {fund_code} 抓取失败: {e}")
             
         return pd.DataFrame(all_items)
 
@@ -235,7 +237,7 @@ class REITsDividendManager:
         
         for code in fund_codes:
             code = str(code).strip()
-            print(f"[{datetime.now().strftime('%H:%M:%S')}] 处理 {code}...")
+            logger.info(f"[{datetime.now().strftime('%H:%M:%S')}] 处理 {code}...")
             
             try:
                 if self.code_pattern_sse.match(code):
@@ -243,20 +245,20 @@ class REITsDividendManager:
                 elif self.code_pattern_szse.match(code):
                     df = self.szse_crawler.fetch_dividend_announcements(code, start_date, end_date)
                 else:
-                    print(f"[WARN] {code} 非标准 REITs 代码")
+                    logger.info(f"[WARN] {code} 非标准 REITs 代码")
                     continue
                 
                 if not df.empty:
                     all_results.append(df)
-                    print(f"  └─ 获取 {len(df)} 条分红公告")
+                    logger.info(f"  └─ 获取 {len(df)} 条分红公告")
                     
                     # 立即保存到数据库
                     self.save_to_db(df)
                 else:
-                    print(f"  └─ 无分红公告")
+                    logger.info(f"  └─ 无分红公告")
                     
             except Exception as e:
-                print(f"[ERROR] 处理 {code} 异常: {e}")
+                logger.info(f"[ERROR] 处理 {code} 异常: {e}")
             
             time.sleep(1.5)
         
@@ -327,9 +329,9 @@ class REITsDividendManager:
                                 normalize_date(ex_date)
                             ))
                 except Exception as e:
-                    print(f"[ERROR] 保存失败 {row['fund_code']}: {e}")
+                    logger.error(f"[ERROR] 保存失败 {row['fund_code']}: {e}")
         
-        print(f"  └─ 保存到数据库")
+        logger.info(f"  └─ 保存到数据库")
 
 
 def main():
@@ -360,8 +362,8 @@ def main():
         # 测试代码
         codes = ['508056', '508000', '180101', '180201']
     
-    print(f"=== REITs分红公告爬虫 [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ===")
-    print(f"共 {len(codes)} 只基金\n")
+    logger.info(f"=== REITs分红公告爬虫 [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ===")
+    logger.info(f"共 {len(codes)} 只基金\n")
     
     results = manager.get_dividends(
         fund_codes=codes,
@@ -370,10 +372,10 @@ def main():
     )
     
     if not results.empty:
-        print(f"\n=== 完成！共获取 {len(results)} 条分红公告 ===")
-        print(results[['fund_code', 'exchange', 'publish_date', 'title', 'dividend_per_share']].head(10))
+        logger.info(f"\n=== 完成！共获取 {len(results)} 条分红公告 ===")
+        logger.info(results[['fund_code', 'exchange', 'publish_date', 'title', 'dividend_per_share']].head(10))
     else:
-        print("\n未获取到数据")
+        logger.info("\n未获取到数据")
 
 
 if __name__ == "__main__":
