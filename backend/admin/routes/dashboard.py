@@ -2,18 +2,20 @@
 Admin Dashboard Routes
 """
 
-from fastapi import APIRouter, Request, Form
+from fastapi import APIRouter, Request, Form, Depends
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
 from typing import Optional
 import asyncpg
 
 from ..utils import DB_URL, get_admin_user, sign_cookie, verify_cookie, sql_placeholders
+from core.auth.dependencies import require_admin
+from core.auth.jwt import TokenPayload
 
 router = APIRouter()
 api_router = APIRouter()
 
 @router.get("/api/v1/dashboard/stats")
-async def api_dashboard_stats():
+async def api_dashboard_stats(user: TokenPayload = Depends(require_admin)):
     from datetime import date
     
     conn = await asyncpg.connect(DB_DSN)

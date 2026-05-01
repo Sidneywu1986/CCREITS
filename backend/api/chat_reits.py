@@ -5,7 +5,9 @@ AI聊REITs API
 分层LLM: REITs用deepseek
 RAG检索脱敏：向量全文用于AI内部推理，前端仅展示模糊溯源
 """
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
+from core.auth.dependencies import optional_user
+from core.auth.jwt import TokenPayload
 from pydantic import BaseModel
 from typing import Optional, List
 import logging
@@ -117,7 +119,7 @@ def _build_public_sources(rag_results, confidence: str) -> List[dict]:
 
 
 @router.post("/chat-reits", response_model=ChatReitsResponse)
-async def chat_reits(req: ChatReitsRequest):
+async def chat_reits(req: ChatReitsRequest, user: Optional[TokenPayload] = Depends(optional_user)):
     """
     AI聊REITs接口
     核心原则：向量全文用于AI内部推理，前端仅展示脱敏回答+模糊溯源
