@@ -24,8 +24,11 @@ class HotspotScheduler(BaseScheduler):
         # Ensure database is initialized
         from tortoise import Tortoise
         if not Tortoise.is_inited():
+            from core.config import settings
+            c = settings.AI_DB_CONFIG["connections"]["default"]["credentials"]
+            db_url = f"postgres://{c['user']}:{c['password']}@{c['host']}:{c['port']}/{c['database']}"
             await Tortoise.init(
-                db_url='postgres://postgres:postgres@localhost:5432/ai_db',
+                db_url=db_url,
                 modules={'ai_db': ['backend.ai_db.models']}
             )
 

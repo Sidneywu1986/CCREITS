@@ -297,10 +297,10 @@ def _extract_fund_code(query: str) -> Optional[str]:
 
 def _query_fund_info(fund_code: str) -> dict:
     """从数据库查询基金基本信息和近期价格"""
-pg_dsn = "host=localhost dbname=ai_db user=postgres password=postgres"
-
 def get_pg_conn():
     """PostgreSQL connection for ai_db"""
+    from core.config import settings
+    pg_dsn = f"host={settings.PG_CONFIG['host']} dbname={settings.PG_CONFIG['database']} user={settings.PG_CONFIG['user']} password={settings.PG_CONFIG['password']}"
     conn = psycopg2.connect(pg_dsn)
     return conn
     result = {"found": False, "basic": "", "prices": "", "sector": ""}

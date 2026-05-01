@@ -26,10 +26,17 @@ logger = logging.getLogger(__name__)
 
 # 配置
 SQLITE_PATH = os.getenv("SQLITE_PATH", str(Path(__file__).parent / "reits.db"))
-POSTGRES_DSN = os.getenv(
-    "POSTGRES_DSN",
-    "postgresql://postgres:postgres@localhost:5432/reits"
-)
+POSTGRES_DSN = os.getenv("POSTGRES_DSN")
+if not POSTGRES_DSN:
+    pg_user = os.getenv("PG_USER", "postgres")
+    pg_password = os.getenv("PG_PASSWORD", "")
+    pg_host = os.getenv("PG_HOST", "localhost")
+    pg_port = os.getenv("PG_PORT", "5432")
+    pg_db = os.getenv("PG_DATABASE", "reits")
+    if pg_password:
+        POSTGRES_DSN = f"postgresql://{pg_user}:{pg_password}@{pg_host}:{pg_port}/{pg_db}"
+    else:
+        POSTGRES_DSN = f"postgresql://{pg_user}@{pg_host}:{pg_port}/{pg_db}"
 DRY_RUN = os.getenv("DRY_RUN", "false").lower() == "true"
 
 # 表映射: (sqlite_table, postgres_table, schema, column_mapping)
