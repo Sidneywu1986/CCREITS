@@ -5,7 +5,7 @@
 See: .planning/PROJECT.md (updated 2026-05-01)
 
 **Core value:** 让 REITs 投资者第一时间获取准确的行情、公告和投研数据。
-**Current focus:** Phase 3 — API JWT认证体系
+**Current focus:** Phase 4 — 性能与稳定性优化
 
 ---
 
@@ -14,7 +14,7 @@ See: .planning/PROJECT.md (updated 2026-05-01)
 | Milestone | v2.1 — 安全加固与前端整改 |
 | Phase | 2 — 前端UI深度整改 |
 | Status | ✅ Complete |
-| Next Phase | Phase 3 — API JWT认证体系 |
+| Next Phase | Phase 4 — 性能与稳定性优化 |
 
 ---
 
@@ -73,9 +73,15 @@ See: .planning/PROJECT.md (updated 2026-05-01)
 
 ## Active Work
 
-- Wave 1: JWT 核心认证基础设施 ✅ 已完成（44/44 测试通过）
-- Wave 2: 认证 API 与路由接入 ✅ 已完成（11/11 集成测试通过）
-- Wave 3: 前端接入与集成测试 ✅ 已完成
+### Phase 3 — API JWT认证体系 ✅ Complete
+- Wave 1: JWT 核心认证基础设施（44/44 测试通过）
+- Wave 2: 认证 API 与路由接入（11/11 集成测试通过）
+- Wave 3: 前端接入与集成测试
+
+### Phase 4 — 性能与稳定性优化 🔄 In Progress
+- Wave 1: asyncpg 连接池 + 数据库索引 ✅ 已完成
+- Wave 2: Redis 缓存层 ⏳ 待启动
+- Wave 3: 健康检查 + 监控 + 日志聚合 ⏳ 待启动
 
 ---
 
