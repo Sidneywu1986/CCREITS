@@ -78,10 +78,10 @@ See: .planning/PROJECT.md (updated 2026-05-01)
 - Wave 2: 认证 API 与路由接入（11/11 集成测试通过）
 - Wave 3: 前端接入与集成测试
 
-### Phase 4 — 性能与稳定性优化 🔄 In Progress
-- Wave 1: asyncpg 连接池 + 数据库索引 ✅ 已完成
-- Wave 2: Redis 缓存层 ⏳ 待启动
-- Wave 3: 健康检查 + 监控 + 日志聚合 ⏳ 待启动
+### Phase 4 — 性能与稳定性优化 ✅ Complete
+- Wave 1: asyncpg 连接池 + 数据库索引 ✅
+- Wave 2: Redis 缓存层 ✅
+- Wave 3: 健康检查 + 监控 + 日志聚合 ✅
 
 ---
 
