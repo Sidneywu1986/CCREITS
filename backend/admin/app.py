@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 from .utils import lifespan
 from .routes import (
     auth, dashboard, funds, login, users, roles, permissions,
-    announcements, crawlers, logs, alerts, integrity, other
+    announcements, crawlers, logs, alerts, integrity, other, health
 )
 
 
@@ -49,3 +49,6 @@ app.include_router(integrity.router, prefix="", tags=["integrity"])
 
 # ── Other / Utility ──
 app.include_router(other.router, prefix="", tags=["other"])
+
+# ── Health & Metrics ──
+app.include_router(health.router, prefix="", tags=["health"])
