@@ -116,3 +116,10 @@ get-docker.sh
 # Data & DB
 data/backups/
 backend/*.db
+
+# Downloaded PDF announcements (large files)
+data/announcements/
+*.checkpoint.json
+
+# Temporary checkpoint files
+.retag_checkpoint.json

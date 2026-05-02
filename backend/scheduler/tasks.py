@@ -155,6 +155,51 @@ def run_morning_show():
 
 
 # =============================================================================
+# 3. 公告同步 (每4小时增量同步)
+# =============================================================================
+
+def run_announcement_sync():
+    """增量同步：只同步最近7天的新公告"""
+    logger.info("[Scheduler] Starting incremental announcement sync (last 7 days)...")
+    sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+    try:
+        from crawlers.cninfo_db_sync import sync_single_fund
+        from crawlers.cninfo_crawler import CNInfoCrawler
+        from datetime import datetime, timedelta
+        
+        end_date = datetime.now().strftime('%Y-%m-%d')
+        start_date = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
+        
+        total_inserted = 0
+        total_skipped = 0
+        success_count = 0
+        
+        for code in sorted(CNInfoCrawler.REIT_CODE_MAPPING.keys()):
+            try:
+                result = sync_single_fund(
+                    code,
+                    start_date=start_date,
+                    end_date=end_date
+                )
+                
+                if result['success']:
+                    total_inserted += result['inserted']
+                    total_skipped += result['skipped']
+                    success_count += 1
+                else:
+                    logger.warning(f"[Scheduler] {code} sync returned error: {result.get('error')}")
+            except Exception as e:
+                logger.error(f"[Scheduler] {code} sync failed: {e}")
+        
+        logger.info(
+            f"[Scheduler] Incremental sync done: {success_count}/{len(CNInfoCrawler.REIT_CODE_MAPPING)} "
+            f"funds, inserted={total_inserted}, skipped={total_skipped}"
+        )
+    except (ImportError, RuntimeError, psycopg2.Error, ValueError) as e:
+        logger.error(f"[Scheduler] Announcement sync failed: {e}")
+
+
+# =============================================================================
 # 启动调度器
 # =============================================================================
 
@@ -170,6 +215,10 @@ def start_scheduler(interval_minutes: int = 30):
     schedule.every().day.at("13:00").do(run_lunch_whisper)
     schedule.every().day.at("14:00").do(run_afternoon_show)
     logger.info("[Scheduler] Agents shows: 08:00(morning_news) 09:30(morning) 13:00(lunch) 14:00(afternoon)")
+
+    # 公告同步：每4小时
+    schedule.every(4).hours.do(run_announcement_sync)
+    logger.info("[Scheduler] Announcement sync every 4 hours")
 
     def loop():
         while True:

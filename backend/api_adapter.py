@@ -14,6 +14,9 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import json
 import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Tortoise ORM for PostgreSQL (ai_db)
 try:
@@ -194,7 +197,6 @@ except (ImportError, RuntimeError) as e:
 # ==================== 缓存系统 ====================
 import time
 from functools import wraps
-logger = logging.getLogger(__name__)
 
 # 内存缓存: {key: (value, expire_at)}
 _memory_cache: dict = {}
@@ -681,20 +683,36 @@ async def dividends_adapter(code: str = Query(..., description="基金代码")):
 # ==================== 分红日历端点 ====================
 
 @adapter_app.get("/api/dividend-calendar/list")
-async def dividend_calendar_list():
-    """获取所有分红记录"""
+async def dividend_calendar_list(
+    start_date: str = Query(None, description="开始日期 YYYY-MM-DD"),
+    end_date: str = Query(None, description="结束日期 YYYY-MM-DD"),
+    page_size: int = Query(500, description="返回条数", ge=1, le=2000),
+):
+    """获取所有分红记录（支持日期范围和条数限制）"""
     try:
         with get_conn() as conn:
                     cursor = conn.cursor()
+
+                    conditions = []
+                    params = []
+                    if start_date:
+                        conditions.append("d.dividend_date >= %s")
+                        params.append(start_date)
+                    if end_date:
+                        conditions.append("d.dividend_date <= %s")
+                        params.append(end_date)
+
+                    where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
             
-                    cursor.execute("""
+                    cursor.execute(f"""
                         SELECT d.id, d.fund_code, f.fund_name, d.dividend_date,
                                d.dividend_amount, d.record_date, d.ex_dividend_date
                         FROM business.dividends d
                         LEFT JOIN business.funds f ON d.fund_code = f.fund_code
+                        {where_clause}
                         ORDER BY d.dividend_date DESC
-                        LIMIT 100
-                    """)
+                        LIMIT %s
+                    """, (*params, page_size))
             
                     rows = cursor.fetchall()
 
@@ -704,10 +722,10 @@ async def dividend_calendar_list():
                 "id": row[0],
                 "fund_code": row[1],
                 "fund_name": row[2] or row[1],
-                "dividend_date": row[3],
-                "dividend_amount": row[4] or 0,
-                "record_date": row[5],
-                "ex_dividend_date": row[6]
+                "dividend_date": str(row[3]) if row[3] else None,
+                "dividend_amount": float(row[4]) if row[4] else 0,
+                "record_date": str(row[5]) if row[5] else None,
+                "ex_dividend_date": str(row[6]) if row[6] else None,
             })
 
         return {
@@ -723,6 +741,124 @@ async def dividend_calendar_list():
             "data": [],
             "total": 0,
             "message": "获取分红日历失败，请稍后重试"
+        }
+
+
+@adapter_app.get("/api/dividends")
+async def dividends_list(
+    fund_code: str = Query(None, description="基金代码筛选"),
+    page: int = Query(1, description="页码", ge=1),
+    page_size: int = Query(50, description="每页条数", ge=1, le=500),
+):
+    """获取分红记录列表（支持分页和基金筛选）"""
+    try:
+        with get_conn() as conn:
+            cursor = conn.cursor()
+
+            conditions = []
+            params = []
+            if fund_code:
+                conditions.append("d.fund_code = %s")
+                params.append(fund_code)
+
+            where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
+
+            # 查询数据
+            cursor.execute(f"""
+                SELECT d.id, d.fund_code, f.fund_name, d.dividend_date,
+                       d.dividend_amount, d.dividend_per_share, d.record_date,
+                       d.ex_dividend_date, d.dividend_payment_date
+                FROM business.dividends d
+                LEFT JOIN business.funds f ON d.fund_code = f.fund_code
+                {where_clause}
+                ORDER BY d.dividend_date DESC
+                LIMIT %s OFFSET %s
+            """, (*params, page_size, (page - 1) * page_size))
+
+            rows = cursor.fetchall()
+
+            dividends = []
+            for row in rows:
+                dividends.append({
+                    "id": row[0],
+                    "fund_code": row[1],
+                    "fund_name": row[2] or row[1],
+                    "dividend_date": row[3],
+                    "dividend_amount": float(row[4]) if row[4] else 0,
+                    "dividend_per_share": float(row[5]) if row[5] else 0,
+                    "record_date": row[6],
+                    "ex_dividend_date": row[7],
+                    "dividend_payment_date": row[8],
+                })
+
+            # 查询总数
+            cursor.execute(f"""
+                SELECT COUNT(*) FROM business.dividends d {where_clause}
+            """, params)
+            total = cursor.fetchone()[0]
+
+        return {
+            "success": True,
+            "data": dividends,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "message": f"获取分红记录成功 ({len(dividends)}条)"
+        }
+    except Exception:
+        logger.exception("获取分红记录失败")
+        return {
+            "success": False,
+            "data": [],
+            "total": 0,
+            "message": "获取分红记录失败"
+        }
+
+
+@adapter_app.get("/api/dividends/stats")
+async def dividends_stats():
+    """获取分红统计信息"""
+    try:
+        with get_conn() as conn:
+            cursor = conn.cursor()
+
+            cursor.execute("SELECT COUNT(*) FROM business.dividends")
+            total = cursor.fetchone()[0]
+
+            cursor.execute("SELECT COALESCE(SUM(dividend_amount), 0) FROM business.dividends")
+            total_amount = float(cursor.fetchone()[0])
+
+            cursor.execute("""
+                SELECT COUNT(DISTINCT fund_code) FROM business.dividends
+            """)
+            funds_with_dividends = cursor.fetchone()[0]
+
+            cursor.execute("""
+                SELECT EXTRACT(YEAR FROM dividend_date)::int as year,
+                       COUNT(*), COALESCE(SUM(dividend_amount), 0)
+                FROM business.dividends
+                GROUP BY year ORDER BY year DESC
+            """)
+            by_year = {}
+            for row in cursor.fetchall():
+                by_year[row[0]] = {"count": row[1], "amount": float(row[2])}
+
+        return {
+            "success": True,
+            "data": {
+                "total": total,
+                "total_amount": round(total_amount, 4),
+                "funds_with_dividends": funds_with_dividends,
+                "by_year": by_year,
+            },
+            "message": "获取分红统计成功"
+        }
+    except Exception:
+        logger.exception("获取分红统计失败")
+        return {
+            "success": False,
+            "data": None,
+            "message": "获取分红统计失败"
         }
 
 
@@ -1287,31 +1423,58 @@ async def get_single_quote(code: str = Query(..., description="基金代码")):
 
 @adapter_app.get("/api/announcements")
 async def announcements_list(
-    limit: int = Query(3000, description="返回条数"),
+    page: int = Query(1, description="页码", ge=1),
+    page_size: int = Query(50, description="每页条数", ge=1, le=500),
+    fund_code: str = Query(None, description="基金代码筛选"),
     category: str = Query(None, description="分类筛选"),
-    code: str = Query(None, description="基金代码筛选"),
-    days: int = Query(None, description="最近天数筛选")
+    exchange: str = Query(None, description="交易所筛选: SSE/SZSE"),
+    search: str = Query(None, description="标题搜索关键词"),
+    start_date: str = Query(None, description="开始日期 YYYY-MM-DD"),
+    end_date: str = Query(None, description="结束日期 YYYY-MM-DD"),
+    days: int = Query(None, description="最近天数筛选"),
+    limit: int = Query(None, description="兼容旧版: 返回条数"),
 ):
-    """获取公告列表"""
+    """获取公告列表（支持分页、筛选、搜索）"""
     try:
-        # 获取缓存数据
-        if category:
-            data = announcements.get_announcements_by_category(category, limit)
-        elif code:
-            data = announcements.get_announcements_by_fund(code, limit)
-        else:
-            data = announcements.get_cached_announcements(limit)
+        # 兼容旧版 limit 参数
+        if limit is not None and page_size == 50:
+            page_size = limit
 
-        # 按天数筛选
+        # days 参数转换为日期范围
+        effective_start_date = start_date
+        effective_end_date = end_date
         if days:
-            import datetime
             cutoff = (datetime.datetime.now() - datetime.timedelta(days=days)).strftime('%Y-%m-%d')
-            data = [d for d in data if d.get('publish_date', '') >= cutoff]
+            effective_start_date = cutoff
+
+        offset = (page - 1) * page_size
+
+        data = announcements.get_cached_announcements(
+            limit=page_size,
+            offset=offset,
+            fund_code=fund_code,
+            category=category,
+            exchange=exchange,
+            search=search,
+            start_date=effective_start_date,
+            end_date=effective_end_date,
+        )
+
+        total = announcements.count_cached_announcements(
+            fund_code=fund_code,
+            category=category,
+            exchange=exchange,
+            search=search,
+            start_date=effective_start_date,
+            end_date=effective_end_date,
+        )
 
         return {
             "success": True,
             "data": data,
-            "total": len(data),
+            "total": total,
+            "page": page,
+            "page_size": page_size,
             "message": f"获取公告成功 ({len(data)}条)"
         }
     except Exception:
@@ -1319,7 +1482,182 @@ async def announcements_list(
         return {
             "success": False,
             "data": [],
+            "total": 0,
             "message": "获取公告失败，请稍后重试"
+        }
+
+
+@adapter_app.get("/api/announcements/stats")
+async def announcements_stats():
+    """获取公告统计信息"""
+    try:
+        with get_conn() as conn:
+            cursor = conn.cursor()
+
+            # 总数
+            cursor.execute("SELECT COUNT(*) FROM business.announcements")
+            total = cursor.fetchone()[0]
+
+            # 按交易所统计
+            cursor.execute("""
+                SELECT exchange, COUNT(*) FROM business.announcements
+                WHERE exchange IS NOT NULL GROUP BY exchange
+            """)
+            by_exchange = {row[0] or 'UNKNOWN': row[1] for row in cursor.fetchall()}
+
+            # 按分类统计
+            cursor.execute("""
+                SELECT category, COUNT(*) FROM business.announcements
+                WHERE category IS NOT NULL GROUP BY category
+            """)
+            by_category = {row[0] or 'other': row[1] for row in cursor.fetchall()}
+
+            # 涉及的基金数量
+            cursor.execute("""
+                SELECT COUNT(DISTINCT fund_code) FROM business.announcements
+            """)
+            funds_count = cursor.fetchone()[0]
+
+        return {
+            "success": True,
+            "data": {
+                "total": total,
+                "by_exchange": by_exchange,
+                "by_category": by_category,
+                "funds_count": funds_count,
+            },
+            "message": "获取公告统计成功"
+        }
+    except Exception:
+        logger.exception("获取公告统计失败，请稍后重试")
+        return {
+            "success": False,
+            "data": None,
+            "message": "获取公告统计失败，请稍后重试"
+        }
+
+
+@adapter_app.get("/api/announcements/quality")
+async def announcements_quality():
+    """获取公告数据质量报告"""
+    try:
+        with get_conn() as conn:
+            cursor = conn.cursor()
+
+            # 总数
+            cursor.execute("SELECT COUNT(*) FROM business.announcements")
+            total = cursor.fetchone()[0]
+
+            # 缺失PDF
+            cursor.execute("""
+                SELECT COUNT(*) FROM business.announcements
+                WHERE pdf_url IS NULL OR pdf_url = ''
+            """)
+            missing_pdf = cursor.fetchone()[0]
+
+            # 分类为other（未成功分类）
+            cursor.execute("""
+                SELECT COUNT(*) FROM business.announcements
+                WHERE category = 'other' OR category IS NULL
+            """)
+            missing_category = cursor.fetchone()[0]
+
+            # 重复标题（同一基金同一标题）
+            cursor.execute("""
+                SELECT COUNT(*) FROM (
+                    SELECT fund_code, title, COUNT(*) as cnt
+                    FROM business.announcements
+                    GROUP BY fund_code, title
+                    HAVING COUNT(*) > 1
+                ) t
+            """)
+            duplicate_titles = cursor.fetchone()[0]
+
+            # 未来日期（publish_date > today）
+            cursor.execute("""
+                SELECT COUNT(*) FROM business.announcements
+                WHERE publish_date > CURRENT_DATE
+            """)
+            suspicious_dates = cursor.fetchone()[0]
+
+            # 低置信度
+            cursor.execute("""
+                SELECT COUNT(*) FROM business.announcements
+                WHERE confidence < 80
+            """)
+            low_confidence = cursor.fetchone()[0]
+
+            # 涉及的基金数量
+            cursor.execute("""
+                SELECT COUNT(DISTINCT fund_code) FROM business.announcements
+            """)
+            funds_count = cursor.fetchone()[0]
+
+        return {
+            "success": True,
+            "data": {
+                "total": total,
+                "missing_pdf": missing_pdf,
+                "missing_category": missing_category,
+                "duplicate_titles": duplicate_titles,
+                "suspicious_dates": suspicious_dates,
+                "low_confidence": low_confidence,
+                "funds_count": funds_count,
+            },
+            "message": "获取数据质量报告成功"
+        }
+    except Exception:
+        logger.exception("获取数据质量报告失败")
+        return {
+            "success": False,
+            "data": None,
+            "message": "获取数据质量报告失败"
+        }
+
+
+@adapter_app.get("/api/announcements/quality/by-fund")
+async def announcements_quality_by_fund(fund_code: str = Query(..., description="基金代码")):
+    """获取指定基金的数据质量报告"""
+    try:
+        with get_conn() as conn:
+            cursor = conn.cursor()
+
+            # 总数
+            cursor.execute("""
+                SELECT COUNT(*) FROM business.announcements WHERE fund_code = %s
+            """, (fund_code,))
+            total = cursor.fetchone()[0]
+
+            # 缺失PDF
+            cursor.execute("""
+                SELECT COUNT(*) FROM business.announcements
+                WHERE fund_code = %s AND (pdf_url IS NULL OR pdf_url = '')
+            """, (fund_code,))
+            missing_pdf = cursor.fetchone()[0]
+
+            # 分类分布
+            cursor.execute("""
+                SELECT category, COUNT(*) FROM business.announcements
+                WHERE fund_code = %s GROUP BY category
+            """, (fund_code,))
+            categories = {row[0] or 'other': row[1] for row in cursor.fetchall()}
+
+        return {
+            "success": True,
+            "data": {
+                "fund_code": fund_code,
+                "total": total,
+                "missing_pdf": missing_pdf,
+                "categories": categories,
+            },
+            "message": f"获取基金 {fund_code} 数据质量报告成功"
+        }
+    except Exception:
+        logger.exception("获取基金数据质量报告失败")
+        return {
+            "success": False,
+            "data": None,
+            "message": "获取基金数据质量报告失败"
         }
 
 

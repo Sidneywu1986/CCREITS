@@ -119,7 +119,10 @@ def save_announcements_to_db(announcements, fund_code):
             cursor = conn.cursor()
 
             exchange = get_exchange(fund_code)
-            cninfo_search_url = f'http://www.cninfo.com.cn/new/information/topSearch/query?keyWord={fund_code}'
+            if exchange == 'SSE':
+                source_url = f'https://www.sse.com.cn/disclosure/fund/reits/?stockCode={fund_code}'
+            else:
+                source_url = f'http://www.cninfo.com.cn/new/information/topSearch/query?keyWord={fund_code}'
 
             for ann in announcements:
                 try:
@@ -156,7 +159,7 @@ def save_announcements_to_db(announcements, fund_code):
                                 ON CONFLICT (content_hash) DO NOTHING
                             ''', (
                                 fund_code, title, category, publish_date,
-                                cninfo_search_url, pdf_url, exchange,
+                                source_url, pdf_url, exchange,
                                 60, content_hash
                             ))
                             if cursor.rowcount > 0:
@@ -191,7 +194,7 @@ def save_announcements_to_db(announcements, fund_code):
                         title,
                         category,
                         publish_date,
-                        cninfo_search_url,
+                        source_url,
                         pdf_url,
                         exchange,
                         90 if pdf_valid else 70,
@@ -226,39 +229,52 @@ def get_exchange(code):
     return None
 
 
-def sync_single_fund(fund_code, max_count=30):
-    """同步单只REIT的公告到数据库"""
+def sync_single_fund(fund_code, max_count=30, start_date=None, end_date=None):
+    """同步单只REIT的公告到数据库
+    
+    Args:
+        fund_code: 基金代码
+        max_count: 单只最大同步条数（保留兼容，实际由日期范围控制）
+        start_date: 开始日期 YYYY-MM-DD，默认2021-01-01（全量）
+        end_date: 结束日期 YYYY-MM-DD，默认今天
+    """
     from cninfo_crawler import CNInfoCrawler
+    from datetime import datetime, timedelta
 
     logger.info(f'[SYNC] 开始同步 {fund_code} 的公告...')
 
     crawler = CNInfoCrawler()
 
     fund_info = crawler.search_fund(fund_code)
+    
     if not fund_info and fund_code.startswith('508'):
+        # 上交所REIT通过SSE官方API查询
         fund_info = {
             'code': fund_code,
             'name': f'上海REIT-{fund_code}',
             'orgId': '',
             'market': 'sh'
         }
+        logger.info(f'[SYNC] {fund_code}: 使用上交所官方API')
 
     if not fund_info:
         return {'success': False, 'error': '未找到基金信息'}
 
-    from datetime import datetime, timedelta
-    end_date = datetime.now().strftime('%Y-%m-%d')
-    start_date = (datetime.now() - timedelta(days=90)).strftime('%Y-%m-%d')
+    if not end_date:
+        end_date = datetime.now().strftime('%Y-%m-%d')
+    if not start_date:
+        # 默认全量同步
+        start_date = '2021-01-01'
 
     announcements = crawler.get_announcements(
         fund_code,
         fund_info.get('orgId', ''),
         start_date,
         end_date,
-        page_size=min(max_count, 100)
+        page_size=100
     )
 
-    db_result = save_announcements_to_db(announcements[:max_count], fund_code)
+    db_result = save_announcements_to_db(announcements, fund_code)
 
     return {
         'success': True,

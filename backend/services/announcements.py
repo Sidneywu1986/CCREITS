@@ -40,12 +40,14 @@ REITS_CODES = [
 
 # 公告分类关键词（按精确度排序，优先匹配高确定性分类）
 CATEGORY_KEYWORDS = {
-    'inquiry': ['问询函', '关注函', '监管工作函', '审核问询函', '反馈意见'],   # 高确定性，优先匹配
+    'inquiry': ['问询函', '关注函', '监管工作函', '审核问询函', '反馈意见'],
     'dividend': ['分红', '派息', '收益分配', '权益分派', '红利', '分配'],
-    'listing': ['上市', '发售', '认购', '招募说明书', '扩募'],
+    'listing': ['上市', '发售', '认购', '招募说明书', '扩募', '基金合同', '托管协议'],
     'disclosure': ['信息披露', '澄清', '风险提示', '停牌', '复牌'],
     'financial': ['年报', '季报', '半年报', '审计', '财务报告', '业绩预告', '报告书', '报告期', '评估报告'],
-    'operation': ['运营', '租赁', '出租率', '车流量', '物业', '经营数据', '运营数据']   # 移除过于宽泛的"管理""项目""季度"
+    'operation': ['运营', '租赁', '出租率', '车流量', '物业', '经营数据', '运营数据', '业绩说明会'],
+    'manager_change': ['基金管理人变更', '基金经理变更', '高级管理人员变更', '总经理变更', '董事长变更'],
+    'fund_event': ['基金份额持有人大会', '变更基金名称', '变更基金简称'],
 }
 
 
@@ -288,70 +290,109 @@ def merge_announcements(primary: List[Dict], secondary: List[Dict]) -> List[Dict
 
 # ==================== 数据库操作 ====================
 
-def get_cached_announcements(limit: int = 100) -> List[Dict]:
-    """获取数据库缓存的公告"""
+def get_cached_announcements(limit: int = 100, offset: int = 0,
+                               fund_code: Optional[str] = None,
+                               category: Optional[str] = None,
+                               exchange: Optional[str] = None,
+                               search: Optional[str] = None,
+                               start_date: Optional[str] = None,
+                               end_date: Optional[str] = None) -> List[Dict]:
+    """获取数据库缓存的公告（支持分页和筛选）"""
     try:
+        conditions = []
+        params = []
+        if fund_code:
+            conditions.append("a.fund_code = %s")
+            params.append(fund_code)
+        if category:
+            conditions.append("a.category = %s")
+            params.append(category)
+        if exchange:
+            conditions.append("a.exchange = %s")
+            params.append(exchange)
+        if search:
+            conditions.append("a.title ILIKE %s")
+            params.append(f"%{search}%")
+        if start_date:
+            conditions.append("a.publish_date >= %s")
+            params.append(start_date)
+        if end_date:
+            conditions.append("a.publish_date <= %s")
+            params.append(end_date)
+
+        where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
+
         with get_conn() as conn:
             cursor = conn.cursor()
-
-            cursor.execute("""
+            query = f"""
                 SELECT a.id, a.fund_code, a.fund_name, a.title, a.category, a.publish_date,
-                       a.source_url, a.pdf_url, a.exchange, a.confidence, a.source, a.created_at,
-                       a.manager, a.publisher,
-                       f.ipo_date, f.total_shares,
-                       (SELECT open_price FROM business.fund_prices WHERE fund_code = a.fund_code ORDER BY trade_date ASC LIMIT 1) as first_open_price,
-                       (SELECT close_price FROM business.fund_prices WHERE fund_code = a.fund_code ORDER BY trade_date DESC LIMIT 1) as latest_price,
-                       a.status, a.status_changed_at, a.is_suspicious
+                       a.source_url, a.pdf_url, a.exchange, a.confidence, a.source, a.created_at
                 FROM business.announcements a
-                LEFT JOIN business.funds f ON a.fund_code = f.fund_code
+                {where_clause}
                 ORDER BY a.publish_date DESC
-                LIMIT %s
-            """, (limit,))
-
+                LIMIT %s OFFSET %s
+            """
+            cursor.execute(query, (*params, limit, offset))
             rows = cursor.fetchall()
 
-        announcements = []
-        for row in rows:
-            ipo_date = row[14] or ''
-            total_shares = row[15] or 0  # 亿元（亿股）
-            first_open_price = row[16] or 0  # 元（首日开盘价）
-            latest_price = row[17] or 0  # 元
-            status = row[18] or 'draft'
-            status_changed_at = row[19] or ''
-            is_suspicious = row[20] if row[20] is not None else 0
-
-            # 发行市值 = 首日开盘价 × 总份额（亿元）
-            ipo_market_cap = first_open_price * total_shares if first_open_price and total_shares else 0
-            # 今日市值 = 最新价 × 总份额（亿元）
-            current_market_cap = latest_price * total_shares if latest_price and total_shares else 0
-
-            announcements.append({
-                'id': row[0],
-                'fund_code': row[1],
-                'fund_name': row[2] or '',
-                'title': row[3],
-                'category': row[4] or 'other',
-                'publish_date': row[5],
-                'source_url': row[6],
-                'pdf_url': row[7],
-                'exchange': row[8],
-                'confidence': row[9] / 100 if row[9] else 0.9,
-                'source': row[10],
-                'created_at': row[11],
-                'manager': row[12] or '',
-                'publisher': row[13] or '',
-                'ipo_date': ipo_date,
-                'ipo_market_cap': round(ipo_market_cap, 2),   # 发行市值（亿元）
-                'current_market_cap': round(current_market_cap, 2),  # 今日市值（亿元）
-                'status': status,
-                'status_changed_at': status_changed_at,
-                'is_suspicious': is_suspicious
-            })
-
-        return announcements
-    except (ValueError, TypeError, KeyError) as e:
+        return [{
+            'id': row['id'],
+            'fund_code': row['fund_code'],
+            'fund_name': row['fund_name'] or '',
+            'title': row['title'],
+            'category': row['category'] or 'other',
+            'publish_date': str(row['publish_date']) if row['publish_date'] else '',
+            'source_url': row['source_url'],
+            'pdf_url': row['pdf_url'],
+            'exchange': row['exchange'],
+            'confidence': float(row['confidence']) / 100 if row['confidence'] else 0.9,
+            'source': row['source'],
+            'created_at': str(row['created_at']) if row['created_at'] else '',
+        } for row in rows]
+    except (ValueError, TypeError, KeyError, psycopg2.Error) as e:
         logger.error(f"获取缓存公告失败: {e}")
         return []
+
+
+def count_cached_announcements(fund_code: Optional[str] = None,
+                               category: Optional[str] = None,
+                               exchange: Optional[str] = None,
+                               search: Optional[str] = None,
+                               start_date: Optional[str] = None,
+                               end_date: Optional[str] = None) -> int:
+    """统计符合条件的公告数量"""
+    try:
+        conditions = []
+        params = []
+        if fund_code:
+            conditions.append("fund_code = %s")
+            params.append(fund_code)
+        if category:
+            conditions.append("category = %s")
+            params.append(category)
+        if exchange:
+            conditions.append("exchange = %s")
+            params.append(exchange)
+        if search:
+            conditions.append("title ILIKE %s")
+            params.append(f"%{search}%")
+        if start_date:
+            conditions.append("publish_date >= %s")
+            params.append(start_date)
+        if end_date:
+            conditions.append("publish_date <= %s")
+            params.append(end_date)
+
+        where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
+
+        with get_conn() as conn:
+            cursor = conn.cursor()
+            cursor.execute(f"SELECT COUNT(*) FROM business.announcements {where_clause}", params)
+            row = cursor.fetchone()
+            return row['count'] if row else 0
+    except psycopg2.Error as e:
+        logger.error(f"统计公告数量失败: {e}")
+        return 0
 
 
 def save_announcements_to_db(announcements: List[Dict]) -> int:
@@ -402,84 +443,12 @@ def save_announcements_to_db(announcements: List[Dict]) -> int:
 
 def get_announcements_by_fund(code: str, limit: int = 20) -> List[Dict]:
     """获取指定基金的公告"""
-    try:
-        with get_conn() as conn:
-            cursor = conn.cursor()
-
-            cursor.execute("""
-                SELECT id, fund_code, fund_name, title, category, publish_date,
-                       source_url, pdf_url, exchange, confidence, source,
-                       manager, publisher, status, status_changed_at, is_suspicious
-                FROM business.announcements
-                WHERE fund_code = %s
-                ORDER BY publish_date DESC
-                LIMIT %s
-            """, (code, limit))
-
-            rows = cursor.fetchall()
-
-        return [{
-            'id': row[0],
-            'fund_code': row[1],
-            'fund_name': row[2] or '',
-            'title': row[3],
-            'category': row[4] or 'other',
-            'publish_date': row[5],
-            'source_url': row[6],
-            'pdf_url': row[7],
-            'exchange': row[8],
-            'confidence': row[9] / 100 if row[9] else 0.9,
-            'source': row[10],
-            'manager': row[11] or '',
-            'publisher': row[12] or '',
-            'status': row[13] or 'draft',
-            'status_changed_at': row[14] or '',
-            'is_suspicious': row[15] if row[15] is not None else 0
-        } for row in rows]
-    except psycopg2.Error as e:
-        logger.error(f"获取基金公告失败: {e}")
-        return []
+    return get_cached_announcements(limit=limit, fund_code=code)
 
 
 def get_announcements_by_category(category: str, limit: int = 50) -> List[Dict]:
     """按分类获取公告"""
-    try:
-        with get_conn() as conn:
-            cursor = conn.cursor()
-
-            cursor.execute("""
-                SELECT id, fund_code, fund_name, title, category, publish_date,
-                       source_url, pdf_url, exchange, confidence, source,
-                       manager, publisher, status, status_changed_at, is_suspicious
-                FROM business.announcements
-                WHERE category = %s
-                ORDER BY publish_date DESC
-                LIMIT %s
-            """, (category, limit))
-
-            rows = cursor.fetchall()
-
-        return [{
-            'id': row[0],
-            'fund_code': row[1],
-            'fund_name': row[2] or '',
-            'title': row[3],
-            'category': row[4] or 'other',
-            'publish_date': row[5],
-            'source_url': row[6],
-            'pdf_url': row[7],
-            'exchange': row[8],
-            'confidence': row[9] / 100 if row[9] else 0.9,
-            'source': row[10],
-            'manager': row[11] or '',
-            'publisher': row[12] or '',
-            'status': row[13] or 'draft',
-            'status_changed_at': row[14] or '',
-            'is_suspicious': row[15] if row[15] is not None else 0
-        } for row in rows]
-    except psycopg2.Error as e:
-        logger.error(f"按分类获取公告失败: {e}")
-        return []
+    return get_cached_announcements(limit=limit, category=category)
 
 
 def mark_as_read(announcement_id: int) -> bool:

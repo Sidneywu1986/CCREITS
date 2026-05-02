@@ -33,60 +33,60 @@ class CNInfoCrawler:
     # REIT代码映射表 - 支持全部79只REIT (2025年12月更新)
     # 数据来源: D:\kimi\reitssys\datadaily 日线数据文件
     REIT_CODE_MAPPING = {
-        # 上交所REIT (508XXX) - 58只
+        # 上交所REIT (508XXX) - 53只 (数据来源: SSE官方API FUND_EXPANSION_ABBR)
         '508000': '508000',  # 华安张江产业园REIT
         '508001': '508001',  # 浙商沪杭甬REIT
         '508002': '508002',  # 华安百联消费REIT
-        '508003': '508003',  # 中航首钢生物质REIT
-        '508005': '508005',  # 华夏首创水务REIT
+        '508003': '508003',  # 中金联东科创REIT
+        '508005': '508005',  # 华夏首创奥莱REIT
         '508006': '508006',  # 富国首创水务REIT
         '508007': '508007',  # 中金山东高速REIT
-        '508008': '508008',  # 华夏中国交建REIT
+        '508008': '508008',  # 国金中国铁建REIT
         '508009': '508009',  # 中金安徽交控REIT
-        '508010': '508010',  # 华夏合肥高新REIT
+        '508010': '508010',  # 中金重庆两江REIT
         '508011': '508011',  # 嘉实物美消费REIT
-        '508012': '508012',  # 华夏和达高科REIT
-        '508015': '508015',  # 华夏京保REIT
-        '508016': '508016',  # 华夏华润有巢REIT
-        '508017': '508017',  # 华夏金茂商业REIT
-        '508018': '508018',  # 华夏中国交建REIT扩募
-        '508019': '508019',  # 中金普洛斯REIT
-        '508021': '508021',  # 国泰君安临港REIT
-        '508022': '508022',  # 国泰君安东久新经济REIT
-        '508026': '508026',  # 嘉实京东仓储REIT
+        '508012': '508012',  # 招商科创REIT
+        '508015': '508015',  # 中信建投明阳智能新能源REIT
+        '508016': '508016',  # 华夏华电清洁能源REIT
+        '508017': '508017',  # 华夏金茂消费REIT
+        '508018': '508018',  # 华夏中国交建REIT
+        '508019': '508019',  # 中金湖北科投光谷REIT
+        '508021': '508021',  # 国泰海通临港创新产业园REIT
+        '508022': '508022',  # 博时津开产园REIT
+        '508026': '508026',  # 嘉实中国电建清洁能源REIT
         '508027': '508027',  # 东吴苏园产业REIT
-        '508028': '508028',  # 中金厦门安居REIT
-        '508029': '508029',  # 华夏北京保障房REIT
-        '508031': '508031',  # 富国杭州坡地REIT
-        '508033': '508033',  # 鹏华深圳能源REIT
-        '508036': '508036',  # 平安广州广河REIT
-        '508039': '508039',  # 中金湖北科投REIT
-        '508048': '508048',  # 华夏越秀高速REIT
+        '508028': '508028',  # 中信建投国家电投新能源REIT
+        '508029': '508029',  # 中信建投沈阳国际软件园REIT
+        '508031': '508031',  # 国泰海通城投宽庭保租房REIT
+        '508033': '508033',  # 易方达深高速REIT
+        '508036': '508036',  # 平安宁波交投REIT
+        '508039': '508039',  # 创金合信首农REIT
+        '508048': '508048',  # 华安外高桥REIT
         '508050': '508050',  # 华夏中核清洁能源REIT
-        '508055': '508055',  # 中信建投国家电投REIT
-        '508056': '508056',  # 中金普洛斯REIT扩募
-        '508058': '508058',  # 中金厦门安居REIT扩募
-        '508060': '508060',  # 中金武汉REIT
-        '508066': '508066',  # 华泰紫金江苏交控REIT
-        '508068': '508068',  # 华夏北京保障房REIT扩募
-        '508069': '508069',  # 中金山东高速REIT扩募
-        '508077': '508077',  # 华夏基金华润有巢REIT扩募
-        '508078': '508078',  # 华夏基金深国际REIT
-        '508080': '508080',  # 华夏金隅智造工场REIT
-        '508082': '508082',  # 嘉实电建清洁能源REIT
-        '508084': '508084',  # 华夏首创奥特莱斯REIT
-        '508085': '508085',  # 中金印力消费REIT
-        '508086': '508086',  # 华夏深国际REIT
-        '508087': '508087',  # 中金重庆两江REIT
-        '508088': '508088',  # 华夏合肥高新REIT扩募
-        '508089': '508089',  # 华夏基金城投宽庭REIT
-        '508090': '508090',  # 建信中关村REIT
-        '508091': '508091',  # 华夏南京交通REIT
-        '508092': '508092',  # 国金铁建重庆渝遂REIT
-        '508096': '508096',  # 嘉实京东智能产业园REIT
-        '508097': '508097',  # 华夏基金蒙能REIT
-        '508098': '508098',  # 易方达广州开发区REIT
-        '508099': '508099',  # 建信中关村REIT扩募
+        '508055': '508055',  # 汇添富上海地产租赁住房REIT
+        '508056': '508056',  # 中金普洛斯REIT
+        '508058': '508058',  # 中金厦门安居REIT
+        '508060': '508060',  # 南方万国数据中心REIT
+        '508066': '508066',  # 华泰江苏交控REIT
+        '508068': '508068',  # 华夏北京保障房REIT
+        '508069': '508069',  # 华夏南京交通高速公路REIT
+        '508077': '508077',  # 华夏基金华润有巢REIT
+        '508078': '508078',  # 中航易商仓储物流REIT
+        '508080': '508080',  # 中金亦庄产业园REIT
+        '508082': '508082',  # 中金唯品会奥莱REIT
+        '508084': '508084',  # 汇添富九州通医药REIT
+        '508085': '508085',  # 华泰苏州恒泰租赁住房REIT
+        '508086': '508086',  # 工银河北高速REIT
+        '508087': '508087',  # 国泰海通济南能源供热REIT
+        '508088': '508088',  # 国泰海通东久新经济REIT
+        '508089': '508089',  # 华夏特变电工新能源REIT
+        '508090': '508090',  # 中银中外运仓储物流REIT
+        '508091': '508091',  # 华夏凯德消费REIT
+        '508092': '508092',  # 华夏金隅智造工场REIT
+        '508096': '508096',  # 中航京能国际能源REIT
+        '508097': '508097',  # 华泰南京建邺REIT
+        '508098': '508098',  # 嘉实京东仓储基础设施REIT
+        '508099': '508099',  # 建信中关村REIT
         
         # 深交所REIT (180XXX) - 21只
         '180101': '180101',  # 博时蛇口产业园REIT
@@ -134,6 +134,15 @@ class CNInfoCrawler:
         self.announcement_url = "http://www.cninfo.com.cn/new/hisAnnouncement/query"
         self.download_base = "http://static.cninfo.com.cn/"
         
+        # 上交所REIT公告API
+        self.sse_api_url = "http://query.sse.com.cn/commonQuery.do"
+        self.sse_pdf_base = "https://www.sse.com.cn"
+        self.sse_headers = {
+            'Host': 'query.sse.com.cn',
+            'Referer': 'https://www.sse.com.cn/disclosure/fund/announcement/',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        }
+        
         self.stats = {'total_found': 0, 'downloaded': 0, 'failed': 0, 'skipped': 0}
     
     def log(self, level, message):
@@ -144,7 +153,7 @@ class CNInfoCrawler:
             'message': message
         }
         if self.verbose or level in ['ERROR', 'WARN', 'INFO']:
-            logger.info(json.dumps(log_entry, ensure_ascii=False), flush=True)
+            logger.info(json.dumps(log_entry, ensure_ascii=False))
     
     def _convert_code(self, code):
         """转换REIT代码（508XXX -> 180XXX）"""
@@ -199,21 +208,103 @@ class CNInfoCrawler:
             self.log('ERROR', f'搜索失败: {e}')
             return None
     
-    def get_announcements(self, fund_code, org_id, start_date=None, end_date=None, page_size=100):
+    def get_sse_announcements(self, fund_code, start_date=None, end_date=None, page_size=100):
         """
-        获取公告列表
-        关键：不使用plate参数，column使用'fund'
+        通过上交所官方API获取REIT公告
+        API: http://query.sse.com.cn/commonQuery.do?sqlId=COMMON_PL_JJXX_JJGG_NEW_L
         """
         if not start_date:
             start_date = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
         if not end_date:
             end_date = datetime.now().strftime('%Y-%m-%d')
         
+        self.log('INFO', f'[SSE] 获取上交所公告: {fund_code} ({start_date} ~ {end_date})')
+        
+        announcements = []
+        page = 1
+        max_pages = 10
+        
+        while page <= max_pages:
+            params = {
+                'isPagination': 'true',
+                'pageHelp.pageSize': str(page_size),
+                'pageHelp.pageNo': str(page),
+                'pageHelp.beginPage': str(page),
+                'pageHelp.cacheSize': '1',
+                'pageHelp.endPage': str(page),
+                'type': 'inParams',
+                'sqlId': 'COMMON_PL_JJXX_JJGG_NEW_L',
+                'TITLE': '',
+                'SECURITY_CODE': fund_code,
+                'BULLETIN_TYPE': '',
+                'START_DATE': start_date.replace('-', ''),
+                'END_DATE': end_date.replace('-', ''),
+                'DATE_DESC': '1',
+                'DATE_ASC': '',
+                'CODE_DESC': '',
+                'CODE_ASC': '',
+            }
+            
+            try:
+                resp = requests.get(self.sse_api_url, params=params, headers=self.sse_headers, timeout=15)
+                data = resp.json()
+                result = data.get('result', [])
+                
+                if not result:
+                    break
+                
+                for item in result:
+                    pdf_path = item.get('URL', '')
+                    pdf_url = f"{self.sse_pdf_base}{pdf_path}" if pdf_path else ''
+                    announcements.append({
+                        'title': item.get('TITLE', ''),
+                        'time': item.get('SSEDATE', ''),
+                        'pdf_url': pdf_url,
+                        'adjunctUrl': pdf_path,
+                        'stock_code': fund_code
+                    })
+                
+                self.log('DEBUG', f'[SSE] 第{page}页: 获取 {len(result)} 条，累计 {len(announcements)}')
+                
+                if len(result) < page_size:
+                    break
+                
+                page += 1
+                time.sleep(0.5)
+                
+            except (requests.RequestException, json.JSONDecodeError, KeyError, ValueError) as e:
+                self.log('ERROR', f'[SSE] 获取第{page}页失败: {e}')
+                break
+        
+        self.log('INFO', f'[SSE] 公告获取完成: 共 {len(announcements)} 条')
+        return announcements
+    
+    def get_announcements(self, fund_code, org_id, start_date=None, end_date=None, page_size=100):
+        """
+        获取公告列表
+        上交所508XXX走SSE官方API，深交所180XXX走CNInfo
+        """
+        if fund_code.startswith('508'):
+            return self.get_sse_announcements(fund_code, start_date, end_date, page_size)
+        
+        if not start_date:
+            start_date = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
+        if not end_date:
+            end_date = datetime.now().strftime('%Y-%m-%d')
+        
+        # org_id 为空时无法精确查询，直接返回空列表避免污染数据
+        if not org_id:
+            self.log('WARN', f'跳过 {fund_code}: 缺少 orgId，无法精确查询')
+            return []
+        
         self.log('INFO', f'获取公告: {fund_code} ({start_date} ~ {end_date})')
+        
+        # CNInfo接口每页最多返回30条，固定pageSize为30
+        cninfo_page_size = 30
         
         params = {
             'pageNum': '1',
-            'pageSize': str(page_size),
+            'pageSize': str(cninfo_page_size),
             'tabName': 'fulltext',
             'column': 'fund',  # 基金类型
             'stock': f'{fund_code},{org_id}',
@@ -223,7 +314,7 @@ class CNInfoCrawler:
         
         announcements = []
         page = 1
-        max_pages = 10
+        max_pages = 20
         
         while page <= max_pages:
             params['pageNum'] = str(page)
@@ -232,10 +323,11 @@ class CNInfoCrawler:
                 resp = self.session.post(self.announcement_url, data=params, headers=self.headers, timeout=15)
                 data = resp.json()
                 
-                if not data.get('announcements'):
+                current_page_anns = data.get('announcements') or []
+                if not current_page_anns:
                     break
                 
-                for item in data['announcements']:
+                for item in current_page_anns:
                     announcements.append({
                         'title': item.get('announcementTitle', ''),
                         'time': item.get('announcementTime', ''),
@@ -245,10 +337,9 @@ class CNInfoCrawler:
                     })
                 
                 total = data.get('totalRecordNum') or 0
-                current_page_anns = data.get('announcements') or []
                 self.log('DEBUG', f'第{page}页: 获取 {len(current_page_anns)} 条，累计 {len(announcements)}/{total}')
                 
-                if page * page_size >= total or len(current_page_anns) < page_size:
+                if page * cninfo_page_size >= total or len(current_page_anns) < cninfo_page_size:
                     break
                 
                 page += 1
