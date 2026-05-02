@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - REITs Admin{% endblock %}
+{% block content %}
+<div class="p-6">
+    <h1 class="text-2xl font-bold mb-6">管理后台</h1>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-white rounded-lg shadow p-4">
+            <div class="flex items-center justify-between">
+                <span class="text-gray-500">基金总数</span>
+                <i data-lucide="building-2" class="w-5 h-5 text-blue-500"></i>
+            </div>
+            <div class="text-3xl font-bold mt-2">{{ fund_count }}</div>
+        </div>
+        <div class="bg-white rounded-lg shadow p-4">
+            <div class="flex items-center justify-between">
+                <span class="text-gray-500">公告总数</span>
+                <i data-lucide="file-text" class="w-5 h-5 text-green-500"></i>
+            </div>
+            <div class="text-3xl font-bold mt-2">{{ announcement_count }}</div>
+        </div>
+        <div class="bg-white rounded-lg shadow p-4">
+            <div class="flex items-center justify-between">
+                <span class="text-gray-500">用户总数</span>
+                <i data-lucide="users" class="w-5 h-5 text-purple-500"></i>
+            </div>
+            <div class="text-3xl font-bold mt-2">{{ user_count }}</div>
+        </div>
+    </div>
+</div>
+{% endblock %}
