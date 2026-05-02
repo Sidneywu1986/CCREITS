@@ -286,7 +286,8 @@ def fetch_target_articles(conn, only_untagged: bool = False, limit: Optional[int
         sql = """SELECT id, source, title, published, content
             FROM business.wechat_articles
             WHERE content IS NOT NULL AND length(content) > 50
-              AND (asset_tags IS NULL OR asset_tags = '' OR event_tags IS NULL OR event_tags = '')
+              AND (asset_tags IS NULL OR asset_tags = ''
+                   OR event_tags IS NULL OR event_tags = '[]'::jsonb)
             ORDER BY id"""
     else:
         sql = """SELECT id, source, title, published, content
