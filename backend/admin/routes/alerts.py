@@ -611,6 +611,4 @@ def test_alert_system(alert_type, test_data):
     }
 
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("admin_app:app", host="0.0.0.0", port=5078, reload=True)
+

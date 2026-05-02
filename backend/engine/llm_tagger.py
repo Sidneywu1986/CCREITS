@@ -214,9 +214,9 @@ def save_tags_to_db(conn, article_id: int, tags: dict):
     assets = tags.get("assets", [])
     asset_str = ",".join(assets) if assets else ""
 
-    # 3. 事件标签
+    # 3. 事件标签 (jsonb)
     events = tags.get("events", [])
-    event_str = ",".join(events) if events else ""
+    event_json = json.dumps(events) if events else "[]"
 
     # 4. 基金关联
     funds = tags.get("funds", [])
@@ -229,10 +229,10 @@ def save_tags_to_db(conn, article_id: int, tags: dict):
     cur.execute(
         """UPDATE business.wechat_articles SET
             asset_tags = %s,
-            event_tags = %s,
-            related_funds = %s
+            event_tags = %s::jsonb,
+            related_funds = %s::jsonb
         WHERE id = %s""",
-        (asset_str, event_str, json.dumps(related_codes) if related_codes else None, article_id),
+        (asset_str, event_json, json.dumps(related_codes) if related_codes else "[]", article_id),
     )
 
     # 5. 写入 article_fund_tags
