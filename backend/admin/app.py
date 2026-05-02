@@ -14,6 +14,16 @@ from .routes import (
 
 @asynccontextmanager
 async def lifespan_wrapper(app: FastAPI):
+    # Start article sync scheduler (30 min interval)
+    try:
+        import sys, os
+        sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        from scheduler.tasks import start_scheduler
+        start_scheduler(interval_minutes=30)
+    except Exception as e:
+        import logging
+        logging.getLogger("admin").warning(f"Scheduler start failed: {e}")
+
     async with lifespan(app):
         yield
 
