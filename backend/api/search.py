@@ -14,6 +14,7 @@ from vector.milvus_client import get_milvus_client
 import psycopg2
 
 from core.db import get_conn
+from core.cache import cache_get, cache_set, cache_delete
 
 router = APIRouter(prefix="/api/v1/search", tags=["search"])
 logger = logging.getLogger(__name__)
@@ -172,15 +173,21 @@ async def get_search_stats():
     获取检索器统计信息（仅数字，不暴露内容）。
     示例: GET /api/v1/search/stats
     """
+    cache_key = "search:stats"
+    cached = cache_get(cache_key)
+    if cached:
+        return cached
     try:
         retriever = get_retriever()
         stats = retriever.get_stats()
-        return {
+        result = {
             "total_vectors": stats["total_vectors"],
             "unique_articles": stats["unique_articles"],
             "embedding_dim": stats["embedding_dim"],
             "status": "ready",
         }
+        cache_set(cache_key, result, ttl=60)
+        return result
     except Exception:
         logger.exception("Stats error")
         raise HTTPException(status_code=500, detail="获取搜索统计失败，请稍后重试")
