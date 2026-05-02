@@ -10,6 +10,7 @@ import asyncpg
 from ..utils import DB_URL, get_admin_user, sign_cookie, verify_cookie, sql_placeholders
 from core.auth.dependencies import require_admin
 from core.auth.jwt import TokenPayload
+from core.db_pool import get_pool
 
 router = APIRouter()
 api_router = APIRouter()
@@ -18,7 +19,8 @@ api_router = APIRouter()
 async def api_dashboard_stats(user: TokenPayload = Depends(require_admin)):
     from datetime import date
     
-    conn = await asyncpg.connect(DB_DSN)
+    pool = await get_pool()
+    conn = await pool.acquire()
     try:
         
         row = await conn.fetchrow("SELECT COUNT(*) as cnt FROM business.funds")
@@ -48,7 +50,7 @@ async def api_dashboard_stats(user: TokenPayload = Depends(require_admin)):
 
 
     finally:
-        await conn.close()
+        await pool.release(conn)
 # ========== 菜单 API ==========
 @router.get("/api/v1/menu/routes")
 async def api_menu_routes():

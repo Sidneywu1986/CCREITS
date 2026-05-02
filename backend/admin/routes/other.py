@@ -8,6 +8,7 @@ from typing import Optional
 import asyncpg
 
 from ..utils import DB_URL, get_admin_user, sign_cookie, verify_cookie, sql_placeholders
+from core.db_pool import get_pool
 
 router = APIRouter()
 api_router = APIRouter()
@@ -36,7 +37,8 @@ async def api_logout():
 async def api_dashboard_stats():
     from datetime import date
     
-    conn = await asyncpg.connect(DB_DSN)
+    pool = await get_pool()
+    conn = await pool.acquire()
     try:
         
         row = await conn.fetchrow("SELECT COUNT(*) as cnt FROM business.funds")
@@ -66,7 +68,7 @@ async def api_dashboard_stats():
 
 
     finally:
-        await conn.close()
+        await pool.release(conn)
 # ========== 菜单 API ==========
 @router.get("/api/v1/menu/routes")
 async def api_menu_routes():
@@ -97,7 +99,8 @@ async def api_menu_routes():
 @router.get("/api/v1/funds")
 async def api_list_funds(page: int = 1, page_size: int = 20, keyword: str = ""):
     
-    conn = await asyncpg.connect(DB_DSN)
+    pool = await get_pool()
+    conn = await pool.acquire()
     try:
         
         offset = (page - 1) * page_size
@@ -144,12 +147,13 @@ async def api_list_funds(page: int = 1, page_size: int = 20, keyword: str = ""):
 
 
     finally:
-        await conn.close()
+        await pool.release(conn)
 # ========== 公告 API ==========
 @router.get("/api/v1/announcements")
 async def api_list_announcements(page: int = 1, page_size: int = 20, fund_code: str = ""):
     
-    conn = await asyncpg.connect(DB_DSN)
+    pool = await get_pool()
+    conn = await pool.acquire()
     try:
         
         offset = (page - 1) * page_size
@@ -201,12 +205,13 @@ async def api_list_announcements(page: int = 1, page_size: int = 20, fund_code: 
 
 
     finally:
-        await conn.close()
+        await pool.release(conn)
 # ========== 用户管理 API ==========
 @router.get("/api/v1/users")
 async def api_list_users(page: int = 1, page_size: int = 10, keyword: str = ""):
     
-    conn = await asyncpg.connect(DB_DSN)
+    pool = await get_pool()
+    conn = await pool.acquire()
     try:
         
         offset = (page - 1) * page_size
@@ -252,7 +257,7 @@ async def api_list_users(page: int = 1, page_size: int = 10, keyword: str = ""):
 
 
     finally:
-        await conn.close()
+        await pool.release(conn)
 # ========== 角色管理 API ==========
 @router.get("/api/v1/roles")
 async def api_list_roles():

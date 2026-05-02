@@ -22,6 +22,7 @@ from core.auth.jwt import (
 )
 from core.auth.password import hash_password, verify_password
 from core.auth.permissions import get_role_permissions
+from core.db_pool import get_pool
 
 api_router = APIRouter()
 router = APIRouter()
@@ -59,7 +60,8 @@ async def api_register(request: RegisterRequest):
     if not _check_rate_limit(_register_attempts, "global", 5, 3600):
         return RegisterResponse(code=429, message="注册尝试过多，请 1 小时后重试")
 
-    conn = await asyncpg.connect(DB_URL)
+    pool = await get_pool()
+    conn = await pool.acquire()
     try:
         # Check username uniqueness
         existing = await conn.fetchrow(
@@ -90,7 +92,7 @@ async def api_register(request: RegisterRequest):
             data={"id": user_id, "username": request.username, "email": request.email}
         )
     finally:
-        await conn.close()
+        await pool.release(conn)
 
 
 # ── Login ──
@@ -98,7 +100,8 @@ async def api_register(request: RegisterRequest):
 async def api_login(request: LoginRequest, response: Response):
     client_ip = "global"  # Simplified; in production use X-Forwarded-For
 
-    conn = await asyncpg.connect(DB_URL)
+    pool = await get_pool()
+    conn = await pool.acquire()
     try:
         user = await conn.fetchrow(
             """SELECT id, username, email, password_hash, is_active, is_superuser
@@ -178,7 +181,7 @@ async def api_login(request: LoginRequest, response: Response):
             }
         )
     finally:
-        await conn.close()
+        await pool.release(conn)
 
 
 # ── Refresh ──
@@ -239,7 +242,8 @@ async def api_me(request: Request):
     except Exception as e:
         return MeResponse(code=401, message=str(e))
 
-    conn = await asyncpg.connect(DB_URL)
+    pool = await get_pool()
+    conn = await pool.acquire()
     try:
         user = await conn.fetchrow(
             "SELECT id, username, email, is_superuser FROM admin.users WHERE id = $1",
@@ -263,7 +267,7 @@ async def api_me(request: Request):
             }
         )
     finally:
-        await conn.close()
+        await pool.release(conn)
 
 
 # ── Change Password ──
@@ -279,7 +283,8 @@ async def api_change_password(request: Request, body: ChangePasswordRequest):
     except Exception as e:
         return JSONResponse(status_code=401, content={"code": 401, "message": str(e)})
 
-    conn = await asyncpg.connect(DB_URL)
+    pool = await get_pool()
+    conn = await pool.acquire()
     try:
         user = await conn.fetchrow(
             "SELECT id, password_hash FROM admin.users WHERE id = $1",
@@ -302,4 +307,4 @@ async def api_change_password(request: Request, body: ChangePasswordRequest):
 
         return JSONResponse(status_code=200, content={"code": 200, "message": "密码修改成功，请重新登录"})
     finally:
-        await conn.close()
+        await pool.release(conn)
